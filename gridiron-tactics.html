@@ -1,0 +1,3550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>GRIDIRON TACTICS</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    height: 100vh;
+    height: 100svh;
+    width: 100%; overflow: hidden;
+    background: #0a1410;
+    font-family: 'Oswald', sans-serif;
+    color: #e8e8e8;
+    overscroll-behavior: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+  }
+  body {
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(40,100,40,0.4), transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(20,60,30,0.4), transparent 60%),
+      linear-gradient(180deg, #0d1a0d 0%, #050805 100%);
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 100;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+  }
+
+  #app { position: relative; width: 100vw; height: 100vh; height: 100svh; overflow: hidden; }
+
+  .screen { position: absolute; inset: 0; display: none; flex-direction: column; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  .screen.active { display: flex; }
+
+  /* ============ MENU ============ */
+  #menu {
+    justify-content: center; align-items: center; padding: 24px;
+    background:
+      linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.7) 100%),
+      repeating-linear-gradient(90deg, transparent 0px, transparent 40px, rgba(255,255,255,0.02) 40px, rgba(255,255,255,0.02) 41px);
+  }
+  .logo-wrap { text-align: center; margin-bottom: 40px; }
+  .logo-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 6px; color: #c12c2c; margin-bottom: 8px; font-weight: 700; }
+  .logo-main {
+    font-family: 'Bebas Neue', sans-serif; font-size: 64px; line-height: 0.85; letter-spacing: 2px;
+    background: linear-gradient(180deg, #fff 0%, #888 100%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 20px rgba(193,44,44,0.3));
+  }
+  .logo-main .accent { color: #c12c2c; -webkit-text-fill-color: #c12c2c; }
+  .logo-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 4px; color: #6a8a6a; margin-top: 12px; }
+  .menu-btn {
+    width: 280px; max-width: 80vw; padding: 18px 24px; margin: 8px 0;
+    background: #c12c2c; color: #fff; border: none;
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px;
+    cursor: pointer; position: relative; overflow: hidden;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+    transition: transform 0.1s;
+  }
+  .menu-btn:active { transform: scale(0.96); }
+  .menu-btn.secondary { background: #1a2820; color: #6a8a6a; border: 1px solid #2a3a30; }
+  .menu-btn.secondary:active { background: #243028; }
+  .field-deco {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 30%; pointer-events: none;
+    background: linear-gradient(180deg, transparent 0%, rgba(20,60,30,0.4) 60%, rgba(20,60,30,0.6) 100%);
+  }
+  .yard-lines {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 25%; pointer-events: none; opacity: 0.4;
+  }
+  .yard-lines::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(90deg, transparent 0px, transparent 60px, rgba(255,255,255,0.3) 60px, rgba(255,255,255,0.3) 62px);
+    transform: perspective(200px) rotateX(60deg); transform-origin: bottom;
+  }
+
+  /* ============ GAME TOP BAR — broadcast scoreboard style ============ */
+  .top-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px;
+    background: linear-gradient(180deg, #0a1a0a 0%, #051005 100%);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    position: relative; z-index: 5;
+    padding-top: calc(env(safe-area-inset-top) + 8px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  }
+  .team-block {
+    display: flex; align-items: center; gap: 10px;
+    min-width: 100px;
+  }
+  .team-block.ai { flex-direction: row-reverse; }
+  .team-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #2a5a3a 0%, #1a3a2a 100%);
+    border: 2px solid #4aff8a;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+    color: #fff; flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(74,255,138,0.3);
+  }
+  .team-block.ai .team-avatar {
+    background: linear-gradient(135deg, #5a2a2a 0%, #3a1a1a 100%);
+    border-color: #ff6a6a;
+    box-shadow: 0 0 10px rgba(255,106,106,0.3);
+  }
+  .team-info { display: flex; flex-direction: column; }
+  .team-block.ai .team-info { align-items: flex-end; }
+  .team-label-text {
+    font-family: 'JetBrains Mono', monospace; font-size: 8px;
+    letter-spacing: 1.5px; color: #888; line-height: 1;
+  }
+  .team-score-big {
+    font-family: 'Bebas Neue', sans-serif; font-size: 32px;
+    line-height: 1; color: #fff; margin-top: 2px;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.6);
+  }
+  .scoreboard-center {
+    display: flex; flex-direction: column; align-items: center;
+    flex: 1; max-width: 110px;
+  }
+  .center-icon {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    animation: ballSpin 8s linear infinite;
+  }
+  @keyframes ballSpin {
+    0%,100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+  }
+  .center-status {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #aaa; letter-spacing: 1px; margin-top: 2px;
+    text-align: center; line-height: 1.2;
+  }
+  .center-status .drive-num {
+    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+    color: #ffb800; letter-spacing: 1px;
+  }
+  .menu-icon {
+    width: 28px; height: 28px; background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 50%;
+    color: #ccc; font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    position: absolute; top: calc(env(safe-area-inset-top) + 8px); right: 8px;
+  }
+
+  .energy-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 12px; background: rgba(0,0,0,0.7);
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .energy-row .energy-team-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 2px;
+    color: #888;
+  }
+  .you-energy .energy-team-label { color: #4aff8a; }
+  .ai-energy .energy-team-label { color: #ff6a6a; }
+  .energy-display { display: flex; align-items: center; gap: 5px; }
+  .energy-pip { width: 12px; height: 12px; background: #222; border-radius: 50%; border: 1px solid #333; }
+  .energy-pip.filled { background: #ffb800; box-shadow: 0 0 6px #ffb800; border-color: #ffb800; }
+  .you-energy .energy-pip.filled { background: #4aff8a; box-shadow: 0 0 6px #4aff8a; border-color: #4aff8a; }
+  .energy-count { 
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px; line-height: 1;
+    color: #ffb800; font-weight: 700; min-width: 50px; text-align: right;
+  }
+  .you-energy .energy-count { color: #4aff8a; }
+  .energy-count .current { font-size: 24px; }
+  .energy-count .divider { opacity: 0.4; }
+  .energy-count .max { opacity: 0.6; }
+  .energy-count.spending { animation: energyFlash 0.4s ease-out; }
+  @keyframes energyFlash { 0%,100%{transform:scale(1);} 50%{transform:scale(1.2); filter: brightness(1.5);} }
+
+  /* ============ FIELD / LANES ============ */
+  .field {
+    flex: 1; position: relative; display: flex; flex-direction: column;
+    background:
+      /* Subtle grass texture */
+      radial-gradient(ellipse at 30% 20%, rgba(120,200,80,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(60,140,40,0.15) 0%, transparent 50%),
+      /* Mowed stripes */
+      repeating-linear-gradient(180deg,
+        #4ea64e 0px, #4ea64e 28px,
+        #408a40 28px, #408a40 56px),
+      /* Base green */
+      linear-gradient(180deg, #4ea64e 0%, #3a803a 100%);
+    overflow: hidden;
+  }
+  /* Yard lines overlay */
+  .field::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(90deg,
+        transparent 0px, transparent 19.9%,
+        rgba(255,255,255,0.18) 19.9%, rgba(255,255,255,0.18) 20%);
+    pointer-events: none;
+  }
+  /* Grass noise/grain */
+  .field::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: 
+      radial-gradient(circle at 15% 30%, rgba(0,0,0,0.05) 1px, transparent 2px),
+      radial-gradient(circle at 70% 60%, rgba(255,255,255,0.04) 1px, transparent 2px),
+      radial-gradient(circle at 45% 85%, rgba(0,0,0,0.05) 1px, transparent 2px);
+    background-size: 40px 40px, 60px 60px, 50px 50px;
+    opacity: 0.5;
+  }
+
+  .lanes { flex: 1; display: flex; gap: 3px; padding: 4px; position: relative; z-index: 2; min-height: 0; }
+  .lane {
+    flex: 1; display: flex; flex-direction: column;
+    background: rgba(0,0,0,0.15);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 4px;
+    position: relative; overflow: hidden;
+    min-width: 0;
+    backdrop-filter: blur(1px);
+  }
+  .lane-name { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 1.5px; color: #fff; line-height: 1; }
+
+  /* LANE MODIFIER MEDALLION — sits in the lane center */
+  .lane-medallion-row {
+    display: flex; justify-content: center; align-items: center;
+    padding: 4px 2px; gap: 4px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.4) 100%);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .lane-power-pill {
+    min-width: 38px; height: 30px;
+    padding: 0 6px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+    line-height: 1; flex-shrink: 0;
+    border: 2px solid currentColor;
+    background: radial-gradient(circle, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%);
+    box-shadow: 0 0 6px currentColor, inset 0 0 4px rgba(0,0,0,0.5);
+    letter-spacing: 0.5px;
+  }
+  .lane-power-pill.you { color: #4aff8a; }
+  .lane-power-pill.ai { color: #ff6a6a; }
+  /* Losing state: opposite color to indicate this side is being pushed back */
+  .lane-power-pill.you.losing { color: #ff6a6a; opacity: 0.8; }
+  .lane-power-pill.ai.losing { color: #4aff8a; opacity: 0.8; }
+  .lane-power-pill.winning { 
+    box-shadow: 0 0 14px currentColor, inset 0 0 8px rgba(0,0,0,0.5);
+    animation: pillPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pillPulse {
+    0%,100% { box-shadow: 0 0 10px currentColor, inset 0 0 4px rgba(0,0,0,0.5); }
+    50% { box-shadow: 0 0 20px currentColor, inset 0 0 8px rgba(0,0,0,0.5); }
+  }
+
+  .lane-medallion {
+    flex: 1; max-width: 100px;
+    aspect-ratio: 1.4 / 1;
+    border-radius: 10%;
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2) 0%, transparent 40%),
+      radial-gradient(circle, rgba(40,60,40,0.95) 0%, rgba(10,30,10,0.95) 100%);
+    border: 2px solid rgba(255,255,255,0.3);
+    box-shadow: 
+      0 0 20px rgba(0,0,0,0.6),
+      inset 0 2px 4px rgba(255,255,255,0.2),
+      inset 0 -2px 4px rgba(0,0,0,0.4);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 4px;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .lane-medallion.cat-field {
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(74,170,255,0.3) 0%, transparent 40%),
+      radial-gradient(circle, rgba(20,40,80,0.95) 0%, rgba(5,15,40,0.95) 100%);
+    border-color: rgba(74,170,255,0.5);
+  }
+  .lane-medallion.cat-tactical {
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(255,184,0,0.3) 0%, transparent 40%),
+      radial-gradient(circle, rgba(60,40,10,0.95) 0%, rgba(30,20,5,0.95) 100%);
+    border-color: rgba(255,184,0,0.5);
+  }
+  .lane-medallion.cat-position {
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(255,138,74,0.3) 0%, transparent 40%),
+      radial-gradient(circle, rgba(60,30,10,0.95) 0%, rgba(30,15,5,0.95) 100%);
+    border-color: rgba(255,138,74,0.5);
+  }
+  .lane-medallion.cat-wild {
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(255,74,255,0.3) 0%, transparent 40%),
+      radial-gradient(circle, rgba(60,10,60,0.95) 0%, rgba(30,5,30,0.95) 100%);
+    border-color: rgba(255,74,255,0.6);
+    animation: medallionWild 2s ease-in-out infinite;
+  }
+  @keyframes medallionWild {
+    0%,100% { box-shadow: 0 0 12px rgba(255,74,255,0.4), inset 0 2px 4px rgba(255,255,255,0.2); }
+    50% { box-shadow: 0 0 24px rgba(255,74,255,0.7), inset 0 2px 4px rgba(255,255,255,0.2); }
+  }
+
+  .medallion-icon { font-size: 14px; line-height: 1; }
+  .medallion-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: 9px;
+    color: #fff; letter-spacing: 0.5px; line-height: 1.05; margin-top: 2px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    word-break: break-word; hyphens: auto;
+    max-width: 100%;
+    padding: 0 2px;
+  }
+  .medallion-desc {
+    font-family: 'JetBrains Mono', monospace; font-size: 6.5px;
+    color: rgba(255,255,255,0.85); line-height: 1.1; margin-top: 2px;
+    padding: 0 3px;
+  }
+
+  /* On small screens (phones) hide icon + description; show only the name */
+  @media (max-width: 480px) {
+    .medallion-icon { display: none; }
+    .medallion-desc { display: none; }
+    .lane-medallion {
+      aspect-ratio: 1.6 / 1;
+      padding: 3px;
+    }
+    .medallion-name {
+      font-size: 10px;
+      margin-top: 0;
+      letter-spacing: 0.5px;
+      line-height: 1.1;
+    }
+  }
+
+  /* Sudden death lock indicator */
+  .lane.locked-you { box-shadow: inset 0 0 0 2px #4aff8a; }
+  .lane.locked-ai { box-shadow: inset 0 0 0 2px #ff6a6a; }
+
+  /* SYNERGIES */
+  .lane-synergies {
+    padding: 2px 3px; background: rgba(0,0,0,0.5);
+    display: flex; flex-wrap: wrap; gap: 2px;
+    justify-content: center; min-height: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .synergy-badge {
+    font-family: 'Bebas Neue', sans-serif; font-size: 8px;
+    background: linear-gradient(180deg, #ffd700 0%, #cc9000 100%);
+    color: #000; padding: 1px 4px; border-radius: 2px;
+    line-height: 1.2; letter-spacing: 0.5px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .synergy-badge.you { background: linear-gradient(180deg, #4aff8a 0%, #2aaa5a 100%); }
+  .synergy-badge.ai { background: linear-gradient(180deg, #ff8a8a 0%, #aa4444 100%); color: #fff; }
+
+  /* AI side (top) */
+  .lane-side {
+    display: flex; flex-direction: column;
+    padding: 2px; gap: 2px;
+    min-height: 0;
+    flex: 1;
+  }
+  .lane-side.ai-side { 
+    padding-bottom: 4px;
+  }
+  .lane-side.you-side {
+    padding-top: 4px;
+  }
+
+  /* SLOT ROW = endzone "paint" — striped colored backgrounds */
+  .slot-row {
+    display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(4, 1fr); gap: 2px;
+    flex: 1; min-height: 0;
+    position: relative;
+    padding: 3px;
+    border-radius: 3px;
+    overflow: hidden;
+    border-top: 2px solid rgba(255,255,255,0.5);
+    border-bottom: 2px solid rgba(255,255,255,0.5);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+  }
+  /* AI endzone (top, where AI cards live) — red painted endzone */
+  .lane-side.ai-side .slot-row {
+    background: 
+      repeating-linear-gradient(45deg,
+        rgba(255,255,255,0.06) 0 4px,
+        transparent 4px 12px),
+      linear-gradient(180deg, #8a2222 0%, #5a1414 100%);
+  }
+  /* YOU endzone (bottom, where your cards live) — green painted endzone */
+  .lane-side.you-side .slot-row {
+    background: 
+      repeating-linear-gradient(-45deg,
+        rgba(255,255,255,0.06) 0 4px,
+        transparent 4px 12px),
+      linear-gradient(180deg, #2a7a2a 0%, #1a5a1a 100%);
+  }
+  /* Subtle "ENDZONE" text watermark via pseudo-element */
+  .slot-row::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: 
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04) 1px, transparent 2px);
+    background-size: 8px 8px;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Team name watermark in the endzone */
+  .lane-side.ai-side .slot-row::after {
+    content: 'CPU';
+    position: absolute;
+    top: 4px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px; letter-spacing: 4px;
+    color: rgba(255,255,255,0.25);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .lane-side.you-side .slot-row::after {
+    content: 'HOME';
+    position: absolute;
+    bottom: 4px; left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px; letter-spacing: 4px;
+    color: rgba(255,255,255,0.25);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .slot {
+    border: 1px dashed rgba(255,255,255,0.3);
+    border-radius: 2px; min-height: 0;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    z-index: 1;
+  }
+  .slot.empty { background: rgba(0,0,0,0.15); }
+
+  /* FIELD POSITION BAR — shows where each team is currently driving from */
+  .yardage-bar {
+    height: 26px; position: relative;
+    background: #1a3a1a;
+    border: 1px solid rgba(255,255,255,0.2);
+    overflow: hidden; flex-shrink: 0;
+    margin: 2px 0;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.4);
+  }
+  /* Field of play (between the endzones) — striped turf */
+  .yardage-bar::before {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 10%; right: 10%; z-index: 1;
+    background:
+      repeating-linear-gradient(90deg, transparent 0px, transparent 9.9%, rgba(255,255,255,0.25) 9.9%, rgba(255,255,255,0.25) 10%),
+      repeating-linear-gradient(0deg, rgba(40,100,40,0.4) 0px, rgba(40,100,40,0.4) 3px, rgba(60,140,60,0.4) 3px, rgba(60,140,60,0.4) 6px);
+  }
+  /* Midfield line */
+  .yardage-bar::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px;
+    background: rgba(255,255,255,0.7);
+    box-shadow: 0 0 2px rgba(255,255,255,0.5);
+    z-index: 2;
+  }
+
+  /* Endzones on the yardage bar — slim goal-line markers since the card areas are the real endzones */
+  .endzone {
+    position: absolute; top: 0; bottom: 0; width: 10%;
+    z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    border-left: 1px solid rgba(255,255,255,0.6);
+    border-right: 1px solid rgba(255,255,255,0.6);
+  }
+  .endzone.left { left: 0; }
+  .endzone.right { right: 0; }
+  /* AI bar — left endzone is THEIR own goal (red), right is YOUR goal (green) */
+  .yardage-bar.ai-bar .endzone.left {
+    background: 
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0 2px, transparent 2px 5px),
+      linear-gradient(180deg, #aa2222 0%, #6a1111 100%);
+  }
+  .yardage-bar.ai-bar .endzone.right {
+    background: 
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.1) 0 2px, transparent 2px 5px),
+      linear-gradient(180deg, #2a8a2a 0%, #1a5a1a 100%);
+  }
+  /* YOU bar — same mapping */
+  .yardage-bar.you-bar .endzone.left {
+    background: 
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.1) 0 2px, transparent 2px 5px),
+      linear-gradient(180deg, #aa2222 0%, #6a1111 100%);
+  }
+  .yardage-bar.you-bar .endzone.right {
+    background: 
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.1) 0 2px, transparent 2px 5px),
+      linear-gradient(180deg, #2a8a2a 0%, #1a5a1a 100%);
+  }
+  .endzone-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 6px;
+    color: rgba(255,255,255,0.95); letter-spacing: 0.5px;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.9);
+    transform: rotate(-90deg);
+    white-space: nowrap;
+    line-height: 1;
+  }
+  /* Pulse when ball is near scoring */
+  .endzone.threatened {
+    animation: endzonePulse 0.8s ease-in-out infinite;
+  }
+  @keyframes endzonePulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.6) saturate(1.5); }
+  }
+
+  .yardage-fill {
+    position: absolute; top: 0; bottom: 0;
+    left: 10%;  /* starts at end of left endzone */
+    width: 0;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: linear-gradient(90deg, rgba(74,255,138,0.4) 0%, rgba(74,255,138,0.65) 100%);
+    z-index: 1;
+    pointer-events: none;
+  }
+  .yardage-fill.ai { background: linear-gradient(90deg, rgba(255,106,106,0.4) 0%, rgba(255,106,106,0.65) 100%); }
+  
+  /* Position marker — the football */
+  .ball-marker {
+    position: absolute; top: 50%; width: 14px; height: 10px;
+    background: #8b4513; border-radius: 50%;
+    border: 1px solid #5a2c0c;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.3);
+    transform: translate(-50%, -50%);
+    transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 3;
+  }
+  .ball-marker::before {
+    content: ''; position: absolute; inset: 2px 4px;
+    border-top: 1px solid #d4a574; border-bottom: 1px solid #d4a574;
+  }
+  .ball-marker.scoring { animation: ballScore 0.6s ease-out 3; }
+  @keyframes ballScore { 0%,100%{transform: translate(-50%,-50%) scale(1);} 50%{transform: translate(-50%,-50%) scale(1.6);} }
+
+  /* Direction arrow indicator */
+  .drive-direction {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    font-family: 'Bebas Neue', sans-serif; font-size: 10px;
+    color: rgba(255,255,255,0.5); z-index: 2; pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+  .drive-direction.left { left: 2px; }
+  .drive-direction.right { right: 2px; }
+  
+  .yardage-text {
+    position: absolute; top: 0; bottom: 0;
+    left: 10%; right: 10%;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 6px; font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #fff; text-shadow: 0 1px 2px #000; font-weight: 700;
+    z-index: 4; pointer-events: none;
+  }
+  .yardage-text .yd-label { font-size: 8px; letter-spacing: 1px; opacity: 0.9; }
+  .yardage-text .yd-num { font-family: 'Bebas Neue', sans-serif; font-size: 14px; color: #ffd700; }
+
+  /* CARDS ON FIELD */
+  .field-card {
+    width: 100%; height: 100%; position: relative;
+    border-radius: 3px; overflow: hidden;
+    display: flex; flex-direction: column;
+    font-family: 'Oswald', sans-serif;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+    animation: cardPlace 0.4s ease-out;
+    font-size: 8px;
+    min-width: 0;
+    background: #1a1a1a;
+  }
+  @keyframes cardPlace { from { transform: scale(0.5) rotate(-10deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+  .field-card.you { border: 1px solid #4aff8a; }
+  .field-card.ai { border: 1px solid #ff6a6a; }
+  .field-card.hidden-card { background: linear-gradient(135deg, #2a2a2a 0%, #0a0a0a 100%); border: 1px solid #555; }
+  .field-card.hidden-card::before {
+    content: '🏈'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; opacity: 0.6;
+  }
+  .fc-portrait {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fc-portrait svg { width: 100%; height: 100%; }
+  .fc-overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    z-index: 2;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 25%, transparent 55%, rgba(0,0,0,0.85) 100%);
+  }
+  .fc-top { display: flex; justify-content: space-between; padding: 2px 3px; line-height: 1; }
+  .fc-cost {
+    background: linear-gradient(180deg, #ffd700 0%, #cc9000 100%);
+    color: #000; padding: 1px 4px; border-radius: 2px;
+    font-weight: 700; font-family: 'Bebas Neue', sans-serif; font-size: 11px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  .fc-pos {
+    color: #fff;
+    font-family: 'JetBrains Mono', monospace; font-size: 7px;
+    letter-spacing: 0.5px; font-weight: 700; padding-top: 2px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+  .fc-name {
+    text-align: center; font-family: 'Bebas Neue', sans-serif;
+    font-size: 9px; line-height: 1; padding: 2px;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    letter-spacing: 0.5px;
+  }
+  .fc-stats {
+    padding: 2px 1px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.95) 100%);
+    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+    text-align: center; line-height: 1;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .fc-stats.off { color: #ff8a4a; }
+  .fc-stats.def { color: #4aaaff; }
+
+  .fc-badges { position: absolute; top: 1px; right: 1px; display: flex; flex-direction: column; gap: 1px; z-index: 3; }
+  .fc-badge { width: 10px; height: 10px; border-radius: 50%; font-size: 7px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .fc-badge.flag { background: #ffd700; color: #000; }
+  .fc-badge.ejected { background: #ff0000; color: #fff; }
+
+  /* HAND */
+  .hand-section {
+    background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, #000 100%);
+    padding: 6px 6px;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 6px);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    position: relative; z-index: 3;
+  }
+  
+  /* Action bar with concede/orb/end-turn */
+  .action-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 4px 4px 8px;
+  }
+  .concede-btn {
+    background: linear-gradient(180deg, #6a2a2a 0%, #3a1414 100%);
+    color: #fff; border: 1px solid #8a4444;
+    padding: 8px 12px; font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px; letter-spacing: 2px; cursor: pointer;
+    border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .concede-btn:active { transform: translateY(1px); }
+
+  .energy-orb {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4) 0%, transparent 40%),
+      radial-gradient(circle, #4aff8a 0%, #1a6a4a 100%);
+    border: 2px solid #4aff8a;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 26px;
+    color: #fff;
+    box-shadow: 
+      0 0 16px rgba(74,255,138,0.6),
+      inset 0 -2px 4px rgba(0,0,0,0.3),
+      inset 0 2px 4px rgba(255,255,255,0.3);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    transition: transform 0.15s;
+    flex-shrink: 0;
+  }
+  .energy-orb.depleted {
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(255,255,255,0.2) 0%, transparent 40%),
+      radial-gradient(circle, #444 0%, #1a1a1a 100%);
+    border-color: #666;
+    box-shadow: 0 0 6px rgba(0,0,0,0.5);
+    color: #888;
+  }
+  .energy-orb.changed { animation: orbPulse 0.4s ease-out; }
+  @keyframes orbPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.25);} }
+
+  .play-btn {
+    background: linear-gradient(180deg, #2a6a4a 0%, #144a2a 100%);
+    color: #fff; border: 1px solid #4aff8a;
+    padding: 8px 14px; font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px; letter-spacing: 2px;
+    cursor: pointer; border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+  }
+  .play-btn:disabled { background: #333; color: #777; border-color: #444; box-shadow: none; }
+  .play-btn.ready { 
+    background: linear-gradient(180deg, #ffb800 0%, #cc8000 100%);
+    border-color: #ffd700; color: #000;
+    animation: btnPulse 1s ease-in-out infinite;
+  }
+  @keyframes btnPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,215,0,0.6); }
+    50% { box-shadow: 0 0 0 8px rgba(255,215,0,0); }
+  }
+
+  .deck-info-row {
+    text-align: center; padding: 0 0 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #888;
+  }
+  .deck-info-row span { color: #ffb800; font-weight: 700; }
+
+  .hand {
+    display: flex; gap: 5px; overflow-x: auto; padding: 2px;
+    scrollbar-width: none;
+    justify-content: center;
+  }
+  .hand::-webkit-scrollbar { display: none; }
+
+  .hand-card {
+    flex: 0 0 76px; height: 100px; position: relative;
+    background: #1a1a1a;
+    border: 2px solid #333; border-radius: 5px;
+    overflow: hidden;
+    cursor: grab; transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    touch-action: none;
+  }
+  .hand-card.off-card { border-color: #ff8a4a; }
+  .hand-card.def-card { border-color: #4aaaff; }
+  .hand-card.affordable.off-card { border-color: #4aff8a; box-shadow: 0 0 8px rgba(74,255,138,0.4); }
+  .hand-card.affordable.def-card { border-color: #4aff8a; box-shadow: 0 0 8px rgba(74,255,138,0.4); }
+  .hand-card.affordable::before {
+    content: ''; position: absolute; inset: 0; border-radius: 5px; pointer-events: none; z-index: 4;
+    background: linear-gradient(135deg, transparent 40%, rgba(74,255,138,0.15) 50%, transparent 60%);
+    background-size: 200% 200%; animation: shimmer 2.5s linear infinite;
+  }
+  @keyframes shimmer { 0%{background-position: 200% 200%;} 100%{background-position: -100% -100%;} }
+  .hand-card.unaffordable { opacity: 0.55; cursor: not-allowed; filter: grayscale(0.4); }
+  .hand-card.dragging-source { opacity: 0.3; }
+
+  .hc-portrait {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hc-portrait svg { width: 100%; height: 100%; }
+  .hc-overlay {
+    position: absolute; inset: 0; z-index: 2;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 30%, transparent 55%, rgba(0,0,0,0.9) 100%);
+  }
+  .hc-cost {
+    position: absolute; top: 3px; left: 3px; z-index: 3;
+    background: linear-gradient(180deg, #ffd700 0%, #cc9000 100%);
+    color: #000; font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; padding: 2px 6px; line-height: 1; border-radius: 3px;
+    min-width: 22px; text-align: center; font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .hand-card.unaffordable .hc-cost {
+    background: linear-gradient(180deg, #ff6a6a 0%, #aa3333 100%);
+    color: #fff;
+  }
+  .hc-pos-badge {
+    position: absolute; top: 4px; right: 3px; z-index: 3;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #fff; font-weight: 700; letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 3px;
+  }
+  .hc-name {
+    text-align: center; padding: 1px 2px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 10px; line-height: 1;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+    letter-spacing: 0.5px;
+  }
+  .hc-stat-block {
+    padding: 1px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.95) 100%);
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .hc-stat-num {
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px; line-height: 1;
+    text-align: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+  }
+  .hand-card.off-card .hc-stat-num { color: #ff8a4a; }
+  .hand-card.def-card .hc-stat-num { color: #4aaaff; }
+  .hc-ability-dot {
+    position: absolute; bottom: 22px; right: 3px; z-index: 3;
+    font-size: 12px; color: #ffd700;
+    text-shadow: 0 0 6px #ffd700, 0 1px 2px #000;
+  }
+
+  /* DRAG GHOST */
+  .drag-ghost {
+    position: fixed; pointer-events: none; z-index: 500;
+    width: 90px; height: 120px;
+    background: #1a1a1a;
+    border: 2px solid #ffd700; border-radius: 5px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.8), 0 0 24px rgba(255,215,0,0.6);
+    transform: translate(-50%, -50%) rotate(-3deg) scale(1.1);
+    transition: none;
+    will-change: transform, left, top;
+  }
+  .drag-ghost.snapping { transition: left 0.2s ease-out, top 0.2s ease-out, transform 0.2s ease-out, opacity 0.2s; }
+
+  .lane.drag-over { background: rgba(74,255,138,0.2) !important; box-shadow: inset 0 0 0 2px #4aff8a; }
+  .lane.drag-full { background: rgba(255,68,68,0.2) !important; box-shadow: inset 0 0 0 2px #ff4444; }
+
+  /* SCORING ANIMATIONS */
+  .score-burst {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    pointer-events: none; z-index: 100;
+    font-family: 'Bebas Neue', sans-serif; font-size: 64px; letter-spacing: 4px;
+    color: #fff; text-shadow: 0 4px 0 #000, 0 0 30px currentColor;
+    opacity: 0;
+  }
+  .score-burst.show {
+    animation: scoreBurst 2s ease-out forwards;
+  }
+  .score-burst.touchdown { color: #4aff8a; }
+  .score-burst.safety { color: #ffb800; }
+  .score-burst.pick6 { color: #ff6a6a; }
+  .score-burst.fg { color: #ffd700; }
+  @keyframes scoreBurst {
+    0% { transform: translate(-50%, -50%) scale(0.3) rotate(-10deg); opacity: 0; }
+    15% { transform: translate(-50%, -50%) scale(1.3) rotate(5deg); opacity: 1; }
+    25% { transform: translate(-50%, -50%) scale(1) rotate(0); opacity: 1; }
+    80% { transform: translate(-50%, -50%) scale(1) rotate(0); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.9) translateY(-30px); opacity: 0; }
+  }
+
+  /* PLAY LOG */
+  .play-log {
+    position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    pointer-events: none; z-index: 50;
+    font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 3px;
+    color: #fff; text-shadow: 0 2px 8px #000, 0 0 20px #c12c2c;
+    opacity: 0; text-align: center; white-space: nowrap;
+  }
+  .play-log.show { animation: logPop 1.5s ease-out; }
+  @keyframes logPop {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+  }
+
+  /* MODALS */
+  .modal-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.85);
+    display: none; align-items: center; justify-content: center; z-index: 200;
+    padding: 20px; backdrop-filter: blur(4px);
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #1a1a1a; border: 2px solid #c12c2c; padding: 24px 20px; max-width: 360px; width: 100%;
+    text-align: center; position: relative;
+    box-shadow: 0 0 40px rgba(193,44,44,0.4);
+    max-height: 85vh; overflow-y: auto;
+  }
+  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: #fff; letter-spacing: 3px; margin-bottom: 8px; }
+  .modal-sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #c12c2c; letter-spacing: 2px; margin-bottom: 16px; }
+  .modal-body { font-family: 'Oswald', sans-serif; font-size: 14px; color: #ccc; line-height: 1.5; margin-bottom: 20px; }
+  .modal-body p { margin: 8px 0; text-align: left; }
+  .modal-body strong { color: #4aff8a; }
+
+  /* TOOLTIPS */
+  .tooltip-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    pointer-events: none;
+    display: none;
+  }
+  .tooltip-overlay.show {
+    display: block;
+    pointer-events: auto;
+  }
+  .tooltip-bubble {
+    position: absolute;
+    max-width: 240px; min-width: 140px;
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+    border: 1px solid #ffb800;
+    border-radius: 4px;
+    padding: 8px 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.8), 0 0 16px rgba(255,184,0,0.3);
+    font-family: 'Oswald', sans-serif; color: #eee;
+    font-size: 11px; line-height: 1.4;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .tooltip-overlay.show .tooltip-bubble {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .tooltip-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px; letter-spacing: 1.5px;
+    color: #ffb800; margin-bottom: 4px;
+    line-height: 1;
+  }
+  .tooltip-body {
+    color: #ccc;
+  }
+  .tooltip-body strong { color: #4aff8a; }
+  .tooltip-body em { color: #ff8a4a; font-style: normal; }
+  /* Arrow pointing to target */
+  .tooltip-bubble::after {
+    content: '';
+    position: absolute;
+    width: 0; height: 0;
+    border: 6px solid transparent;
+  }
+  .tooltip-bubble.arrow-down::after {
+    bottom: -12px; left: 50%; transform: translateX(-50%);
+    border-top-color: #ffb800;
+  }
+  .tooltip-bubble.arrow-up::after {
+    top: -12px; left: 50%; transform: translateX(-50%);
+    border-bottom-color: #ffb800;
+  }
+  .tooltip-bubble.arrow-left::after {
+    left: -12px; top: 50%; transform: translateY(-50%);
+    border-right-color: #ffb800;
+  }
+  .tooltip-bubble.arrow-right::after {
+    right: -12px; top: 50%; transform: translateY(-50%);
+    border-left-color: #ffb800;
+  }
+
+  /* Small "?" hint on tooltippable elements (optional discoverable affordance) */
+  [data-tooltip] {
+    cursor: help;
+  }
+
+  /* TOAST */
+  .toast {
+    position: absolute; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px);
+    background: rgba(0,0,0,0.9); border-left: 3px solid #ffb800; padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #fff;
+    opacity: 0; transition: all 0.3s; z-index: 150; pointer-events: none;
+    max-width: 90vw;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .reveal-flash {
+    position: absolute; inset: 0; background: #fff;
+    opacity: 0; pointer-events: none; z-index: 40;
+  }
+  .reveal-flash.flash { animation: flash 0.3s ease-out; }
+  @keyframes flash { 0%{opacity:0;} 50%{opacity:0.4;} 100%{opacity:0;} }
+
+  /* RESULT */
+  #result { justify-content: center; align-items: center; padding: 24px; text-align: center; }
+  .result-banner {
+    font-family: 'Bebas Neue', sans-serif; font-size: 72px; letter-spacing: 6px;
+    margin-bottom: 8px;
+  }
+  .result-banner.win { color: #4aff8a; text-shadow: 0 0 30px #4aff8a; }
+  .result-banner.loss { color: #ff4a4a; text-shadow: 0 0 30px #ff4a4a; }
+  .result-banner.tie { color: #ffb800; text-shadow: 0 0 30px #ffb800; }
+  .result-score {
+    font-family: 'Bebas Neue', sans-serif; font-size: 36px;
+    margin-bottom: 24px;
+  }
+  .result-score .you { color: #4aff8a; }
+  .result-score .ai { color: #ff6a6a; }
+  .scoring-summary {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888;
+    margin-bottom: 24px; max-width: 300px;
+  }
+  .scoring-summary div { margin: 4px 0; }
+
+  /* DECK BUILDER */
+  .builder-header {
+    padding: 12px; padding-top: calc(env(safe-area-inset-top) + 12px);
+    background: linear-gradient(180deg, #000 0%, rgba(0,0,0,0.7) 100%);
+    border-bottom: 1px solid #c12c2c;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .builder-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px; }
+  .builder-back { background: #1a2820; color: #6a8a6a; border: 1px solid #2a3a30; padding: 6px 12px; font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; cursor: pointer; }
+  .builder-count { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888; padding: 8px 12px; background: rgba(0,0,0,0.5); }
+  .builder-count span { color: #ffb800; font-weight: 700; }
+  .builder-list { flex: 1; overflow-y: auto; padding: 8px; -webkit-overflow-scrolling: touch; }
+  .builder-card {
+    display: flex; align-items: center; gap: 10px; padding: 8px;
+    background: rgba(20,20,20,0.8); border: 1px solid #333; margin-bottom: 4px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .builder-card.selected { border-color: #4aff8a; background: rgba(74,255,138,0.1); }
+  .builder-card-cost { background: #ffb800; color: #000; padding: 4px 8px; font-family: 'Bebas Neue', sans-serif; font-size: 16px; min-width: 30px; text-align: center; }
+  .builder-card-info { flex: 1; }
+  .builder-card-name { font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 1px; }
+  .builder-card-meta { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #888; }
+  .builder-card-stats { display: flex; gap: 8px; font-family: 'Bebas Neue', sans-serif; font-size: 18px; min-width: 60px; justify-content: flex-end; }
+  .builder-card-stats .off { color: #ff8a4a; }
+  .builder-card-stats .def { color: #4aaaff; }
+  .builder-card-ability { font-size: 10px; color: #ffaaaa; font-family: 'JetBrains Mono', monospace; }
+  .builder-actions {
+    padding: 8px;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+    display: flex; gap: 8px; background: #000; border-top: 1px solid #333;
+  }
+  .builder-actions button {
+    flex: 1; padding: 12px; background: #1a2820; color: #6a8a6a;
+    border: 1px solid #2a3a30; font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px; letter-spacing: 2px; cursor: pointer;
+  }
+  .builder-actions button.primary { background: #c12c2c; color: #fff; border-color: #c12c2c; }
+
+  /* DRAFT SCREEN */
+  .draft-progress { padding: 8px 12px; background: rgba(0,0,0,0.6); flex-shrink: 0; }
+  .draft-progress-bar {
+    height: 6px; background: #1a1a1a; border-radius: 3px; overflow: hidden;
+    border: 1px solid #333;
+  }
+  .draft-progress-fill {
+    height: 100%; background: linear-gradient(90deg, #ff8a4a 0%, #4aaaff 100%);
+    transition: width 0.4s ease-out;
+  }
+  .draft-progress-text {
+    display: flex; justify-content: space-between; margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888;
+  }
+  .draft-progress-text span span { color: #ffb800; font-weight: 700; }
+
+  .draft-instructions {
+    text-align: center; padding: 8px 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: #aaa; letter-spacing: 1px;
+    border-bottom: 1px solid #222;
+  }
+
+  .draft-scroll {
+    flex: 1; min-height: 0; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex; flex-direction: column;
+  }
+
+  .draft-section {
+    padding: 8px;
+    display: flex; flex-direction: column;
+    flex-shrink: 0;
+  }
+  .draft-section-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px;
+    margin-bottom: 6px; padding: 0 4px;
+  }
+  .draft-options {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    min-height: 0;
+  }
+  .draft-card {
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+    border: 1px solid #333; border-radius: 4px;
+    display: flex; flex-direction: column;
+    cursor: pointer; transition: all 0.15s;
+    position: relative; overflow: hidden;
+    padding: 0;
+    min-height: 180px;
+  }
+  .draft-card.off-card { border-left: 3px solid #ff8a4a; }
+  .draft-card.def-card { border-left: 3px solid #4aaaff; }
+  .draft-card.selected {
+    border-color: #4aff8a; box-shadow: 0 0 16px rgba(74,255,138,0.5);
+    transform: translateY(-2px);
+  }
+  .draft-card .rarity-glow {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0.3;
+    background: radial-gradient(ellipse at top, var(--rarity-color, transparent) 0%, transparent 60%);
+  }
+  .draft-card-header {
+    display: flex; justify-content: space-between; padding: 4px 5px;
+    background: rgba(0,0,0,0.4);
+  }
+  .draft-card-cost {
+    background: #ffb800; color: #000; font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; padding: 1px 6px; border-radius: 2px; min-width: 22px; text-align: center;
+  }
+  .draft-card-pos {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #aaa; padding-top: 3px; letter-spacing: 0.5px; font-weight: 700;
+  }
+  .draft-card-rarity {
+    position: absolute; top: 2px; right: 2px;
+    font-size: 10px; line-height: 1; z-index: 2;
+  }
+  .draft-card-name {
+    text-align: center; padding: 6px 4px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 11px; line-height: 1.1;
+    color: #fff; min-height: 36px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .draft-card-team {
+    text-align: center; padding: 0 2px 2px;
+    font-family: 'JetBrains Mono', monospace; font-size: 8px;
+    color: #c12c2c; letter-spacing: 1px;
+  }
+  .draft-card-stat {
+    text-align: center; padding: 4px 0;
+    font-family: 'Bebas Neue', sans-serif; font-size: 28px; line-height: 1;
+  }
+  .draft-card.off-card .draft-card-stat { color: #ff8a4a; }
+  .draft-card.def-card .draft-card-stat { color: #4aaaff; }
+  .draft-card-stat-label {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 7px;
+    opacity: 0.5; letter-spacing: 1px; margin-top: -2px;
+  }
+  .draft-card-ability {
+    font-family: 'JetBrains Mono', monospace; font-size: 7px;
+    padding: 3px 2px; line-height: 1.15;
+    background: rgba(193,44,44,0.18); color: #ffaaaa;
+    text-align: center; min-height: 26px;
+    display: flex; align-items: center; justify-content: center;
+    border-top: 1px solid #2a2a2a;
+  }
+  .draft-card-ability:empty { background: rgba(0,0,0,0.3); }
+
+  /* Rarity coloring */
+  .draft-card.rarity-common { --rarity-color: transparent; }
+  .draft-card.rarity-uncommon { --rarity-color: #4aaaff; border-color: #4aaaff; }
+  .draft-card.rarity-rare { --rarity-color: #ffb800; border-color: #ffb800; box-shadow: 0 0 8px rgba(255,184,0,0.3); }
+  .draft-card.rarity-legendary { 
+    --rarity-color: #ff4aff; border-color: #ff4aff;
+    box-shadow: 0 0 12px rgba(255,74,255,0.5);
+    animation: legendaryPulse 2s ease-in-out infinite;
+  }
+  @keyframes legendaryPulse {
+    0%,100% { box-shadow: 0 0 12px rgba(255,74,255,0.5); }
+    50% { box-shadow: 0 0 24px rgba(255,74,255,0.9); }
+  }
+
+  .draft-actions {
+    padding: 8px;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
+    display: flex; gap: 8px; background: #000; border-top: 1px solid #333;
+  }
+  .draft-actions button {
+    flex: 1; padding: 12px;
+    background: #1a2820; color: #6a8a6a;
+    border: 1px solid #2a3a30; font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px; letter-spacing: 2px; cursor: pointer;
+  }
+  .draft-actions button.primary { background: #c12c2c; color: #fff; border-color: #c12c2c; }
+  .draft-actions button.primary:disabled { background: #333; color: #777; border-color: #444; cursor: not-allowed; }
+
+  /* SEASON HUB */
+  .season-hub {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px; gap: 16px;
+  }
+  .season-trophies {
+    display: flex; gap: 6px; margin-bottom: 4px;
+  }
+  .season-trophy {
+    width: 22px; height: 30px;
+    background: #1a1a1a; border: 1px solid #444; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .season-trophy.won {
+    background: #ffb800; border-color: #ffd700;
+    box-shadow: 0 0 8px rgba(255,184,0,0.5);
+  }
+  .season-trophy.next { border-color: #c12c2c; animation: btnPulse 1.5s infinite; }
+
+  .season-opponent-card {
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+    border: 2px solid #c12c2c; border-radius: 4px;
+    padding: 20px 24px; text-align: center;
+    max-width: 320px; width: 100%;
+    box-shadow: 0 0 30px rgba(193,44,44,0.3);
+  }
+  .season-opponent-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #c12c2c; letter-spacing: 3px; margin-bottom: 8px;
+  }
+  .season-opponent-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: 32px;
+    color: #fff; letter-spacing: 3px; line-height: 1;
+  }
+  .season-opponent-tier {
+    margin: 8px 0; font-size: 16px; letter-spacing: 4px;
+  }
+  .season-opponent-flavor {
+    font-family: 'Oswald', sans-serif; font-size: 13px;
+    color: #aaa; font-style: italic;
+  }
+
+  .season-roster-summary {
+    background: rgba(0,0,0,0.5); padding: 12px;
+    border: 1px solid #222; border-radius: 3px;
+    max-width: 320px; width: 100%; text-align: center;
+  }
+  .season-summary-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: #888; letter-spacing: 1px;
+  }
+
+  /* DICE ANIMATION */
+  .dice-container {
+    display: flex; justify-content: center; gap: 12px; margin: 16px 0;
+  }
+  .dice {
+    width: 50px; height: 50px; background: #fff; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: #000;
+    box-shadow: 0 4px 0 #aaa;
+  }
+  .dice.rolling { animation: diceRoll 0.6s linear infinite; }
+  @keyframes diceRoll {
+    0% { transform: rotateX(0) rotateY(0); }
+    100% { transform: rotateX(360deg) rotateY(360deg); }
+  }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- MENU -->
+<div class="screen active" id="menu">
+  <div class="logo-wrap">
+    <div class="logo-tag">EST. 2026 • WEEK 12</div>
+    <div class="logo-main">GRIDIRON<br><span class="accent">TACTICS</span></div>
+    <div class="logo-sub">FIRST TO 100 YARDS</div>
+  </div>
+  <div id="seasonStatus" style="display:none; margin-bottom: 16px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #ffb800; letter-spacing: 2px;"></div>
+  <button class="menu-btn" id="continueSeasonBtn" onclick="continueSeason()" style="display:none;">CONTINUE SEASON</button>
+  <button class="menu-btn" onclick="startSeasonDraft()">START SEASON</button>
+  <button class="menu-btn secondary" onclick="startQuickPlay()">QUICK PLAY</button>
+  <button class="menu-btn secondary" onclick="showHowToPlay()">HOW TO PLAY</button>
+  <div class="field-deco"></div>
+  <div class="yard-lines"></div>
+</div>
+
+<!-- GAME -->
+<div class="screen" id="game">
+  <div class="top-bar">
+    <div class="team-block you">
+      <div class="team-avatar">YOU</div>
+      <div class="team-info">
+        <span class="team-label-text">HOME</span>
+        <span class="team-score-big" id="youScore" data-tooltip="youScore">0</span>
+      </div>
+    </div>
+    <div class="scoreboard-center">
+      <div class="center-icon">🏈</div>
+      <div class="center-status">
+        <div class="drive-num" id="quarterNum">DRIVE 1</div>
+        <div id="halfLabel">1ST HALF</div>
+      </div>
+    </div>
+    <div class="team-block ai">
+      <div class="team-avatar">CPU</div>
+      <div class="team-info">
+        <span class="team-label-text">AWAY</span>
+        <span class="team-score-big" id="aiScore" data-tooltip="aiScore">0</span>
+      </div>
+    </div>
+    <button class="menu-icon" onclick="quitGame()">✕</button>
+  </div>
+
+  <div class="field">
+    <div class="lanes" id="lanes"></div>
+    <div class="play-log" id="playLog"></div>
+    <div class="score-burst" id="scoreBurst"></div>
+    <div class="reveal-flash" id="revealFlash"></div>
+  </div>
+
+  <div class="hand-section">
+    <div class="deck-info-row">DECK: <span id="deckCount">12</span> · DRIVE <span id="turnNum">1</span>/8</div>
+    <div class="hand" id="hand"></div>
+    <div class="action-bar">
+      <button class="concede-btn" onclick="quitGame()">CONCEDE</button>
+      <div class="energy-orb" id="energyOrb" data-tooltip="energyOrb">1</div>
+      <button class="play-btn" id="playBtn" onclick="endTurn()">END TURN</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- TOOLTIP overlay (global, shared across all screens) -->
+<div class="tooltip-overlay" id="tooltipOverlay">
+  <div class="tooltip-bubble" id="tooltipBubble">
+    <div class="tooltip-title" id="tooltipTitle"></div>
+    <div class="tooltip-body" id="tooltipBody"></div>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="result">
+  <div class="result-banner" id="resultBanner">WIN</div>
+  <div class="result-score" id="resultScore"></div>
+  <div class="scoring-summary" id="scoringSummary"></div>
+</div>
+
+<!-- DRAFT -->
+<div class="screen" id="draft">
+  <div class="builder-header">
+    <div class="builder-title">DRAFT · ROUND <span id="draftRound">1</span>/25</div>
+    <button class="builder-back" onclick="cancelDraft()">EXIT</button>
+  </div>
+  <div class="draft-progress">
+    <div class="draft-progress-bar">
+      <div class="draft-progress-fill" id="draftProgressFill"></div>
+    </div>
+    <div class="draft-progress-text">
+      <span>OFFENSE: <span id="draftOffCount">0</span>/25</span>
+      <span>DEFENSE: <span id="draftDefCount">0</span>/25</span>
+    </div>
+  </div>
+  <div class="draft-instructions" id="draftInstructions">
+    Pick ONE Offense and ONE Defense card to add to your roster.
+  </div>
+  <div class="draft-scroll">
+    <div class="draft-section">
+      <div class="draft-section-label" style="color:#ff8a4a;">🏈 OFFENSE — PICK ONE</div>
+      <div class="draft-options" id="draftOffOptions"></div>
+    </div>
+    <div class="draft-section">
+      <div class="draft-section-label" style="color:#4aaaff;">🛡 DEFENSE — PICK ONE</div>
+      <div class="draft-options" id="draftDefOptions"></div>
+    </div>
+  </div>
+  <div class="draft-actions">
+    <button onclick="autoDraftRest()">AUTO-DRAFT REST</button>
+    <button class="primary" id="confirmDraftBtn" onclick="confirmDraftPicks()" disabled>NEXT ROUND</button>
+  </div>
+</div>
+
+<!-- SEASON HUB -->
+<div class="screen" id="season">
+  <div class="builder-header">
+    <div class="builder-title">SEASON · WEEK <span id="seasonWeek">1</span>/7</div>
+    <button class="builder-back" onclick="showScreen('menu')">MENU</button>
+  </div>
+  <div class="season-hub">
+    <div class="season-trophies" id="seasonTrophies"></div>
+    <div class="season-opponent-card">
+      <div class="season-opponent-label">NEXT OPPONENT</div>
+      <div class="season-opponent-name" id="seasonOpponentName">Wildcats</div>
+      <div class="season-opponent-tier" id="seasonOpponentTier">⭐</div>
+      <div class="season-opponent-flavor" id="seasonOpponentFlavor">Easy game. Don't get cocky.</div>
+    </div>
+    <div class="season-roster-summary">
+      <div class="season-summary-row">
+        <span>ROSTER</span>
+        <span><span style="color:#ff8a4a">25 OFF</span> · <span style="color:#4aaaff">25 DEF</span></span>
+      </div>
+      <button class="menu-btn secondary" onclick="showRoster()" style="width:auto; margin: 8px auto; padding: 8px 16px; font-size: 14px;">VIEW ROSTER</button>
+    </div>
+    <button class="menu-btn" onclick="playSeasonMatch()">PLAY MATCH</button>
+  </div>
+</div>
+
+<!-- ROSTER VIEW -->
+<div class="screen" id="roster">
+  <div class="builder-header">
+    <div class="builder-title">ROSTER</div>
+    <button class="builder-back" onclick="showScreen('season')">← BACK</button>
+  </div>
+  <div class="builder-count">
+    <span style="color:#ff8a4a">OFFENSE: <span id="rosterOffCount">0</span></span> · 
+    <span style="color:#4aaaff">DEFENSE: <span id="rosterDefCount">0</span></span>
+  </div>
+  <div class="builder-list" id="rosterList"></div>
+</div>
+
+<!-- 2-PT CONVERSION MODAL -->
+<div class="modal-overlay" id="conversionModal">
+  <div class="modal">
+    <div class="modal-sub">AFTER TOUCHDOWN</div>
+    <div class="modal-title" id="conversionTitle">EXTRA POINT?</div>
+    <div class="modal-body" id="conversionBody"></div>
+    <div id="diceArea" style="display:none;">
+      <div class="dice-container">
+        <div class="dice" id="dice1">?</div>
+        <div class="dice" id="dice2">?</div>
+      </div>
+      <div id="diceResult" style="font-family: 'Bebas Neue'; font-size: 20px; color: #ffb800; margin: 12px 0;"></div>
+    </div>
+    <div id="conversionButtons" style="display: flex; flex-direction: column; gap: 8px;">
+      <button class="play-btn" id="goForTwoBtn" onclick="goForTwo()">GO FOR 2 (+8 TOTAL)</button>
+      <button class="menu-btn secondary" style="width: 100%;" onclick="kickPAT()">KICK PAT (+1)</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOW TO PLAY -->
+<div class="modal-overlay" id="howModal">
+  <div class="modal">
+    <div class="modal-sub">PLAYBOOK</div>
+    <div class="modal-title">HOW TO PLAY</div>
+    <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+      <p><strong>OBJECTIVE:</strong> Score more points than your opponent across 8 drives.</p>
+      <p><strong>CARDS:</strong> Each card is either <span style="color:#ff8a4a">OFFENSE</span> (orange) or <span style="color:#4aaaff">DEFENSE</span> (blue).</p>
+      <p><strong>3 LANES:</strong> Each lane has TWO field-position bars — your drive (bottom) and theirs (top). 🏈 markers show current field position.</p>
+      <p><strong>STARTING POSITION:</strong> Each drive starts at a random kickoff return spot (15-35 yard line).</p>
+      <p><strong>THE PUSH:</strong> Your OFFENSE in a lane moves YOUR ball forward. Their DEFENSE pushes it back. (Net = your OFF − their DEF, ~10 yds per 25 power.)</p>
+      <p><strong>🏈 TOUCHDOWN (6 pts):</strong> Reach 100 yards on your drive.</p>
+      <p><strong>+1 PAT:</strong> Auto if you have a Kicker (K) in that lane → 7 pts.</p>
+      <p><strong>+2 CONVERSION:</strong> More OFF cards than they have DEF → roll 7+ on 2d6 → 8 pts.</p>
+      <p><strong>🛡 SAFETY (2 pts):</strong> Push their ball past 0.</p>
+      <p><strong>🎯 PICK-SIX (6 pts):</strong> Safety + 4+ DBs (CB/S) in lane.</p>
+      <p><strong>🟡 LANE MODIFIERS:</strong> Every match each lane has a random condition (weather, tactics, position bonuses, or wild rules). Tap one to read it.</p>
+      <p><strong>🌟 SYNERGIES:</strong> Stack the right combos in a lane to trigger bonuses:</p>
+      <p style="font-size:12px; padding-left:8px;">
+        🤝 PLAY ACTION — QB + RB → +12 OFF<br>
+        📡 SPREAD — 3+ WR → +6 OFF each<br>
+        🛡️ POCKET — QB + 2+ OL → QB +15 OFF<br>
+        🎯 RED ZONE — TE + QB → +8 OFF each<br>
+        🏃 WILDCAT — 2+ RB → +10 OFF each<br>
+        🎩 TRICK PLAY — WR + RB + TE → +5 OFF each<br>
+        🎖️ FIELD GEN — 5-cost QB + 2 receivers → +15 OFF<br>
+        🦅 ZONE D — 2+ CB → +5 DEF each<br>
+        💪 STRONG SAFETY — S + LB → +6 DEF each<br>
+        ⛓️ STACKED FRONT — 3+ DL → +8 DEF each<br>
+        🎯 BLITZ — LB + DE → +7 DEF each<br>
+        🤝 SECONDARY — 2 CB + S → +5 DEF each<br>
+        🏈 KICKING UNIT — K + ST → FG range 35+ instead of 50+
+      </p>
+      <p><strong>AFTER SCORING:</strong> Lane clears, fresh kickoff.</p>
+      <p><strong>ENERGY:</strong> +1 each drive (1, 2, 3...). Spend it to play cards.</p>
+      <p><strong>SLOTS:</strong> Up to 8 cards per side per lane.</p>
+    </div>
+    <button class="menu-btn" style="width: auto;" onclick="document.getElementById('howModal').classList.remove('show')">GOT IT</button>
+  </div>
+</div>
+
+</div>
+
+<script>
+// ============================================================
+// UTILITIES
+// ============================================================
+function uid() { return Math.random().toString(36).slice(2,9); }
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+// ============================================================
+// PROCEDURAL CARD GENERATOR — generates a master pool of unique players
+// ============================================================
+const NFL_TEAMS = ['ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN','DET','GB','HOU','IND','JAX','KC','LV','LAC','LAR','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SF','SEA','TB','TEN','WAS'];
+
+const FIRST_NAMES = ['Jalen','Trey','Marcus','Devon','Tyrese','Caleb','Brock','Justin','Patrick','Lamar','Joe','Josh','Dak','Jared','Bo','Drake','Kyle','Mac','Geno','Russell','Aaron','Kirk','Baker','Sam','Will','Anthony','Rome','Malik','Najee','Travis','Mark','George','Brandon','Stefon','Tee','Ja','CeeDee','DeVonta','DK','Garrett','Maxx','Khalil','Micah','TJ','Nick','Aidan','Sauce','Pat','Derwin','Minkah','Justin','Roquan','Fred','Quinnen','Chris','Trent','Lane','Penei','Tristan','Christian','Saquon','Bijan','Jonathan','Derrick','Alvin','Aaron','Dalvin','Tony','James','Joe','Austin','Trevor','Daniel','Tua','Anthony','Bryce','Jaylen','Amon-Ra','Davante','AJ','Mike','Cooper','Tyler','Calvin','DeAndre','Chris','TJ','Travis','Mark','Kyle','Hunter','David','Tom','Jordan','Maxx','Joey','Bradley','Brian','Demarcus','Von','Roquan','Bobby','Demario','Patrick','Jamal','Budda','Jessie','Tyrann','Jamel','Marlon','Marshon','Jaire','Jalen','Stephon','Kenny'];
+
+const LAST_NAMES = ['Allen','Hurts','Mahomes','Jackson','Burrow','Herbert','Williams','Stroud','Young','Love','Prescott','Goff','Tagovailoa','Watson','Tannehill','Smith','Carr','Rodgers','Wilson','Mayfield','Murray','Maye','Daniels','Penix','Nix','Richardson','Henry','Taylor','Robinson','Conner','Mostert','Kamara','Mixon','Pollard','Singletary','Jacobs','Barkley','Cook','Pierce','Walker','Etienne','Sermon','Bigsby','Pacheco','White','Spears','Stevenson','Akers','Jackson','Hill','Jefferson','Chase','Lamb','Diggs','Adams','Higgins','Brown','Smith','Pittman','Olave','Wilson','McLaurin','Aiyuk','Kupp','Samuel','Godwin','Sutton','Waddle','Smith-Schuster','Beckham','Kelce','Andrews','Pitts','Goedert','Hockenson','Kittle','Ertz','LaPorta','Engram','Schultz','Njoku','Henry','Bowers','Watt','Garrett','Parsons','Bosa','Crosby','Mack','Jones','Hendrickson','Hutchinson','Hargrave','Donald','Heyward','Wilkins','Williams','Buckner','Sweat','Smith','Tuitt','Burns','Anderson','Hicks','Wagner','David','Lloyd','Edmunds','Werner','Mosley','White','Roquan','Campbell','Sneed','Williams','Surtain','Stingley','Sauce','Lattimore','Bradberry','Diggs','Slay','Bouye','Adams','Hooker','Hamilton','Hyde','James','Bates','Mathieu','Adams','Winfield','Fitzpatrick','Poyer','Hyde','McKinney','Howell','Cross','Sewell','Wirfs','Williams','Slater','Brown','Smith','Stanley','Thuney','Lindstrom','Nelson','Martin','Jenkins','Vera-Tucker','Becton','Mekari','Glowinski','Daley'];
+
+const TEAM_TIER = {}; // reserved for future expansion
+
+// Cost → base stat ranges (off or def power)
+const STAT_BY_COST = {
+  1: { min: 6, max: 11 },
+  2: { min: 13, max: 19 },
+  3: { min: 20, max: 28 },
+  4: { min: 28, max: 36 },
+  5: { min: 38, max: 50 },
+  6: { min: 50, max: 62 }
+};
+
+const RARITY_DISTRIBUTION = [
+  { rarity: 'common', weight: 70, statBonus: 0 },
+  { rarity: 'uncommon', weight: 20, statBonus: 3 },
+  { rarity: 'rare', weight: 8, statBonus: 7 },
+  { rarity: 'legendary', weight: 2, statBonus: 12 }
+];
+
+const ABILITY_POOL = {
+  off: [
+    { ability: 'SNAP: Draw a card', desc: 'snapDraw', minCost: 1 },
+    { ability: 'SNAP: +6 OFF to this lane', desc: 'snapBuffOffLane', minCost: 3 },
+    { ability: 'SNAP: +10 yds, push enemy back 10', desc: 'snapStealYards', minCost: 4 },
+    { ability: 'SNAP: 3-pt FG if past midfield', desc: 'snapFieldGoal', minCost: 4, posOnly: ['K'] },
+    { ability: 'SNAP: +8 OFF to all your OFF cards', desc: 'snapBuffAllOff', minCost: 5 },
+    { ability: 'FIELD: +4 OFF to all your OFF here', desc: 'fieldBuffOffAll', minCost: 3 },
+    { ability: 'FIELD: +5 OFF to OL friendlies here', desc: 'fieldBuffOff', minCost: 2, posOnly: ['OL'] },
+    { ability: 'FIELD: +6 OFF to all your OFF cards', desc: 'fieldBuffAllOff', minCost: 5 },
+    { ability: 'PAT bonus on TD in this lane', desc: '', minCost: 2, posOnly: ['K'] }
+  ],
+  def: [
+    { ability: 'SNAP: -8 enemy OFF here', desc: 'snapDebuffEnemyOff', minCost: 3 },
+    { ability: 'SNAP: Push enemy back 12 yds', desc: 'snapDefYards', minCost: 4 },
+    { ability: 'SNAP: -10 enemy OFF yds', desc: 'snapPunt', minCost: 2, posOnly: ['ST'] },
+    { ability: 'FIELD: +3 DEF to CB/S friendlies', desc: 'fieldBuffDef', minCost: 2 },
+    { ability: 'FIELD: Blocks 5 enemy yds/drive', desc: 'fieldYardBlock', minCost: 4 },
+    { ability: 'FIELD: All enemy OFF here -5', desc: 'fieldDebuffAll', minCost: 5 },
+    { ability: 'FIELD: +6 DEF to all your DEF cards', desc: 'fieldBuffAllDef', minCost: 5 }
+  ]
+};
+
+function pickWeighted(items) {
+  const total = items.reduce((s, i) => s + i.weight, 0);
+  let r = Math.random() * total;
+  for (const item of items) {
+    r -= item.weight;
+    if (r <= 0) return item;
+  }
+  return items[items.length - 1];
+}
+
+function pickOne(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function generateCard(forcedSide) {
+  // Pick side
+  const side = forcedSide || (Math.random() < 0.5 ? 'off' : 'def');
+  // Pick position
+  const positions = side === 'off' ? ['QB','RB','WR','TE','OL','K'] : ['CB','S','LB','DE','DT','ST'];
+  const posWeights = side === 'off' 
+    ? { QB: 18, RB: 16, WR: 22, TE: 12, OL: 18, K: 14 }
+    : { CB: 20, S: 16, LB: 20, DE: 16, DT: 14, ST: 14 };
+  const pos = pickWeighted(positions.map(p => ({ value: p, weight: posWeights[p] }))).value;
+  // Pick cost — weighted toward middle costs (curve)
+  const costWeights = [{ value: 1, weight: 18 }, { value: 2, weight: 24 }, { value: 3, weight: 22 }, { value: 4, weight: 18 }, { value: 5, weight: 12 }, { value: 6, weight: 6 }];
+  const cost = pickWeighted(costWeights).value;
+  // Pick rarity
+  const rarityInfo = pickWeighted(RARITY_DISTRIBUTION);
+  // Stats based on cost + rarity bonus
+  const statRange = STAT_BY_COST[cost];
+  const baseStat = statRange.min + Math.floor(Math.random() * (statRange.max - statRange.min + 1)) + rarityInfo.statBonus;
+  const off = side === 'off' ? baseStat : 0;
+  const def = side === 'def' ? baseStat : 0;
+  // Pick ability — rarity affects chance of ability
+  const abilityChance = rarityInfo.rarity === 'common' ? 0.15 : 
+                         rarityInfo.rarity === 'uncommon' ? 0.35 :
+                         rarityInfo.rarity === 'rare' ? 0.7 : 1.0;
+  let ability = '', desc = '';
+  if (Math.random() < abilityChance) {
+    const pool = ABILITY_POOL[side].filter(a => 
+      cost >= a.minCost && (!a.posOnly || a.posOnly.includes(pos))
+    );
+    if (pool.length > 0) {
+      const picked = pickOne(pool);
+      ability = picked.ability;
+      desc = picked.desc;
+    }
+  }
+  // Kickers should usually have PAT
+  if (pos === 'K' && !ability) {
+    ability = 'PAT bonus on TD in this lane';
+  }
+  // Name
+  const name = pickOne(FIRST_NAMES) + ' ' + pickOne(LAST_NAMES);
+  const team = pickOne(NFL_TEAMS);
+  return {
+    id: uid(),
+    name, pos, team, cost, off, def, side, ability, desc,
+    rarity: rarityInfo.rarity
+  };
+}
+
+function generateMasterPool(size = 100) {
+  // Balanced pool: ~50/50 off/def
+  const pool = [];
+  const halfSize = Math.floor(size / 2);
+  for (let i = 0; i < halfSize; i++) pool.push(generateCard('off'));
+  for (let i = 0; i < halfSize; i++) pool.push(generateCard('def'));
+  return shuffle(pool);
+}
+
+// ============================================================
+// LANES — three thematic lanes
+// ============================================================
+const LANE_DEFS = [
+  { name: 'LEFT', flavor: 'Strong Side' },
+  { name: 'MIDDLE', flavor: 'Trenches' },
+  { name: 'RIGHT', flavor: 'Weak Side' }
+];
+
+// ============================================================
+// LANE MODIFIERS — applied to each lane at match start
+// Each match draws 3 random modifiers from this pool, one per lane.
+// ============================================================
+const LANE_MODIFIERS = [
+  // Field condition modifiers
+  { id: 'homeTurf',     icon: '🏟️', name: 'HOME TURF',     desc: 'Your OFF +5, enemy OFF -5', category: 'field' },
+  { id: 'muddyField',   icon: '🌧️', name: 'MUDDY FIELD',   desc: 'All OFF -25%, all DEF +25%', category: 'field' },
+  { id: 'windTunnel',   icon: '💨', name: 'WIND TUNNEL',   desc: 'No FGs · passers -5 OFF', category: 'field' },
+  { id: 'frozenTundra', icon: '❄️', name: 'FROZEN TUNDRA', desc: 'All abilities disabled', category: 'field' },
+  { id: 'blindingSun',  icon: '🌞', name: 'BLINDING SUN',  desc: 'WR/TE -8 OFF', category: 'field' },
+  { id: 'redZone',      icon: '🔥', name: 'RED ZONE',      desc: 'All OFF +8', category: 'field' },
+
+  // Tactical modifiers
+  { id: 'hurryUp',      icon: '⚡', name: 'HURRY-UP',      desc: 'OFF cards cost -1', category: 'tactical' },
+  { id: 'preventD',     icon: '🛡️', name: 'PREVENT D',     desc: 'DEF cards cost -1', category: 'tactical' },
+  { id: 'scouted',      icon: '📋', name: 'SCOUTED',       desc: 'First card here reveals immediately', category: 'tactical' },
+  { id: 'blitzZone',    icon: '🎯', name: 'BLITZ ZONE',    desc: 'DEF SNAP abilities trigger twice', category: 'tactical' },
+  { id: 'scramble',     icon: '🏃', name: 'SCRAMBLE',      desc: 'QBs +12 OFF', category: 'tactical' },
+
+  // Position-specific modifiers
+  { id: 'groundPound',  icon: '🏃', name: 'GROUND & POUND', desc: 'RB +10 OFF, OL +5 OFF', category: 'position' },
+  { id: 'airRaid',      icon: '✈️', name: 'AIR RAID',      desc: 'WR and TE +8 OFF', category: 'position' },
+  { id: 'trenches',     icon: '🔨', name: 'TRENCHES',      desc: 'OL +6 OFF, DT +6 DEF', category: 'position' },
+  { id: 'secondary',    icon: '🦅', name: 'SECONDARY',     desc: 'CB and S +6 DEF', category: 'position' },
+  { id: 'specialUnit',  icon: '🎯', name: 'ST UNIT',       desc: 'K and ST +15 to stat', category: 'position' },
+
+  // Wild modifiers
+  { id: 'coinFlip',     icon: '🎲', name: 'COIN FLIP',     desc: 'Each drive: 50/50 doubles or halves yards', category: 'wild' },
+  { id: 'turnover',     icon: '🔄', name: 'TURNOVER',      desc: 'No score in 3 drives = ball swaps', category: 'wild' },
+  { id: 'suddenDeath',  icon: '💀', name: 'SUDDEN DEATH',  desc: 'First to score locks the lane', category: 'wild' },
+  { id: 'playOfGame',   icon: '🎬', name: 'PLAY OF GAME',  desc: 'Highest-stat card here +20', category: 'wild' }
+];
+
+function drawLaneModifiers() {
+  return shuffle([...LANE_MODIFIERS]).slice(0, 3);
+}
+
+// ============================================================
+// CARD SYNERGIES — triggered by combos of cards in the same lane
+// Each synergy has a `match(cards)` function returning matched cards (or null)
+// and an `apply(cards)` that mutates curOff/curDef
+// ============================================================
+const SYNERGIES = [
+  // Offense synergies
+  {
+    id: 'playAction', icon: '🤝', name: 'PLAY ACTION', side: 'off',
+    match: cards => {
+      const qb = cards.find(c => c.pos === 'QB');
+      const rb = cards.find(c => c.pos === 'RB');
+      return (qb && rb) ? [qb, rb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 12)
+  },
+  {
+    id: 'spreadOffense', icon: '📡', name: 'SPREAD', side: 'off',
+    match: cards => {
+      const wrs = cards.filter(c => c.pos === 'WR');
+      return wrs.length >= 3 ? wrs : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 6)
+  },
+  {
+    id: 'protectedPocket', icon: '🛡️', name: 'POCKET', side: 'off',
+    match: cards => {
+      const qb = cards.find(c => c.pos === 'QB');
+      const ols = cards.filter(c => c.pos === 'OL');
+      return (qb && ols.length >= 2) ? [qb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 15)
+  },
+  {
+    id: 'redZoneThreat', icon: '🎯', name: 'RED ZONE', side: 'off',
+    match: cards => {
+      const te = cards.find(c => c.pos === 'TE');
+      const qb = cards.find(c => c.pos === 'QB');
+      return (te && qb) ? [te, qb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 8)
+  },
+  {
+    id: 'wildcat', icon: '🏃', name: 'WILDCAT', side: 'off',
+    match: cards => {
+      const rbs = cards.filter(c => c.pos === 'RB');
+      return rbs.length >= 2 ? rbs : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 10)
+  },
+  {
+    id: 'trickPlay', icon: '🎩', name: 'TRICK PLAY', side: 'off',
+    match: cards => {
+      const wr = cards.find(c => c.pos === 'WR');
+      const rb = cards.find(c => c.pos === 'RB');
+      const te = cards.find(c => c.pos === 'TE');
+      return (wr && rb && te) ? [wr, rb, te] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 5)
+  },
+  {
+    id: 'fieldGeneral', icon: '🎖️', name: 'FIELD GEN', side: 'off',
+    match: cards => {
+      const qb = cards.find(c => c.pos === 'QB' && c.cost >= 5);
+      const receivers = cards.filter(c => c.pos === 'WR' || c.pos === 'TE');
+      return (qb && receivers.length >= 2) ? [qb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 15)
+  },
+
+  // Defense synergies
+  {
+    id: 'zoneDefense', icon: '🦅', name: 'ZONE D', side: 'def',
+    match: cards => {
+      const cbs = cards.filter(c => c.pos === 'CB');
+      return cbs.length >= 2 ? cbs : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 5)
+  },
+  {
+    id: 'strongSafety', icon: '💪', name: 'STRONG SAFETY', side: 'def',
+    match: cards => {
+      const s = cards.find(c => c.pos === 'S');
+      const lb = cards.find(c => c.pos === 'LB');
+      return (s && lb) ? [s, lb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 6)
+  },
+  {
+    id: 'stackedFront', icon: '⛓️', name: 'STACKED FRONT', side: 'def',
+    match: cards => {
+      const dl = cards.filter(c => c.pos === 'DE' || c.pos === 'DT');
+      return dl.length >= 3 ? dl : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 8)
+  },
+  {
+    id: 'blitzPackage', icon: '🎯', name: 'BLITZ', side: 'def',
+    match: cards => {
+      const lb = cards.find(c => c.pos === 'LB');
+      const de = cards.find(c => c.pos === 'DE');
+      return (lb && de) ? [lb, de] : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 7)
+  },
+  {
+    id: 'secondarySupport', icon: '🤝', name: 'SECONDARY', side: 'def',
+    match: cards => {
+      const cbs = cards.filter(c => c.pos === 'CB');
+      const ss = cards.filter(c => c.pos === 'S');
+      return (cbs.length >= 2 && ss.length >= 1) ? [...cbs, ...ss] : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 5)
+  },
+
+  // Special Teams synergies
+  {
+    id: 'kickingUnit', icon: '🏈', name: 'KICKING UNIT', side: 'st',
+    match: cards => {
+      const k = cards.find(c => c.pos === 'K');
+      const st = cards.find(c => c.pos === 'ST');
+      return (k && st) ? [k] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 5)  // FG range improvement handled in checkScoring
+  }
+];
+
+function detectSynergies(cards) {
+  // Returns list of active synergies for a given side's cards in a lane
+  const active = [];
+  for (const syn of SYNERGIES) {
+    const matched = syn.match(cards);
+    if (matched && matched.length > 0) {
+      active.push(syn);
+    }
+  }
+  return active;
+}
+
+function applySynergies(cards) {
+  // Mutates curOff/curDef based on synergies
+  for (const syn of SYNERGIES) {
+    const matched = syn.match(cards);
+    if (matched && matched.length > 0) {
+      syn.apply(matched);
+    }
+  }
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let state = null;
+let seasonState = null;
+
+const MAX_SLOTS = 8;
+
+// ============================================================
+// PORTRAIT GENERATOR — stylized SVG silhouettes with team colors
+// ============================================================
+// Maps NFL-style team codes to jersey colors (primary, secondary, accent)
+const TEAM_COLORS = {
+  ARI: ['#97233F', '#000', '#FFB612'], ATL: ['#A71930', '#000', '#A5ACAF'],
+  BAL: ['#241773', '#000', '#9E7C0C'], BUF: ['#00338D', '#C60C30', '#fff'],
+  CAR: ['#0085CA', '#101820', '#BFC0BF'], CHI: ['#0B162A', '#C83803', '#fff'],
+  CIN: ['#FB4F14', '#000', '#fff'], CLE: ['#FF3C00', '#311D00', '#fff'],
+  DAL: ['#003594', '#869397', '#fff'], DEN: ['#FB4F14', '#002244', '#fff'],
+  DET: ['#0076B6', '#B0B7BC', '#fff'], GB:  ['#203731', '#FFB612', '#fff'],
+  HOU: ['#03202F', '#A71930', '#fff'], IND: ['#002C5F', '#A2AAAD', '#fff'],
+  JAX: ['#101820', '#D7A22A', '#9F792C'], KC:  ['#E31837', '#FFB81C', '#fff'],
+  LV:  ['#000', '#A5ACAF', '#fff'], LAC: ['#0080C6', '#FFC20E', '#fff'],
+  LAR: ['#003594', '#FFA300', '#fff'], MIA: ['#008E97', '#FC4C02', '#fff'],
+  MIN: ['#4F2683', '#FFC62F', '#fff'], NE:  ['#002244', '#C60C30', '#B0B7BC'],
+  NO:  ['#D3BC8D', '#101820', '#fff'], NYG: ['#0B2265', '#A71930', '#A5ACAF'],
+  NYJ: ['#125740', '#000', '#fff'], PHI: ['#004C54', '#A5ACAF', '#fff'],
+  PIT: ['#FFB612', '#101820', '#fff'], SF:  ['#AA0000', '#B3995D', '#fff'],
+  SEA: ['#002244', '#69BE28', '#A5ACAF'], TB:  ['#D50A0A', '#34302B', '#FF7900'],
+  TEN: ['#0C2340', '#4B92DB', '#C8102E'], WAS: ['#5A1414', '#FFB612', '#fff']
+};
+
+function getTeamColors(team) {
+  return TEAM_COLORS[team] || ['#444', '#222', '#fff'];
+}
+
+// Deterministic random based on card uid (so portrait stays consistent for same card)
+function seedRandom(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = ((h << 5) - h) + seed.charCodeAt(i);
+    h |= 0;
+  }
+  return () => {
+    h = (h * 9301 + 49297) % 233280;
+    return h / 233280;
+  };
+}
+
+function generatePortraitSVG(card, size = 40) {
+  const [primary, secondary, accent] = getTeamColors(card.team);
+  const rng = seedRandom(card.id || card.uid || card.name);
+  // Vary skin tone slightly
+  const skinTones = ['#f4d4b8', '#e3b894', '#c8956d', '#a67c52', '#8b5a3c', '#6b4226'];
+  const skin = skinTones[Math.floor(rng() * skinTones.length)];
+  // Helmet / hair color
+  const hairTones = ['#1a1a1a', '#3a2a1a', '#5a3a2a', '#8a6a4a', '#aa8a5a'];
+  const hair = hairTones[Math.floor(rng() * hairTones.length)];
+  const jerseyNum = Math.floor(rng() * 89) + 10;
+  
+  // Variations
+  const hasFacepaint = rng() > 0.75;
+  const helmetShine = rng() > 0.5;
+  
+  return `
+<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg-${card.uid || card.id}" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${primary}" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="${secondary}" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="helm-${card.uid || card.id}" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${primary}"/>
+      <stop offset="100%" stop-color="${secondary}"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="60" height="60" fill="url(#bg-${card.uid || card.id})"/>
+  <!-- Subtle pattern -->
+  <path d="M 0 30 L 60 30 M 0 45 L 60 45" stroke="${accent}" stroke-opacity="0.15" stroke-width="1"/>
+  <!-- Shoulders / jersey -->
+  <path d="M 5 60 Q 5 42 18 38 L 42 38 Q 55 42 55 60 Z" fill="${primary}" stroke="${secondary}" stroke-width="1"/>
+  <!-- Jersey number -->
+  <text x="30" y="56" text-anchor="middle" font-family="Bebas Neue, Arial" font-size="10" fill="${accent}" font-weight="bold">${jerseyNum}</text>
+  <!-- Neck -->
+  <rect x="25" y="33" width="10" height="8" fill="${skin}"/>
+  <!-- Head/Face -->
+  <ellipse cx="30" cy="24" rx="11" ry="13" fill="${skin}"/>
+  <!-- Helmet -->
+  <path d="M 18 22 Q 18 10 30 10 Q 42 10 42 22 L 42 28 Q 42 18 30 18 Q 18 18 18 28 Z" fill="url(#helm-${card.uid || card.id})" stroke="${secondary}" stroke-width="0.5"/>
+  <!-- Facemask -->
+  <path d="M 21 26 L 39 26 M 22 30 L 38 30" stroke="${secondary === '#000' ? '#666' : '#222'}" stroke-width="0.8" stroke-linecap="round"/>
+  <path d="M 21 26 L 21 30 M 39 26 L 39 30 M 28 26 L 28 33 M 32 26 L 32 33" stroke="${secondary === '#000' ? '#666' : '#222'}" stroke-width="0.7"/>
+  <!-- Eyes (visible through helmet) -->
+  <ellipse cx="26" cy="24" rx="1.2" ry="1.4" fill="#1a1a1a"/>
+  <ellipse cx="34" cy="24" rx="1.2" ry="1.4" fill="#1a1a1a"/>
+  ${hasFacepaint ? `<rect x="24" y="28" width="3" height="2" fill="#000" opacity="0.7"/><rect x="33" y="28" width="3" height="2" fill="#000" opacity="0.7"/>` : ''}
+  ${helmetShine ? `<path d="M 22 14 Q 26 12 30 12" stroke="${accent}" stroke-width="1.2" stroke-opacity="0.6" fill="none" stroke-linecap="round"/>` : ''}
+  <!-- Team stripe on helmet -->
+  <path d="M 30 10 L 30 18" stroke="${accent}" stroke-width="1.5" stroke-opacity="0.8"/>
+</svg>`.trim();
+}
+
+// ============================================================
+
+// ============================================================
+// SEASON STATE MANAGEMENT
+// ============================================================
+const OPPONENT_TEAMS = [
+  { name: 'Wildcats', tier: 1, flavor: 'Easy game. Don\'t get cocky.' },
+  { name: 'Stallions', tier: 2, flavor: 'A scrappy bunch with something to prove.' },
+  { name: 'Mavericks', tier: 3, flavor: 'Playoff hopefuls. Bring your A-game.' },
+  { name: 'Titans', tier: 4, flavor: 'Top-five defense in the league.' },
+  { name: 'Outlaws', tier: 5, flavor: 'They didn\'t lose all year.' },
+  { name: 'Phantoms', tier: 6, flavor: 'Conference champions. The real deal.' },
+  { name: 'Dynasty', tier: 7, flavor: 'Defending champs. This is for the ring.' }
+];
+
+function loadSeason() {
+  try {
+    const s = localStorage.getItem('gridiron_season_v1');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return null;
+}
+function saveSeason() {
+  if (!seasonState) {
+    localStorage.removeItem('gridiron_season_v1');
+    return;
+  }
+  try { localStorage.setItem('gridiron_season_v1', JSON.stringify(seasonState)); } catch(e) {}
+}
+function clearSeason() {
+  seasonState = null;
+  try { localStorage.removeItem('gridiron_season_v1'); } catch(e) {}
+}
+
+function newState(playerDeckCards, aiDeckCards) {
+  // playerDeckCards and aiDeckCards are arrays of card objects (already chosen)
+  const playerDeck = shuffle(playerDeckCards.map(c => ({ ...c, uid: uid() })));
+  const aiDeck = shuffle(aiDeckCards.map(c => ({ ...c, uid: uid() })));
+
+  // Deal opening hands — guarantee at least one 1-cost card so turn 1 has a play
+  const youHand = dealOpeningHand(playerDeck);
+  const aiHand = dealOpeningHand(aiDeck);
+
+  // Randomized kickoff return field position per lane (15-35 yard line)
+  const modifiers = drawLaneModifiers();
+  const lanes = LANE_DEFS.map((l, i) => ({
+    ...l,
+    idx: i,
+    modifier: modifiers[i],
+    youCards: [],
+    aiCards: [],
+    youPos: kickoffReturn(),
+    aiPos: kickoffReturn(),
+    driveSinceScore: 0,
+    lockedFor: null  // for SUDDEN DEATH: 'you' | 'ai' | null
+  }));
+
+  return {
+    turn: 1,
+    maxTurn: 8,
+    youEnergy: 1,
+    youEnergyMax: 1,
+    aiEnergy: 1,
+    aiEnergyMax: 1,
+    youHand: youHand,
+    youDeck: playerDeck,
+    aiHand: aiHand,
+    aiDeck: aiDeck,
+    lanes,
+    youScore: 0,
+    aiScore: 0,
+    pendingPlays: [],
+    scoringLog: [],
+    busy: false,
+    gameOver: false
+  };
+}
+
+function dealOpeningHand(deck) {
+  // Ensures at least one 1-cost card in opening hand of 3
+  const hand = [];
+  // Find a 1-cost card first
+  const oneCostIdx = deck.findIndex(c => c.cost === 1);
+  if (oneCostIdx >= 0) {
+    hand.push(deck.splice(oneCostIdx, 1)[0]);
+  }
+  // Fill rest from top of deck
+  while (hand.length < 3 && deck.length > 0) {
+    hand.push(deck.shift());
+  }
+  return hand;
+}
+
+function kickoffReturn() {
+  // Simulates a kickoff return — usually starts between the 15 and 35 yard line
+  // Occasional big return (5% chance for 40-60 yard start)
+  if (Math.random() < 0.05) return 40 + Math.floor(Math.random() * 21); // big return
+  return 15 + Math.floor(Math.random() * 21); // normal: 15-35
+}
+
+function buildAIDeck(difficulty = 1) {
+  // Procedural AI deck — quality scales with difficulty (1-7, matching opponent tier)
+  // Higher difficulty = better stat bonuses, more abilities, more rares/legendaries
+  const deckSize = 50; // matches player deck size in season mode
+  const cards = [];
+  
+  // Stat bonus per tier: tier 1 = baseline, tier 7 = +20% stats overall
+  const tierStatBonus = (difficulty - 1) * 2;
+  const tierRarityBoost = difficulty >= 4 ? 2 : difficulty >= 6 ? 4 : 0;
+  
+  // Generate 25 offense, 25 defense
+  for (let i = 0; i < 25; i++) {
+    const card = generateCard('off');
+    card.off += tierStatBonus;
+    cards.push(card);
+  }
+  for (let i = 0; i < 25; i++) {
+    const card = generateCard('def');
+    card.def += tierStatBonus;
+    cards.push(card);
+  }
+  return shuffle(cards);
+}
+
+function buildQuickPlayDeck() {
+  // For Quick Play: auto-drafted balanced 50-card deck from a fresh pool
+  const pool = generateMasterPool(120);
+  const offCards = pool.filter(c => c.side === 'off');
+  const defCards = pool.filter(c => c.side === 'def');
+  // Take 25 of each, with bias toward lower-cost cards for smoother gameplay
+  const sortedOff = [...offCards].sort((a, b) => a.cost - b.cost);
+  const sortedDef = [...defCards].sort((a, b) => a.cost - b.cost);
+  const offDeck = [];
+  const defDeck = [];
+  // Curve: more low-cost cards
+  const curve = [1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,5,5,6];
+  for (const targetCost of curve) {
+    const offCandidates = sortedOff.filter(c => c.cost === targetCost && !offDeck.includes(c));
+    if (offCandidates.length > 0) offDeck.push(pickOne(offCandidates));
+    const defCandidates = sortedDef.filter(c => c.cost === targetCost && !defDeck.includes(c));
+    if (defCandidates.length > 0) defDeck.push(pickOne(defCandidates));
+  }
+  // Fill remaining slots
+  while (offDeck.length < 25) {
+    const c = sortedOff.find(x => !offDeck.includes(x));
+    if (c) offDeck.push(c); else break;
+  }
+  while (defDeck.length < 25) {
+    const c = sortedDef.find(x => !defDeck.includes(x));
+    if (c) defDeck.push(c); else break;
+  }
+  return shuffle([...offDeck, ...defDeck]);
+}
+
+// ============================================================
+// UI
+// ============================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// Escape only what would break an HTML attribute value: & and "
+// We deliberately leave < and > intact so embedded <br> and <em> survive into innerHTML.
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+function showToast(msg, dur = 1800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function showLog(msg, dur = 1500) {
+  const l = document.getElementById('playLog');
+  l.textContent = msg; l.classList.remove('show');
+  void l.offsetWidth; l.classList.add('show');
+  clearTimeout(l._timer); l._timer = setTimeout(() => l.classList.remove('show'), dur);
+}
+
+function showScoreBurst(text, kind, dur = 1800) {
+  return new Promise(resolve => {
+    const el = document.getElementById('scoreBurst');
+    el.textContent = text;
+    el.className = 'score-burst ' + kind;
+    void el.offsetWidth;
+    el.classList.add('show');
+    setTimeout(() => { el.classList.remove('show'); resolve(); }, dur);
+  });
+}
+
+function showModifierInfo(modId) {
+  const mod = LANE_MODIFIERS.find(m => m.id === modId);
+  if (!mod) return;
+  showToast(`${mod.icon} ${mod.name} — ${mod.desc}`, 2400);
+}
+
+// ============================================================
+// TOOLTIP SYSTEM — tappable contextual help for game elements
+// ============================================================
+const TOOLTIPS = {
+  youScore: {
+    title: 'YOUR SCORE',
+    body: 'Points you have scored this match. Win by having <strong>more points</strong> than the CPU after 8 drives.<br><br>🏈 TD = 6 pts (+1 PAT, +2 conversion)<br>🛡 Safety = 2 pts<br>🎯 Pick-Six = 6 pts<br>🥾 Field Goal = 3 pts'
+  },
+  aiScore: {
+    title: 'CPU SCORE',
+    body: 'Points the CPU has scored. If they finish with more points than you after 8 drives, the match ends in defeat.'
+  },
+  energyOrb: {
+    title: 'ENERGY',
+    body: 'Energy available to spend on cards this drive.<br><br>You gain <strong>+1 energy</strong> each drive (Drive 1 = 1, Drive 2 = 2, etc.). Each card costs the number shown in its gold badge. Unspent energy <em>does not carry over</em>.'
+  },
+  yardageBar: {
+    title: 'FIELD POSITION',
+    body: 'Where the ball is on this lane. The 🏈 marker moves <strong>right</strong> when you gain yards, <strong>left</strong> when defense pushes you back.<br><br>🟩 Right endzone = <strong>SCORE</strong> (touchdown, 6 pts)<br>🟥 Left endzone = <strong>SAFETY</strong> (2 pts to defender)'
+  },
+  powerPillYou: {
+    title: 'YOUR NET YARDS',
+    body: 'Yards your ball will move <strong>this drive</strong> if you end turn now.<br><br>Formula: (your OFF − their DEF) ÷ 2.5, plus ability modifiers.<br><br>Glows green when positive (driving forward), red when negative (being pushed back).'
+  },
+  powerPillAi: {
+    title: 'CPU NET YARDS',
+    body: 'Yards the CPU\'s ball will move <strong>this drive</strong>.<br><br>Formula: (CPU OFF − your DEF) ÷ 2.5, plus ability modifiers.<br><br>Glows red when positive (driving toward your goal), green when negative (your defense is stuffing them).'
+  },
+  laneMedallion: {
+    title: 'LANE MODIFIER',
+    body: 'Each lane has a unique random rule for this match. Tap to read its full effect.<br><br>Categories:<br>🟦 Field condition<br>🟡 Tactical<br>🟧 Position-based<br>🟣 Wild (game-changing)'
+  },
+  handCard: {
+    title: 'PLAYER CARD',
+    body: '🟧 <em>Orange border</em> = Offense (drives the ball forward)<br>🟦 <em>Blue border</em> = Defense (stops the opponent)<br><br><strong>Gold badge</strong> = energy cost<br><strong>Big number</strong> = OFF or DEF power<br><strong>★ Gold star</strong> = has special ability<br><br><strong>Drag</strong> the card onto a lane to play it.'
+  }
+};
+
+let tooltipHideTimer = null;
+
+function showTooltip(key, targetEl) {
+  // Allow per-element dynamic content via data-tooltip-title / data-tooltip-body
+  let title, body;
+  if (targetEl.dataset.tooltipTitle || targetEl.dataset.tooltipBody) {
+    title = targetEl.dataset.tooltipTitle || '';
+    body = targetEl.dataset.tooltipBody || '';
+  } else {
+    const t = TOOLTIPS[key];
+    if (!t) return;
+    title = t.title;
+    body = t.body;
+  }
+  const overlay = document.getElementById('tooltipOverlay');
+  const bubble = document.getElementById('tooltipBubble');
+  document.getElementById('tooltipTitle').textContent = title;
+  document.getElementById('tooltipBody').innerHTML = body;
+  
+  // Show first so we can measure
+  bubble.className = 'tooltip-bubble';
+  overlay.classList.add('show');
+  
+  const rect = targetEl.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const bubbleRect = bubble.getBoundingClientRect();
+  const bw = bubbleRect.width;
+  const bh = bubbleRect.height;
+  
+  // Prefer above, fall back below
+  let arrow = 'arrow-down';
+  let top = rect.top - bh - 12;
+  if (top < 8) {
+    arrow = 'arrow-up';
+    top = rect.bottom + 12;
+  }
+  if (top + bh > vh - 8) {
+    top = Math.max(8, vh - bh - 8);
+    arrow = '';
+  }
+  
+  let left = rect.left + rect.width / 2 - bw / 2;
+  if (left < 8) left = 8;
+  if (left + bw > vw - 8) left = vw - bw - 8;
+  
+  if (arrow) bubble.classList.add(arrow);
+  bubble.style.left = left + 'px';
+  bubble.style.top = top + 'px';
+  
+  clearTimeout(tooltipHideTimer);
+  tooltipHideTimer = setTimeout(hideTooltip, 4500);
+}
+
+function hideTooltip() {
+  document.getElementById('tooltipOverlay').classList.remove('show');
+  clearTimeout(tooltipHideTimer);
+}
+
+// Tap-detection for tooltip triggers — works alongside drag system
+let _tapStart = null;
+function _onTooltipPointerDown(e) {
+  const target = e.target.closest('[data-tooltip]');
+  if (!target) return;
+  // For draggable cards, only trigger tooltip if it's a tap (not a drag)
+  if (target.classList.contains('hand-card')) {
+    _tapStart = { x: e.clientX, y: e.clientY, time: Date.now(), target, key: target.dataset.tooltip };
+    return; // Let drag system also handle this pointerdown
+  }
+  // Non-draggable: show immediately on tap
+  e.stopPropagation();
+  showTooltip(target.dataset.tooltip, target);
+}
+function _onTooltipPointerUp(e) {
+  if (!_tapStart) return;
+  const dx = Math.abs(e.clientX - _tapStart.x);
+  const dy = Math.abs(e.clientY - _tapStart.y);
+  const dt = Date.now() - _tapStart.time;
+  if (dx < 8 && dy < 8 && dt < 300) {
+    showTooltip(_tapStart.key, _tapStart.target);
+  }
+  _tapStart = null;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('pointerdown', _onTooltipPointerDown, true);
+  document.addEventListener('pointerup', _onTooltipPointerUp, true);
+  document.addEventListener('pointercancel', () => { _tapStart = null; }, true);
+  const overlay = document.getElementById('tooltipOverlay');
+  if (overlay) {
+    overlay.addEventListener('pointerdown', (e) => {
+      // Tap on overlay (not the bubble itself) dismisses
+      if (e.target === overlay) hideTooltip();
+    });
+  }
+});
+
+function showHowToPlay() { document.getElementById('howModal').classList.add('show'); }
+
+// ============================================================
+// GAME FLOW
+// ============================================================
+function startGame(playerDeck, aiDeck, mode) {
+  state = newState(playerDeck, aiDeck);
+  state.mode = mode || 'quick'; // 'quick' or 'season'
+  showScreen('game');
+  render();
+}
+
+function quitGame() {
+  const isSeason = state && state.mode === 'season';
+  const msg = isSeason ? 'Quit this match? It will count as a loss and end your season.' : 'Quit this game?';
+  if (confirm(msg)) {
+    if (isSeason) {
+      clearSeason();
+      updateMenuSeasonStatus();
+    }
+    showScreen('menu');
+  }
+}
+
+function render() {
+  if (!state) return;
+  document.getElementById('youScore').textContent = state.youScore;
+  document.getElementById('aiScore').textContent = state.aiScore;
+  document.getElementById('turnNum').textContent = state.turn;
+  document.getElementById('deckCount').textContent = state.youDeck.length;
+  document.getElementById('quarterNum').textContent = 'DRIVE ' + state.turn;
+  document.getElementById('halfLabel').textContent = state.turn <= 4 ? '1ST HALF' : '2ND HALF';
+  renderEnergy();
+  renderLanes();
+  renderHand();
+}
+
+function renderEnergy() {
+  const remaining = state.youEnergy - getPendingCost();
+  const orb = document.getElementById('energyOrb');
+  if (orb) {
+    orb.textContent = remaining;
+    orb.classList.toggle('depleted', remaining <= 0);
+  }
+}
+
+function renderLanes() {
+  const cont = document.getElementById('lanes');
+  cont.innerHTML = '';
+  state.lanes.forEach((lane, idx) => {
+    const laneEl = document.createElement('div');
+    laneEl.className = 'lane';
+    if (lane.lockedFor === 'you') laneEl.classList.add('locked-you');
+    if (lane.lockedFor === 'ai') laneEl.classList.add('locked-ai');
+    laneEl.dataset.laneIdx = idx;
+
+    const mod = lane.modifier;
+    const stats = computeLaneStats(lane);
+    const youSynergies = detectSynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
+    const aiSynergies = detectSynergies(lane.aiCards.filter(c => c.revealed && !c.ejected));
+
+    // Net yards each side will gain this drive (matches scoring engine math)
+    const SCALE = 2.5;
+    let youNet = Math.floor(stats.youOff / SCALE) - Math.floor(stats.aiDef / SCALE);
+    let aiNet = Math.floor(stats.aiOff / SCALE) - Math.floor(stats.youDef / SCALE);
+    // Lockdown CB yard block
+    lane.youCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) aiNet -= 5; });
+    lane.aiCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) youNet -= 5; });
+
+    laneEl.innerHTML = `
+      <div class="lane-side ai-side">
+        <div class="slot-row" id="ai-slots-${idx}"></div>
+        ${aiSynergies.length ? `<div class="lane-synergies">${aiSynergies.map(s => `<span class="synergy-badge ai">${s.icon} ${s.name}</span>`).join('')}</div>` : ''}
+        <div class="yardage-bar ai-bar" data-tooltip="yardageBar">
+          <div class="endzone left ${lane.aiPos <= 15 ? 'threatened' : ''}"><span class="endzone-label">SAFETY</span></div>
+          <div class="endzone right ${lane.aiPos >= 85 ? 'threatened' : ''}"><span class="endzone-label">SCORE</span></div>
+          <div class="yardage-fill ai" style="width: ${(lane.aiPos / 100) * 80}%;"></div>
+          <div class="ball-marker" style="left: ${10 + (lane.aiPos / 100) * 80}%;"></div>
+          <span class="drive-direction left">←</span>
+          <span class="drive-direction right">→</span>
+          <div class="yardage-text">
+            <span class="yd-label">CPU</span>
+            <span class="yd-num">${formatYardLine(lane.aiPos)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="lane-medallion-row">
+        <div class="lane-power-pill ai ${aiNet > 0 ? 'winning' : ''} ${aiNet < 0 ? 'losing' : ''}" data-tooltip="powerPillAi">${aiNet > 0 ? '+' : ''}${aiNet}</div>
+        ${mod ? `
+          <div class="lane-medallion cat-${mod.category}" data-tooltip="laneMedallion"
+               data-tooltip-title="${escAttr(mod.icon + ' ' + mod.name)}"
+               data-tooltip-body="${escAttr(mod.desc + '<br><br><em>' + (mod.category[0].toUpperCase() + mod.category.slice(1)) + ' modifier</em> — each lane has a unique random rule this match.')}">
+            <div class="medallion-icon">${mod.icon}</div>
+            <div class="medallion-name">${mod.name}</div>
+            <div class="medallion-desc">${mod.desc}</div>
+          </div>
+        ` : `<div style="flex:1;"></div>`}
+        <div class="lane-power-pill you ${youNet > 0 ? 'winning' : ''} ${youNet < 0 ? 'losing' : ''}" data-tooltip="powerPillYou">${youNet > 0 ? '+' : ''}${youNet}</div>
+      </div>
+      <div class="lane-side you-side">
+        <div class="yardage-bar you-bar" data-tooltip="yardageBar">
+          <div class="endzone left ${lane.youPos <= 15 ? 'threatened' : ''}"><span class="endzone-label">SAFETY</span></div>
+          <div class="endzone right ${lane.youPos >= 85 ? 'threatened' : ''}"><span class="endzone-label">SCORE</span></div>
+          <div class="yardage-fill" style="width: ${(lane.youPos / 100) * 80}%;"></div>
+          <div class="ball-marker" style="left: ${10 + (lane.youPos / 100) * 80}%;"></div>
+          <span class="drive-direction left">←</span>
+          <span class="drive-direction right">→</span>
+          <div class="yardage-text">
+            <span class="yd-label">YOU</span>
+            <span class="yd-num">${formatYardLine(lane.youPos)}</span>
+          </div>
+        </div>
+        ${youSynergies.length ? `<div class="lane-synergies">${youSynergies.map(s => `<span class="synergy-badge you">${s.icon} ${s.name}</span>`).join('')}</div>` : ''}
+        <div class="slot-row" id="you-slots-${idx}"></div>
+      </div>
+    `;
+    cont.appendChild(laneEl);
+
+    const aiSlots = laneEl.querySelector(`#ai-slots-${idx}`);
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      const card = lane.aiCards[i];
+      if (card) slot.appendChild(buildFieldCard(card, 'ai', !card.revealed));
+      else slot.classList.add('empty');
+      aiSlots.appendChild(slot);
+    }
+    const youSlots = laneEl.querySelector(`#you-slots-${idx}`);
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      const card = lane.youCards[i];
+      if (card) slot.appendChild(buildFieldCard(card, 'you', false));
+      else slot.classList.add('empty');
+      youSlots.appendChild(slot);
+    }
+  });
+}
+
+// Format yard position as football yard line (0-50 = your side, 50-100 = their side)
+function formatYardLine(pos) {
+  if (pos >= 100) return 'TD!';
+  if (pos <= 0) return 'SAFETY';
+  if (pos === 50) return '50';
+  if (pos < 50) return 'OWN ' + pos;
+  return 'OPP ' + (100 - pos);
+}
+
+function buildFieldCard(card, side, hidden) {
+  const el = document.createElement('div');
+  const sideClass = card.side === 'off' ? 'off-card' : 'def-card';
+  el.className = 'field-card ' + side + ' ' + sideClass + (hidden ? ' hidden-card' : '');
+  if (hidden) return el;
+
+  const statValue = card.side === 'off' ? card.curOff : card.curDef;
+  const statClass = card.side === 'off' ? 'off' : 'def';
+  const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
+
+  el.innerHTML = `
+    <div class="fc-portrait">${generatePortraitSVG(card, 100)}</div>
+    <div class="fc-overlay">
+      <div class="fc-top">
+        <span class="fc-cost">${card.cost}</span>
+        <span class="fc-pos">${card.pos}</span>
+      </div>
+      <div class="fc-name">${lastName}</div>
+      <div class="fc-stats ${statClass}">${card.ejected ? '—' : statValue}</div>
+    </div>
+    <div class="fc-badges">
+      ${card.flagged ? '<div class="fc-badge flag">!</div>' : ''}
+      ${card.ejected ? '<div class="fc-badge ejected">X</div>' : ''}
+    </div>
+  `;
+  return el;
+}
+
+function renderHand() {
+  const hand = document.getElementById('hand');
+  hand.innerHTML = '';
+  state.youHand.forEach(card => {
+    const remaining = state.youEnergy - getPendingCost();
+    const guaranteed = card.cost <= remaining;
+    const maybe = !guaranteed && (card.cost - 1) <= remaining && hasDiscountLane(card);
+    const affordable = guaranteed || maybe;
+    const sideClass = card.side === 'off' ? 'off-card' : 'def-card';
+    const statValue = card.side === 'off' ? card.off : card.def;
+    const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
+    const el = document.createElement('div');
+    el.className = 'hand-card ' + sideClass + ' ' + (affordable ? 'affordable' : 'unaffordable');
+    el.dataset.cardUid = card.uid;
+    el.dataset.tooltip = 'handCard';
+    el.innerHTML = `
+      <div class="hc-portrait">${generatePortraitSVG(card, 80)}</div>
+      <div class="hc-cost">${card.cost}</div>
+      <div class="hc-pos-badge">${card.pos}</div>
+      <div class="hc-overlay">
+        <div class="hc-name">${lastName}</div>
+        <div class="hc-stat-block">
+          <div class="hc-stat-num">${statValue}</div>
+        </div>
+      </div>
+      ${card.ability ? `<div class="hc-ability-dot" title="${card.ability}">★</div>` : ''}
+    `;
+    if (affordable && !state.busy) {
+      el.addEventListener('pointerdown', e => startDrag(e, card, el));
+    }
+    hand.appendChild(el);
+  });
+
+  const btn = document.getElementById('playBtn');
+  if (state.busy) { btn.disabled = true; btn.textContent = '...'; }
+  else {
+    btn.disabled = false;
+    if (state.pendingPlays.length > 0) {
+      btn.textContent = 'SNAP!';
+      btn.classList.add('ready');
+    } else {
+      // Check if any card is playable
+      const remaining = state.youEnergy - getPendingCost();
+      const anyPlayable = state.youHand.some(c => c.cost <= remaining);
+      btn.textContent = anyPlayable ? 'PASS' : 'END DRIVE';
+      btn.classList.remove('ready');
+    }
+  }
+}
+
+function getPendingCost() {
+  return state.pendingPlays.filter(p => p.side === 'you').reduce((s,p) => s + (p.card._effectiveCost ?? p.card.cost), 0);
+}
+
+// ============================================================
+// DRAG & DROP
+// ============================================================
+let dragState = null;
+
+function startDrag(e, card, sourceEl) {
+  if (state.busy) return;
+  e.preventDefault();
+  const ghost = document.createElement('div');
+  ghost.className = 'drag-ghost';
+  ghost.innerHTML = sourceEl.innerHTML;
+  ghost.style.left = e.clientX + 'px';
+  ghost.style.top = e.clientY + 'px';
+  document.body.appendChild(ghost);
+  sourceEl.classList.add('dragging-source');
+  dragState = { card, sourceEl, ghost, pointerId: e.pointerId, currentLane: null };
+  try { sourceEl.setPointerCapture(e.pointerId); } catch(err) {}
+  sourceEl.addEventListener('pointermove', onDragMove);
+  sourceEl.addEventListener('pointerup', onDragEnd);
+  sourceEl.addEventListener('pointercancel', onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  e.preventDefault();
+  dragState.ghost.style.left = e.clientX + 'px';
+  dragState.ghost.style.top = e.clientY + 'px';
+  dragState.ghost.style.pointerEvents = 'none';
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const laneEl = el ? el.closest('.lane') : null;
+  document.querySelectorAll('.lane').forEach(z => z.classList.remove('drag-over','drag-full'));
+  if (laneEl) {
+    const idx = parseInt(laneEl.dataset.laneIdx, 10);
+    const lane = state.lanes[idx];
+    if (lane.youCards.length >= MAX_SLOTS) laneEl.classList.add('drag-full');
+    else laneEl.classList.add('drag-over');
+    dragState.currentLane = idx;
+  } else dragState.currentLane = null;
+}
+
+function onDragEnd(e) {
+  if (!dragState) return;
+  e.preventDefault();
+  const ds = dragState; dragState = null;
+  ds.sourceEl.removeEventListener('pointermove', onDragMove);
+  ds.sourceEl.removeEventListener('pointerup', onDragEnd);
+  ds.sourceEl.removeEventListener('pointercancel', onDragEnd);
+  try { ds.sourceEl.releasePointerCapture(ds.pointerId); } catch(err) {}
+  document.querySelectorAll('.lane').forEach(z => z.classList.remove('drag-over','drag-full'));
+
+  let dropped = false;
+  if (ds.currentLane !== null) {
+    const lane = state.lanes[ds.currentLane];
+    if (lane.youCards.length < MAX_SLOTS) {
+      const laneEl = document.querySelector(`.lane[data-lane-idx="${ds.currentLane}"]`);
+      const youSlots = laneEl.querySelector(`#you-slots-${ds.currentLane}`);
+      const targetSlot = youSlots.children[lane.youCards.length];
+      if (targetSlot) {
+        const rect = targetSlot.getBoundingClientRect();
+        ds.ghost.classList.add('snapping');
+        ds.ghost.style.left = (rect.left + rect.width/2) + 'px';
+        ds.ghost.style.top = (rect.top + rect.height/2) + 'px';
+        ds.ghost.style.transform = 'translate(-50%, -50%) scale(0.5)';
+        ds.ghost.style.opacity = '0.4';
+        setTimeout(() => { placeCardInLane(ds.card, ds.currentLane); ds.ghost.remove(); }, 180);
+        dropped = true;
+      }
+    } else showToast('Lane is full');
+  }
+  if (!dropped) {
+    const srcRect = ds.sourceEl.getBoundingClientRect();
+    ds.ghost.classList.add('snapping');
+    ds.ghost.style.left = (srcRect.left + srcRect.width/2) + 'px';
+    ds.ghost.style.top = (srcRect.top + srcRect.height/2) + 'px';
+    ds.ghost.style.transform = 'translate(-50%, -50%) scale(0.8)';
+    ds.ghost.style.opacity = '0';
+    setTimeout(() => { ds.ghost.remove(); ds.sourceEl.classList.remove('dragging-source'); }, 200);
+  }
+}
+
+function effectiveCost(card, laneIdx) {
+  // Some lane modifiers reduce card cost in that lane
+  const lane = state.lanes[laneIdx];
+  if (!lane || !lane.modifier) return card.cost;
+  if (lane.modifier.id === 'hurryUp' && card.side === 'off') return Math.max(1, card.cost - 1);
+  if (lane.modifier.id === 'preventD' && card.side === 'def') return Math.max(1, card.cost - 1);
+  return card.cost;
+}
+
+function hasDiscountLane(card) {
+  // Returns true if any lane gives this card a cost discount
+  return state.lanes.some(l => effectiveCost(card, l.idx) < card.cost);
+}
+
+function placeCardInLane(card, laneIdx) {
+  const lane = state.lanes[laneIdx];
+  if (lane.youCards.length >= MAX_SLOTS) return showToast('Lane is full');
+  const cost = effectiveCost(card, laneIdx);
+  const remaining = state.youEnergy - getPendingCost();
+  if (cost > remaining) return showToast('Not enough energy');
+  if (!state.youHand.find(c => c.uid === card.uid)) return;
+  const placed = { ...card, _effectiveCost: cost, curOff: card.off, curDef: card.def, revealed: false, pending: true };
+  lane.youCards.push(placed);
+  state.pendingPlays.push({ card: placed, lane: laneIdx, side: 'you' });
+  state.youHand = state.youHand.filter(c => c.uid !== card.uid);
+  render();
+}
+
+// ============================================================
+// LANE STATS — computes current OFF/DEF for each card with field effects
+// ============================================================
+function computeLaneStats(lane) {
+  // Reset all curOff/curDef to base
+  [...lane.youCards, ...lane.aiCards].forEach(c => {
+    if (c.revealed) {
+      // curOff and curDef were modified by snap abilities — those persist
+      // Field effects: clear and reapply
+      c._fieldOff = 0; c._fieldDef = 0;
+    }
+  });
+
+  // Apply per-lane FIELD effects
+  applyLaneFieldEffects(lane);
+
+  // Apply cross-lane FIELD effects from cards in other lanes that affect all
+  state.lanes.forEach(other => {
+    if (other === lane) return;
+    [...other.youCards, ...other.aiCards].forEach(c => {
+      if (!c.revealed || c.ejected) return;
+      const isYou = other.youCards.includes(c);
+      const friendlies = isYou ? lane.youCards : lane.aiCards;
+      if (c.desc === 'fieldBuffAllOff') {
+        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'off').forEach(x => { x._fieldOff = (x._fieldOff||0) + 6; });
+      }
+      if (c.desc === 'fieldBuffAllDef') {
+        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'def').forEach(x => { x._fieldDef = (x._fieldDef||0) + 6; });
+      }
+    });
+  });
+
+  // Recompute curOff/curDef including field
+  [...lane.youCards, ...lane.aiCards].forEach(c => {
+    if (c.revealed) {
+      c.curOff = Math.max(0, c._baseOff + (c._fieldOff || 0));
+      c.curDef = Math.max(0, c._baseDef + (c._fieldDef || 0));
+      if (c.ejected) { c.curOff = 0; c.curDef = 0; }
+    }
+  });
+
+  // Apply lane modifier effects to all revealed cards in lane
+  applyLaneModifier(lane);
+
+  // Apply card synergies (each side independently)
+  applySynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
+  applySynergies(lane.aiCards.filter(c => c.revealed && !c.ejected));
+
+  // Totals
+  const youOff = lane.youCards.filter(c => c.revealed && !c.ejected).reduce((s,c) => s + c.curOff, 0);
+  const youDef = lane.youCards.filter(c => c.revealed && !c.ejected).reduce((s,c) => s + c.curDef, 0);
+  const aiOff = lane.aiCards.filter(c => c.revealed && !c.ejected).reduce((s,c) => s + c.curOff, 0);
+  const aiDef = lane.aiCards.filter(c => c.revealed && !c.ejected).reduce((s,c) => s + c.curDef, 0);
+  return { youOff, youDef, aiOff, aiDef };
+}
+
+function applyLaneModifier(lane) {
+  if (!lane.modifier) return;
+  const all = [...lane.youCards, ...lane.aiCards].filter(c => c.revealed && !c.ejected);
+  const youCards = lane.youCards.filter(c => c.revealed && !c.ejected);
+  const aiCards = lane.aiCards.filter(c => c.revealed && !c.ejected);
+  
+  switch(lane.modifier.id) {
+    case 'homeTurf':
+      youCards.filter(c => c.side === 'off').forEach(c => c.curOff += 5);
+      aiCards.filter(c => c.side === 'off').forEach(c => c.curOff = Math.max(0, c.curOff - 5));
+      break;
+    case 'muddyField':
+      all.forEach(c => {
+        c.curOff = Math.floor(c.curOff * 0.75);
+        c.curDef = Math.floor(c.curDef * 1.25);
+      });
+      break;
+    case 'windTunnel':
+      all.filter(c => c.pos === 'QB' || c.pos === 'WR').forEach(c => c.curOff = Math.max(0, c.curOff - 5));
+      break;
+    case 'frozenTundra':
+      // Disable abilities by stripping desc (handled in snap reveal — we mark cards)
+      all.forEach(c => c._abilitiesDisabled = true);
+      break;
+    case 'blindingSun':
+      all.filter(c => c.pos === 'WR' || c.pos === 'TE').forEach(c => c.curOff = Math.max(0, c.curOff - 8));
+      break;
+    case 'redZone':
+      all.filter(c => c.side === 'off').forEach(c => c.curOff += 8);
+      break;
+    case 'scramble':
+      all.filter(c => c.pos === 'QB').forEach(c => c.curOff += 12);
+      break;
+    case 'groundPound':
+      all.filter(c => c.pos === 'RB').forEach(c => c.curOff += 10);
+      all.filter(c => c.pos === 'OL').forEach(c => c.curOff += 5);
+      break;
+    case 'airRaid':
+      all.filter(c => c.pos === 'WR' || c.pos === 'TE').forEach(c => c.curOff += 8);
+      break;
+    case 'trenches':
+      all.filter(c => c.pos === 'OL').forEach(c => c.curOff += 6);
+      all.filter(c => c.pos === 'DT').forEach(c => c.curDef += 6);
+      break;
+    case 'secondary':
+      all.filter(c => c.pos === 'CB' || c.pos === 'S').forEach(c => c.curDef += 6);
+      break;
+    case 'specialUnit':
+      all.filter(c => c.pos === 'K').forEach(c => c.curOff += 15);
+      all.filter(c => c.pos === 'ST').forEach(c => c.curDef += 15);
+      break;
+    case 'playOfGame':
+      // Highest-stat card in lane gets +20
+      if (all.length > 0) {
+        let highest = all[0];
+        let highestStat = highest.side === 'off' ? highest.curOff : highest.curDef;
+        all.forEach(c => {
+          const stat = c.side === 'off' ? c.curOff : c.curDef;
+          if (stat > highestStat) { highest = c; highestStat = stat; }
+        });
+        if (highest.side === 'off') highest.curOff += 20;
+        else highest.curDef += 20;
+      }
+      break;
+    // coinFlip, suddenDeath, turnover are handled in scoring/process, not here
+    // hurryUp, preventD are handled at card placement (cost reduction)
+    // scouted, blitzZone are handled at reveal time
+  }
+}
+
+function applyLaneFieldEffects(lane) {
+  [...lane.youCards, ...lane.aiCards].forEach(c => {
+    if (!c.revealed || c.ejected) return;
+    const isYou = lane.youCards.includes(c);
+    const friendlies = isYou ? lane.youCards : lane.aiCards;
+    const enemies = isYou ? lane.aiCards : lane.youCards;
+    switch(c.desc) {
+      case 'fieldBuffOff':
+        // Veteran Guard: +5 OFF to other OL friendlies here
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.pos === 'OL')
+          .forEach(x => { x._fieldOff = (x._fieldOff||0) + 5; });
+        break;
+      case 'fieldBuffOffAll':
+        // Iron Center: +4 OFF to all OFF friendlies here
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.side === 'off')
+          .forEach(x => { x._fieldOff = (x._fieldOff||0) + 4; });
+        break;
+      case 'fieldBuffDef':
+        // Shutdown CB: +3 DEF to CB/S friendlies here
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && (x.pos === 'CB' || x.pos === 'S'))
+          .forEach(x => { x._fieldDef = (x._fieldDef||0) + 3; });
+        break;
+      case 'fieldDebuffAll':
+        // Defensive POY: -5 to all enemy OFF here
+        enemies.filter(x => x.revealed && !x.ejected && x.side === 'off')
+          .forEach(x => { x._fieldOff = (x._fieldOff||0) - 5; });
+        break;
+    }
+  });
+}
+
+// ============================================================
+// END DRIVE / REVEAL / SCORE
+// ============================================================
+async function endTurn() {
+  if (state.busy) return;
+  state.busy = true;
+
+  aiMakePlays();
+  render();
+  await sleep(400);
+
+  // Flash
+  const flash = document.getElementById('revealFlash');
+  flash.classList.remove('flash'); void flash.offsetWidth; flash.classList.add('flash');
+  showLog('SNAP!', 900);
+  await sleep(700);
+
+  // Reveal cards
+  await revealAllPending();
+  render();
+  await sleep(500);
+
+  // Calculate yardage gained this drive and apply scoring
+  await processYardageAndScoring();
+  render();
+  await sleep(500);
+
+  // End-of-game check
+  if (state.turn >= state.maxTurn) {
+    await sleep(400);
+    endGame();
+    return;
+  }
+
+  // Advance turn
+  state.turn++;
+  state.youEnergyMax = Math.min(state.turn, 8);
+  state.aiEnergyMax = Math.min(state.turn, 8);
+  state.youEnergy = state.youEnergyMax;
+  state.aiEnergy = state.aiEnergyMax;
+
+  if (state.youDeck.length > 0) state.youHand.push(state.youDeck.shift());
+  if (state.aiDeck.length > 0) state.aiHand.push(state.aiDeck.shift());
+
+  state.busy = false;
+  render();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ============================================================
+// REVEAL & ABILITIES
+// ============================================================
+async function revealAllPending() {
+  // Winner reveals first (by total points)
+  const youFirst = state.youScore >= state.aiScore;
+  const order = youFirst ? ['you','ai'] : ['ai','you'];
+
+  for (const side of order) {
+    const plays = state.pendingPlays.filter(p => p.side === side);
+    for (const play of plays) {
+      play.card.revealed = true;
+      play.card.pending = false;
+      play.card._baseOff = play.card.off;
+      play.card._baseDef = play.card.def;
+      applyCardSnapAbility(play);
+      // Recompute lane stats so other cards reflect changes
+      computeLaneStats(state.lanes[play.lane]);
+      render();
+      await sleep(280);
+    }
+  }
+  state.pendingPlays = [];
+  // Final pass to apply field effects across lanes
+  state.lanes.forEach(l => computeLaneStats(l));
+}
+
+function applyCardSnapAbility(play) {
+  const card = play.card;
+  const lane = state.lanes[play.lane];
+  const side = play.side;
+  const friendlies = side === 'you' ? 'youCards' : 'aiCards';
+  const enemies = side === 'you' ? 'aiCards' : 'youCards';
+
+  // FROZEN TUNDRA: abilities disabled in this lane
+  if (lane.modifier && lane.modifier.id === 'frozenTundra') return;
+
+  // BLITZ ZONE: DEF cards' SNAP abilities trigger twice
+  const triggerCount = (lane.modifier && lane.modifier.id === 'blitzZone' && card.side === 'def') ? 2 : 1;
+
+  for (let trig = 0; trig < triggerCount; trig++) {
+
+  switch(card.desc) {
+    case 'snapDraw':
+      if (side === 'you' && state.youDeck.length > 0) state.youHand.push(state.youDeck.shift());
+      else if (side === 'ai' && state.aiDeck.length > 0) state.aiHand.push(state.aiDeck.shift());
+      break;
+    case 'snapBuffOffLane':
+      lane[friendlies].filter(c => c.uid !== card.uid && c.revealed && !c.ejected && c.side === 'off')
+        .forEach(c => { c._baseOff = (c._baseOff || c.off) + 6; });
+      break;
+    case 'snapDebuffEnemyOff':
+      lane[enemies].filter(c => c.revealed && !c.ejected && c.side === 'off')
+        .forEach(c => { c._baseOff = Math.max(0, (c._baseOff || c.off) - 8); });
+      break;
+    case 'snapStealYards':
+      // Game-Changing TE: push them back 10 yards AND advance yourself 10
+      if (side === 'you') {
+        lane.aiPos = Math.max(0, lane.aiPos - 10);
+        lane.youPos = Math.min(100, lane.youPos + 10);
+      } else {
+        lane.youPos = Math.max(0, lane.youPos - 10);
+        lane.aiPos = Math.min(100, lane.aiPos + 10);
+      }
+      break;
+    case 'snapDefYards':
+      // Speed Rusher: push enemy back 12 yards
+      if (side === 'you') {
+        lane.aiPos = Math.max(0, lane.aiPos - 12);
+      } else {
+        lane.youPos = Math.max(0, lane.youPos - 12);
+      }
+      break;
+    case 'snapPunt':
+      // Punter: push enemy back 10 yards
+      if (side === 'you') {
+        lane.aiPos = Math.max(0, lane.aiPos - 10);
+      } else {
+        lane.youPos = Math.max(0, lane.youPos - 10);
+      }
+      break;
+    case 'snapFieldGoal':
+      // Clutch Kicker: 3-pt FG if you're past midfield (50+)
+      // WIND TUNNEL: FGs disabled
+      if (lane.modifier && lane.modifier.id === 'windTunnel') break;
+      const myPos = side === 'you' ? lane.youPos : lane.aiPos;
+      // KICKING UNIT synergy: FG range improves to 35+
+      const hasKickingUnit = (side === 'you' ? lane.youCards : lane.aiCards)
+        .some(c => c.revealed && !c.ejected && c.pos === 'ST');
+      const fgThreshold = hasKickingUnit ? 35 : 50;
+      if (myPos >= fgThreshold) {
+        if (side === 'you') state.youScore += 3;
+        else state.aiScore += 3;
+        state.scoringLog.push({ team: side, type: 'FG', points: 3, lane: lane.name, drive: state.turn });
+        showScoreBurst('FIELD GOAL +3', 'fg', 1400);
+        resetLaneAfterScore(lane);
+      }
+      break;
+    case 'snapBuffAllOff':
+      state.lanes.forEach(l => l[friendlies].filter(c => c.uid !== card.uid && c.revealed && !c.ejected && c.side === 'off')
+        .forEach(c => { c._baseOff = (c._baseOff || c.off) + 8; }));
+      break;
+  }
+
+  } // end blitz-zone retrigger loop
+}
+
+// ============================================================
+// SCORING — the big payoff
+// ============================================================
+async function processYardageAndScoring() {
+  for (let i = 0; i < state.lanes.length; i++) {
+    const lane = state.lanes[i];
+    // SUDDEN DEATH lock — once locked, no further movement
+    if (lane.lockedFor) continue;
+
+    const stats = computeLaneStats(lane);
+
+    const SCALE = 2.5;
+    const yourGain = Math.floor(stats.youOff / SCALE);
+    const yourLoss = Math.floor(stats.aiDef / SCALE);
+    let yourDelta = yourGain - yourLoss;
+
+    const aiGain = Math.floor(stats.aiOff / SCALE);
+    const aiLoss = Math.floor(stats.youDef / SCALE);
+    let aiDelta = aiGain - aiLoss;
+
+    // Apply yard-block ability (Lockdown CB)
+    lane.youCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) aiDelta -= 5; });
+    lane.aiCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) yourDelta -= 5; });
+
+    // COIN FLIP modifier: 50/50 chance to double or halve net yardage this drive
+    if (lane.modifier && lane.modifier.id === 'coinFlip') {
+      const doubled = Math.random() < 0.5;
+      if (doubled) {
+        yourDelta *= 2;
+        aiDelta *= 2;
+        showLog('🎲 COIN FLIP: DOUBLED!', 900);
+      } else {
+        yourDelta = Math.floor(yourDelta / 2);
+        aiDelta = Math.floor(aiDelta / 2);
+        showLog('🎲 COIN FLIP: HALVED!', 900);
+      }
+      await sleep(500);
+    }
+
+    if (yourDelta !== 0 || aiDelta !== 0) {
+      lane.youPos = lane.youPos + yourDelta;
+      lane.aiPos = lane.aiPos + aiDelta;
+      render();
+      await sleep(700);
+    }
+
+    // TURNOVER modifier: track drives since score
+    if (lane.modifier && lane.modifier.id === 'turnover') {
+      lane.driveSinceScore = (lane.driveSinceScore || 0) + 1;
+      if (lane.driveSinceScore >= 3) {
+        // Swap field positions (ball turns over)
+        const tmp = lane.youPos;
+        lane.youPos = 100 - lane.aiPos;
+        lane.aiPos = 100 - tmp;
+        lane.driveSinceScore = 0;
+        showLog('🔄 TURNOVER ON DOWNS', 1400);
+        render();
+        await sleep(1400);
+      }
+    }
+
+    // Check scoring in this lane
+    const scored = await checkScoring(lane);
+    if (scored && lane.modifier && lane.modifier.id === 'suddenDeath') {
+      lane.lockedFor = scored;
+      showLog('💀 LANE LOCKED!', 1200);
+      await sleep(1200);
+    }
+    if (scored) lane.driveSinceScore = 0;
+  }
+}
+
+function resetLaneAfterScore(lane) {
+  // After any score, both teams kickoff fresh:
+  // - All cards cleared from both sides
+  // - Both ball positions randomized (new kickoff returns)
+  lane.youCards = [];
+  lane.aiCards = [];
+  lane.youPos = kickoffReturn();
+  lane.aiPos = kickoffReturn();
+}
+
+async function checkScoring(lane) {
+  let scorer = null;
+  // YOUR TOUCHDOWN — your ball crossed 100
+  if (lane.youPos >= 100) {
+    lane.youPos = 100;
+    render();
+    await sleep(400);
+    await scoreTouchdown('you', lane);
+    resetLaneAfterScore(lane);
+    render();
+    await sleep(500);
+    scorer = 'you';
+  }
+  // AI TOUCHDOWN
+  if (lane.aiPos >= 100) {
+    lane.aiPos = 100;
+    render();
+    await sleep(400);
+    await scoreTouchdown('ai', lane);
+    resetLaneAfterScore(lane);
+    render();
+    await sleep(500);
+    scorer = 'ai';
+  }
+  // YOUR SAFETY/PICK-6 — you pushed THEIR ball into their own endzone
+  if (lane.aiPos <= 0) {
+    lane.aiPos = 0;
+    render();
+    await sleep(400);
+    await scoreDefense('you', lane);
+    resetLaneAfterScore(lane);
+    render();
+    await sleep(500);
+    scorer = 'you';
+  }
+  // AI SAFETY/PICK-6
+  if (lane.youPos <= 0) {
+    lane.youPos = 0;
+    render();
+    await sleep(400);
+    await scoreDefense('ai', lane);
+    resetLaneAfterScore(lane);
+    render();
+    await sleep(500);
+    scorer = 'ai';
+  }
+  return scorer;
+}
+
+async function scoreTouchdown(side, lane) {
+  let pts = 6;
+  let label = 'TOUCHDOWN';
+  if (side === 'you') state.youScore += 6;
+  else state.aiScore += 6;
+  state.scoringLog.push({ team: side, type: 'TD', points: 6, lane: lane.name, drive: state.turn });
+
+  showLog(`${side === 'you' ? 'YOU' : 'CPU'}: ${lane.name} LANE`, 1200);
+  await showScoreBurst('TOUCHDOWN', 'touchdown', 1800);
+
+  // PAT check — Kicker in this lane?
+  const kicker = (side === 'you' ? lane.youCards : lane.aiCards).find(c => c.pos === 'K' && c.revealed && !c.ejected);
+  if (kicker) {
+    if (side === 'you') state.youScore += 1; else state.aiScore += 1;
+    state.scoringLog.push({ team: side, type: 'PAT', points: 1, lane: lane.name, drive: state.turn });
+    await showScoreBurst('PAT GOOD +1', 'fg', 1200);
+  }
+  render();
+
+  // 2-pt conversion — only player gets to choose; AI auto-decides
+  const yourCardsInLane = side === 'you' ? lane.youCards : lane.aiCards;
+  const enemyCardsInLane = side === 'you' ? lane.aiCards : lane.youCards;
+  const yourOffCount = yourCardsInLane.filter(c => c.revealed && !c.ejected && c.side === 'off').length;
+  const enemyDefCount = enemyCardsInLane.filter(c => c.revealed && !c.ejected && c.side === 'def').length;
+  const canGoForTwo = yourOffCount > enemyDefCount;
+
+  if (side === 'you' && canGoForTwo && !kicker) {
+    // Offer 2-pt conversion
+    await showConversionChoice(lane);
+  } else if (side === 'ai' && canGoForTwo && !kicker) {
+    // AI decides: 50/50
+    if (Math.random() < 0.5) {
+      const roll = (1 + Math.floor(Math.random()*6)) + (1 + Math.floor(Math.random()*6));
+      if (roll >= 7) {
+        state.aiScore += 2;
+        state.scoringLog.push({ team: 'ai', type: '2PT', points: 2, lane: lane.name, drive: state.turn });
+        await showScoreBurst('CPU 2-PT!', 'safety', 1400);
+      } else {
+        showLog('CPU 2-PT FAILED', 1200);
+        await sleep(1200);
+      }
+    }
+  }
+  render();
+}
+
+async function scoreDefense(side, lane) {
+  // Check for pick-6 condition: 4+ DBs (CB or S) in lane
+  const myCards = side === 'you' ? lane.youCards : lane.aiCards;
+  const dbCount = myCards.filter(c => c.revealed && !c.ejected && (c.pos === 'CB' || c.pos === 'S')).length;
+
+  if (dbCount >= 4) {
+    // PICK SIX!
+    if (side === 'you') state.youScore += 6; else state.aiScore += 6;
+    state.scoringLog.push({ team: side, type: 'PICK-6', points: 6, lane: lane.name, drive: state.turn });
+    showLog(`${side === 'you' ? 'YOU' : 'CPU'}: ${lane.name} LANE`, 1200);
+    await showScoreBurst('PICK SIX +6', 'pick6', 2000);
+  } else {
+    // SAFETY
+    if (side === 'you') state.youScore += 2; else state.aiScore += 2;
+    state.scoringLog.push({ team: side, type: 'SAFETY', points: 2, lane: lane.name, drive: state.turn });
+    showLog(`${side === 'you' ? 'YOU' : 'CPU'}: ${lane.name} LANE`, 1200);
+    await showScoreBurst('SAFETY +2', 'safety', 1800);
+  }
+  render();
+}
+
+async function showConversionChoice(lane) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('conversionModal');
+    const body = document.getElementById('conversionBody');
+    document.getElementById('diceArea').style.display = 'none';
+    document.getElementById('conversionButtons').style.display = 'flex';
+    document.getElementById('conversionTitle').textContent = 'GO FOR 2?';
+    body.innerHTML = '<p>You have more OFF cards than they have DEF in this lane.</p><p>Roll 7+ on 2d6 to convert!</p>';
+    modal.classList.add('show');
+    window._conversionResolve = resolve;
+    window._conversionLane = lane;
+  });
+}
+
+function kickPAT() {
+  document.getElementById('conversionModal').classList.remove('show');
+  if (window._conversionResolve) { window._conversionResolve(); window._conversionResolve = null; }
+}
+
+async function goForTwo() {
+  document.getElementById('conversionButtons').style.display = 'none';
+  document.getElementById('diceArea').style.display = 'block';
+  document.getElementById('diceResult').textContent = '';
+  const d1El = document.getElementById('dice1');
+  const d2El = document.getElementById('dice2');
+  d1El.classList.add('rolling'); d2El.classList.add('rolling');
+  d1El.textContent = '?'; d2El.textContent = '?';
+  await sleep(1200);
+  const d1 = 1 + Math.floor(Math.random()*6);
+  const d2 = 1 + Math.floor(Math.random()*6);
+  d1El.classList.remove('rolling'); d2El.classList.remove('rolling');
+  d1El.textContent = d1; d2El.textContent = d2;
+  const total = d1 + d2;
+  const resultEl = document.getElementById('diceResult');
+  if (total >= 7) {
+    resultEl.textContent = `${total} — CONVERTED!`;
+    resultEl.style.color = '#4aff8a';
+    state.youScore += 2;
+    const lane = window._conversionLane;
+    state.scoringLog.push({ team: 'you', type: '2PT', points: 2, lane: lane.name, drive: state.turn });
+    render();
+    await sleep(1400);
+    await showScoreBurst('2-PT CONVERSION!', 'touchdown', 1600);
+  } else {
+    resultEl.textContent = `${total} — NO GOOD`;
+    resultEl.style.color = '#ff4a4a';
+    await sleep(1800);
+  }
+  document.getElementById('conversionModal').classList.remove('show');
+  if (window._conversionResolve) { window._conversionResolve(); window._conversionResolve = null; }
+}
+
+// ============================================================
+// AI LOGIC
+// ============================================================
+function aiMakePlays() {
+  let energy = state.aiEnergy;
+  const playable = [...state.aiHand].sort((a,b) => (b.off + b.def) - (a.off + a.def));
+
+  for (const card of playable) {
+    if (card.cost > energy) continue;
+    let bestLane = -1, bestScore = -Infinity;
+    for (let i = 0; i < 3; i++) {
+      const lane = state.lanes[i];
+      if (lane.aiCards.length >= MAX_SLOTS) continue;
+      const stats = computeLaneStats(lane);
+      let score = 0;
+      
+      if (card.side === 'off') {
+        score = card.off;
+        // Bonus if close to TD (deep in opponent territory)
+        if (lane.aiPos >= 70) score += 18;
+        else if (lane.aiPos >= 50) score += 8;
+        // Bonus if your defense is weak here (less pushback)
+        if (stats.youDef < card.off / 2) score += 6;
+        // Kicker should go where AI is past midfield (for PAT/FG)
+        if (card.pos === 'K' && lane.aiPos >= 50) score += 14;
+      } else {
+        // Defensive card — put where YOU are threatening
+        score = card.def;
+        if (lane.youPos >= 70) score += 22; // urgent — about to score
+        else if (lane.youPos >= 50) score += 10;
+        // If AI ball is near their own endzone, defense helps avoid safety
+        if (lane.aiPos <= 30) score += 6;
+        // DB stacking for pick-6 (push them past 0)
+        if ((card.pos === 'CB' || card.pos === 'S') && lane.aiPos <= 50) {
+          const dbsHere = lane.aiCards.filter(c => c.pos === 'CB' || c.pos === 'S').length;
+          score += dbsHere * 5;
+        }
+      }
+      score += Math.random() * 3;
+      if (score > bestScore) { bestScore = score; bestLane = i; }
+    }
+    if (bestLane >= 0) {
+      const placed = { ...card, curOff: card.off, curDef: card.def, revealed: false, pending: true };
+      state.lanes[bestLane].aiCards.push(placed);
+      state.pendingPlays.push({ card: placed, lane: bestLane, side: 'ai' });
+      state.aiHand = state.aiHand.filter(c => c.uid !== card.uid);
+      energy -= card.cost;
+    }
+  }
+  state.aiEnergy = energy;
+}
+
+// ============================================================
+// END GAME
+// ============================================================
+function endGame() {
+  state.gameOver = true;
+  showScreen('result');
+  const banner = document.getElementById('resultBanner');
+  let result;
+  if (state.youScore > state.aiScore) { result = 'win'; banner.textContent = 'VICTORY'; }
+  else if (state.aiScore > state.youScore) { result = 'loss'; banner.textContent = 'DEFEAT'; }
+  else { result = 'tie'; banner.textContent = 'TIE GAME'; }
+  banner.className = 'result-banner ' + result;
+
+  document.getElementById('resultScore').innerHTML = `<span class="you">${state.youScore}</span> — <span class="ai">${state.aiScore}</span>`;
+
+  const summary = document.getElementById('scoringSummary');
+  if (state.scoringLog.length === 0) {
+    summary.innerHTML = '<div>NO POINTS SCORED — DEFENSIVE BATTLE</div>';
+  } else {
+    summary.innerHTML = state.scoringLog.map(s => 
+      `<div><span style="color:${s.team==='you'?'#4aff8a':'#ff6a6a'}">${s.team==='you'?'YOU':'CPU'}</span> · DRIVE ${s.drive} · ${s.lane} · ${s.type} <span style="color:#ffb800">+${s.points}</span></div>`
+    ).join('');
+  }
+
+  // Season mode: update season state based on result
+  if (state.mode === 'season' && seasonState) {
+    if (result === 'win') {
+      seasonState.wins++;
+      seasonState.week++;
+      if (seasonState.wins >= 7) {
+        // Season won!
+        const seasonBanner = document.createElement('div');
+        seasonBanner.style.cssText = 'font-family: Bebas Neue, sans-serif; font-size: 24px; color: #ffd700; letter-spacing: 3px; margin: 8px 0; text-shadow: 0 0 20px #ffd700;';
+        seasonBanner.textContent = '🏆 CHAMPIONSHIP WON 🏆';
+        banner.parentNode.insertBefore(seasonBanner, banner.nextSibling);
+        clearSeason();
+      } else {
+        saveSeason();
+      }
+    } else if (result === 'loss') {
+      // Season over — clear it
+      const seasonBanner = document.createElement('div');
+      seasonBanner.style.cssText = 'font-family: Bebas Neue, sans-serif; font-size: 18px; color: #ff6a6a; letter-spacing: 2px; margin: 8px 0;';
+      seasonBanner.textContent = `SEASON ENDED · ${seasonState.wins}/7 WINS`;
+      banner.parentNode.insertBefore(seasonBanner, banner.nextSibling);
+      clearSeason();
+    } else {
+      // Tie — count as no progress (replay)
+      saveSeason();
+    }
+    updateMenuSeasonStatus();
+  }
+  updateResultButtons(result);
+}
+
+function updateResultButtons(result) {
+  // Replace default REMATCH / MAIN MENU buttons with context-appropriate ones
+  const resultScreen = document.getElementById('result');
+  // Remove existing buttons
+  resultScreen.querySelectorAll('.menu-btn').forEach(b => b.remove());
+
+  if (state.mode === 'season') {
+    if (result === 'win' && seasonState && seasonState.wins < 7) {
+      // Won match, season continues
+      const next = document.createElement('button');
+      next.className = 'menu-btn';
+      next.textContent = 'CONTINUE SEASON →';
+      next.onclick = () => { showScreen('season'); renderSeason(); };
+      resultScreen.appendChild(next);
+    } else if (result === 'tie') {
+      const replay = document.createElement('button');
+      replay.className = 'menu-btn';
+      replay.textContent = 'REPLAY MATCH';
+      replay.onclick = () => playSeasonMatch();
+      resultScreen.appendChild(replay);
+    } else if (result === 'win') {
+      // Championship!
+      const newSeason = document.createElement('button');
+      newSeason.className = 'menu-btn';
+      newSeason.textContent = 'NEW SEASON';
+      newSeason.onclick = () => startSeasonDraft();
+      resultScreen.appendChild(newSeason);
+    } else {
+      // Loss — offer restart options
+      const newSeason = document.createElement('button');
+      newSeason.className = 'menu-btn';
+      newSeason.textContent = 'NEW DRAFT';
+      newSeason.onclick = () => startSeasonDraft();
+      resultScreen.appendChild(newSeason);
+    }
+    const menu = document.createElement('button');
+    menu.className = 'menu-btn secondary';
+    menu.textContent = 'MAIN MENU';
+    menu.onclick = () => showScreen('menu');
+    resultScreen.appendChild(menu);
+  } else {
+    // Quick play default
+    const rematch = document.createElement('button');
+    rematch.className = 'menu-btn';
+    rematch.textContent = 'REMATCH';
+    rematch.onclick = () => startQuickPlay();
+    resultScreen.appendChild(rematch);
+    const menu = document.createElement('button');
+    menu.className = 'menu-btn secondary';
+    menu.textContent = 'MAIN MENU';
+    menu.onclick = () => showScreen('menu');
+    resultScreen.appendChild(menu);
+  }
+}
+
+// ============================================================
+// QUICK PLAY
+// ============================================================
+function startQuickPlay() {
+  const playerDeck = buildQuickPlayDeck();
+  const aiDeck = buildAIDeck(2); // Quick play AI = moderate difficulty
+  startGame(playerDeck, aiDeck, 'quick');
+}
+
+// ============================================================
+// DRAFT — 25 rounds, pick 1 OFF + 1 DEF per round
+// ============================================================
+let draftState = null;
+
+function startSeasonDraft() {
+  // If there's an existing season, confirm before overwriting
+  const existing = loadSeason();
+  if (existing && existing.wins < 7) {
+    if (!confirm('You have a season in progress. Start a new draft and abandon it?')) return;
+    clearSeason();
+  }
+  draftState = {
+    round: 1,
+    maxRounds: 25,
+    pool: generateMasterPool(200), // big pool — never run out
+    roster: [],
+    currentOffOptions: [],
+    currentDefOptions: [],
+    selectedOff: null,
+    selectedDef: null
+  };
+  drawDraftOptions();
+  showScreen('draft');
+  renderDraft();
+}
+
+function cancelDraft() {
+  if (confirm('Cancel the draft and lose your picks?')) {
+    draftState = null;
+    showScreen('menu');
+  }
+}
+
+function drawDraftOptions() {
+  const offPool = draftState.pool.filter(c => c.side === 'off');
+  const defPool = draftState.pool.filter(c => c.side === 'def');
+  draftState.currentOffOptions = shuffle(offPool).slice(0, 3);
+  draftState.currentDefOptions = shuffle(defPool).slice(0, 3);
+  draftState.selectedOff = null;
+  draftState.selectedDef = null;
+}
+
+function renderDraft() {
+  document.getElementById('draftRound').textContent = draftState.round;
+  const offCount = draftState.roster.filter(c => c.side === 'off').length;
+  const defCount = draftState.roster.filter(c => c.side === 'def').length;
+  document.getElementById('draftOffCount').textContent = offCount;
+  document.getElementById('draftDefCount').textContent = defCount;
+  document.getElementById('draftProgressFill').style.width = ((draftState.round - 1) / 25 * 100) + '%';
+
+  renderDraftOptions('draftOffOptions', draftState.currentOffOptions, 'off');
+  renderDraftOptions('draftDefOptions', draftState.currentDefOptions, 'def');
+
+  // Confirm button
+  const canConfirm = draftState.selectedOff && draftState.selectedDef;
+  const btn = document.getElementById('confirmDraftBtn');
+  btn.disabled = !canConfirm;
+  btn.textContent = draftState.round >= draftState.maxRounds ? 'COMPLETE DRAFT' : 'NEXT ROUND →';
+}
+
+function renderDraftOptions(containerId, options, side) {
+  const cont = document.getElementById(containerId);
+  cont.innerHTML = '';
+  options.forEach(card => {
+    const el = document.createElement('div');
+    const sideClass = card.side === 'off' ? 'off-card' : 'def-card';
+    el.className = 'draft-card ' + sideClass + ' rarity-' + card.rarity;
+    const selectedId = side === 'off' ? draftState.selectedOff?.id : draftState.selectedDef?.id;
+    if (card.id === selectedId) el.classList.add('selected');
+    
+    const statValue = card.side === 'off' ? card.off : card.def;
+    const rarityEmoji = card.rarity === 'legendary' ? '✦' :
+                       card.rarity === 'rare' ? '★' :
+                       card.rarity === 'uncommon' ? '◆' : '';
+    el.innerHTML = `
+      <div class="rarity-glow"></div>
+      ${rarityEmoji ? `<div class="draft-card-rarity">${rarityEmoji}</div>` : ''}
+      <div class="draft-card-header">
+        <span class="draft-card-cost">${card.cost}</span>
+        <span class="draft-card-pos">${card.pos}</span>
+      </div>
+      <div class="draft-card-name">${card.name}</div>
+      <div class="draft-card-team">${card.team}</div>
+      <div class="draft-card-stat">${statValue}</div>
+      <div class="draft-card-stat-label">${card.side === 'off' ? 'OFFENSE' : 'DEFENSE'}</div>
+      <div class="draft-card-ability">${card.ability || ''}</div>
+    `;
+    el.onclick = () => selectDraftCard(card, side);
+    cont.appendChild(el);
+  });
+}
+
+function selectDraftCard(card, side) {
+  if (side === 'off') draftState.selectedOff = card;
+  else draftState.selectedDef = card;
+  renderDraft();
+}
+
+function confirmDraftPicks() {
+  if (!draftState.selectedOff || !draftState.selectedDef) return;
+  // Add picks to roster
+  draftState.roster.push(draftState.selectedOff);
+  draftState.roster.push(draftState.selectedDef);
+  // Remove from pool
+  draftState.pool = draftState.pool.filter(c => 
+    c.id !== draftState.selectedOff.id && c.id !== draftState.selectedDef.id
+  );
+  // Advance round or finish
+  if (draftState.round >= draftState.maxRounds) {
+    finishDraft();
+  } else {
+    draftState.round++;
+    drawDraftOptions();
+    renderDraft();
+  }
+}
+
+function autoDraftRest() {
+  if (!confirm('Auto-draft the rest of your roster?')) return;
+  // Include current picks if selected
+  if (draftState.selectedOff) {
+    draftState.roster.push(draftState.selectedOff);
+    draftState.pool = draftState.pool.filter(c => c.id !== draftState.selectedOff.id);
+  }
+  if (draftState.selectedDef) {
+    draftState.roster.push(draftState.selectedDef);
+    draftState.pool = draftState.pool.filter(c => c.id !== draftState.selectedDef.id);
+  }
+  // Auto-pick remaining
+  while (draftState.roster.filter(c => c.side === 'off').length < 25) {
+    const offPool = draftState.pool.filter(c => c.side === 'off');
+    if (offPool.length === 0) break;
+    // Pick a card weighted toward better stats
+    const pick = pickBestAutoCard(offPool);
+    draftState.roster.push(pick);
+    draftState.pool = draftState.pool.filter(c => c.id !== pick.id);
+  }
+  while (draftState.roster.filter(c => c.side === 'def').length < 25) {
+    const defPool = draftState.pool.filter(c => c.side === 'def');
+    if (defPool.length === 0) break;
+    const pick = pickBestAutoCard(defPool);
+    draftState.roster.push(pick);
+    draftState.pool = draftState.pool.filter(c => c.id !== pick.id);
+  }
+  finishDraft();
+}
+
+function pickBestAutoCard(pool) {
+  // Pick a card with reasonable stat-per-cost, with light cost distribution preference
+  const scored = pool.map(c => {
+    const stat = c.side === 'off' ? c.off : c.def;
+    const valuePerCost = stat / c.cost;
+    return { card: c, score: valuePerCost + Math.random() * 3 };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0].card;
+}
+
+function finishDraft() {
+  // Roster is complete (50 cards). Start a new season.
+  seasonState = {
+    roster: draftState.roster,
+    wins: 0,
+    week: 1
+  };
+  saveSeason();
+  draftState = null;
+  enterSeason();
+}
+
+// ============================================================
+// SEASON HUB
+// ============================================================
+function enterSeason() {
+  showScreen('season');
+  renderSeason();
+}
+
+function renderSeason() {
+  document.getElementById('seasonWeek').textContent = seasonState.week;
+  // Trophies
+  const trophies = document.getElementById('seasonTrophies');
+  trophies.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const t = document.createElement('div');
+    t.className = 'season-trophy' + (i < seasonState.wins ? ' won' : '') + (i === seasonState.wins ? ' next' : '');
+    t.textContent = i < seasonState.wins ? '🏆' : '·';
+    trophies.appendChild(t);
+  }
+  // Current opponent
+  const opp = OPPONENT_TEAMS[Math.min(seasonState.wins, OPPONENT_TEAMS.length - 1)];
+  document.getElementById('seasonOpponentName').textContent = opp.name;
+  document.getElementById('seasonOpponentTier').textContent = '⭐'.repeat(opp.tier);
+  document.getElementById('seasonOpponentFlavor').textContent = opp.flavor;
+}
+
+function playSeasonMatch() {
+  const opp = OPPONENT_TEAMS[Math.min(seasonState.wins, OPPONENT_TEAMS.length - 1)];
+  const aiDeck = buildAIDeck(opp.tier);
+  startGame(seasonState.roster, aiDeck, 'season');
+}
+
+function continueSeason() {
+  if (!seasonState) seasonState = loadSeason();
+  if (!seasonState) { updateMenuSeasonStatus(); return; }
+  enterSeason();
+}
+
+function updateMenuSeasonStatus() {
+  const existing = loadSeason();
+  if (existing && existing.wins < 7) {
+    seasonState = existing;
+    document.getElementById('seasonStatus').style.display = 'block';
+    document.getElementById('seasonStatus').textContent = `SEASON IN PROGRESS · WEEK ${existing.week} · ${existing.wins}/7 WINS`;
+    document.getElementById('continueSeasonBtn').style.display = '';
+  } else {
+    seasonState = null;
+    document.getElementById('seasonStatus').style.display = 'none';
+    document.getElementById('continueSeasonBtn').style.display = 'none';
+  }
+}
+
+// ============================================================
+// ROSTER VIEW
+// ============================================================
+function showRoster() {
+  if (!seasonState) return;
+  const off = seasonState.roster.filter(c => c.side === 'off');
+  const def = seasonState.roster.filter(c => c.side === 'def');
+  document.getElementById('rosterOffCount').textContent = off.length;
+  document.getElementById('rosterDefCount').textContent = def.length;
+  const list = document.getElementById('rosterList');
+  list.innerHTML = '';
+  const sorted = [...seasonState.roster].sort((a, b) => {
+    if (a.side !== b.side) return a.side === 'off' ? -1 : 1;
+    return a.cost - b.cost;
+  });
+  sorted.forEach(card => {
+    const el = document.createElement('div');
+    el.className = 'builder-card';
+    const statValue = card.side === 'off' ? card.off : card.def;
+    const statClass = card.side === 'off' ? 'off' : 'def';
+    el.innerHTML = `
+      <div class="builder-card-cost">${card.cost}</div>
+      <div class="builder-card-info">
+        <div class="builder-card-name">${card.name}</div>
+        <div class="builder-card-meta">${card.pos} · ${card.team} · ${card.rarity.toUpperCase()}</div>
+        ${card.ability ? `<div class="builder-card-ability">${card.ability}</div>` : ''}
+      </div>
+      <div class="builder-card-stats">
+        <span class="${statClass}">${statValue}</span>
+      </div>
+    `;
+    list.appendChild(el);
+  });
+  showScreen('roster');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  updateMenuSeasonStatus();
+});
+
+</script>
+</body>
+</html>
