@@ -17,7 +17,7 @@ The closest design parallel is *Marvel Snap* (locations = lanes, energy curve, s
 The file has four big sections, in order:
 
 1. **`<head>` + CSS** (top ~1100 lines): one giant `<style>` block. Mobile-first, fixed viewport, lots of `font-family: 'Bebas Neue'` for scoreboards.
-2. **Screens (HTML)** (~1100–1300): each game state is a `<div class="screen" id="...">`. Only one is `.active` at a time. Screens: `menu`, `game`, `result`, `draft`, `season`, `roster`, `howModal`.
+2. **Screens (HTML)** (~1100–1300): each game state is a `<div class="screen" id="...">`. Only one is `.active` at a time. Screens: `menu`, `game`, `draft`, `season`, `roster`, `lockerRoom`, `matchSummary`. (Modals like `howModal`, `conversionModal`, `discardModal`, `draftSkipModal`, `swapPerkModal` live as `.modal-overlay` siblings, not screens.)
 3. **Game logic (JS)** (~1450–end): one big inline `<script>`. Everything is in the global scope — there is no `import`, no closure wrapping, no module pattern. Functions call each other directly by name.
 4. **Bootstrap** (last few lines): `DOMContentLoaded` listener wires up the menu and shows the start screen.
 
@@ -64,6 +64,8 @@ state = {
 `state` is created by `newState(...)` in `startGame(...)`. It is replaced wholesale on game end and on quit. Never `Object.assign` into the old state — always replace.
 
 There is also `seasonState` (persisted to localStorage as `gridiron_season_v1`) for the season run, and `draftState` for the active draft.
+
+**`playerData`** (persisted to localStorage as `gridiron_player_v1`) is meta-progression: cash, coach level/XP, perks unlocked + equipped, lifetime stats, daily/seasonPass/cosmetics stubs. It is **separate from `state`** — survives across matches and game reloads. Loaded once at app start by `loadPlayerData()`, mutated in place by `applyXpAndLevelUp`, `calculateMatchRewards`, the Locker Room, and `endGame`, and persisted via `savePlayerData()` (which is try/catch wrapped — never throws).
 
 ## The render loop
 
@@ -139,6 +141,10 @@ Cards are generated procedurally by `generateCard(side)` using `FIRST_NAMES`, `L
 | Draft (pack-rip) | `draftState`, `generateDraftPack`, `PACK_RARITY_TABLE`, `startPack`, `tapPackCard`, `confirmPackPicks`, `applyCardLayout`, `runAutoPickFastForward` |
 | Energy: escalating gain + carryover (`MAX_ENERGY_BANK` cap) | `MAX_ENERGY_BANK` declaration, drive-transition block in `endTurn` (drive N grants +N energy, carryover capped), `renderEnergy` cap pulse, `showCarriedToast` |
 | Draw / discard cycle (`HAND_SIZE` per drive, discard reshuffles when deck empties) | `HAND_SIZE` declaration, `drawCardsToHand`, `discardHand`, `reshuffleDiscardIntoDeck`, `animateDiscardHand`, `animateDrawHand`, `showReshuffleAnimation`, `openDiscardModal` |
+| Player progression (Cash, Coach Level, XP) | `loadPlayerData`, `savePlayerData`, `migratePlayerData`, `clearPlayerData`, `defaultPlayerData`, `xpRequiredForLevel`, `applyXpAndLevelUp`, `COACH_LEVEL_CAP` |
+| Perks system | `PERK_POOL`, `hasPerk`, `getPerk`, `getHandSize(side)`, `getMaxEnergyBank(side)`, `applyPerkStatBuffs`, Quick Reads bonus inside `newState` |
+| Locker Room (Loadout tab) | `openLockerRoom`, `renderLockerRoom`, `renderEquippedSlots`, `renderPerkPool`, `tryEquipPerk`, `showSwapPerkModal`, `confirmSwapPerk`, `unequipPerk`, `switchLockerTab`, `confirmClearProgress` |
+| Match-end summary (XP tick, cash tick, level-up flash, perk unlock) | `endGame`, `calculateMatchRewards`, `showMatchSummary`, `runSummarySequence`, `animateXpBar`, `tickValue`, `returnFromSummary`, `_summaryReturn` |
 
 ## Conventions to follow
 
@@ -214,6 +220,8 @@ Each modifier should be **clearly different** from existing ones in feel. Don't 
 - **Don't replace innerHTML rendering with a framework.** React/Vue/Svelte would be massive over-engineering for this.
 - **Don't generate real player photos.** SVG silhouettes only. Even AI-generated photos invite NIL claims.
 - **Don't add a "save card from discard" mechanic.** The discard cycle is the core tension — circumventing it (e.g., a Tutor ability that pulls from discard, an extra-card-per-drive perk that hoards, etc.) defeats the design's purpose. New perks should affect *what enters the cycle* (deck composition, draw quality) or *what flows through it* (hand size, draw count), not bypass it.
+- **Don't read `HAND_SIZE` or `MAX_ENERGY_BANK` directly** — call `getHandSize()` / `getMaxEnergyBank()` so perks (Big Hand, Banker) apply. The getters take an optional `side` arg defaulting to `'you'`; pass `'ai'` from AI-side code paths to keep the CPU on the base values (perks are player-only).
+- **Don't introduce new currencies.** Cash is the only currency, ever. If you need a "premium" axis later, it should be a different earn-rate / spend-sink on Cash, not a parallel currency.
 
 ## Common tasks and where to start
 
@@ -223,7 +231,8 @@ Each modifier should be **clearly different** from existing ones in feel. Don't 
 - **"AI is too easy/hard"** → `aiMakePlays()`. Current heuristic just plays affordable cards in the lane where it's losing. Smarter AI is open territory.
 - **"Add a tooltip to X"** → add `data-tooltip="key"` to the element, add an entry to the `TOOLTIPS` object. For dynamic content, also set `data-tooltip-title` and `data-tooltip-body` with `escAttr(...)`.
 - **"Change the energy cap or curve"** → the cap is a single constant: `MAX_ENERGY_BANK` (declared near `MAX_SLOTS`). The per-drive grant is `state.turn` energy (drive N grants +N), set in the `endTurn` drive-transition block. When adding leveling/perks, modify the constant (or wrap it in a getter that checks active perks). **Do not introduce a parallel cap variable** — keep this as the single source of truth. The tooltip body interpolates it (`'... up to a max of ' + MAX_ENERGY_BANK`) so user-facing copy stays in sync.
-- **"Change hand size"** → modify the `HAND_SIZE` constant (declared next to `MAX_ENERGY_BANK`). It's used everywhere the cycle draws cards (`newState` initial draw, `endTurn` per-drive draw, the `deckPile` tooltip body). To make hand size depend on perks later, wrap it in a getter (e.g., `getHandSize()` that consults active perks). Don't hardcode 5 elsewhere.
+- **"Change hand size"** → modify the `HAND_SIZE` constant (declared next to `MAX_ENERGY_BANK`). All live JS reads go through `getHandSize(side)` so the Big Hand perk applies cleanly; the tooltip body for `deckPile` interpolates `HAND_SIZE` directly (frozen at module load — fine for a generic hint). Don't hardcode 5 elsewhere.
+- **"Add a new perk"** → push an entry into `PERK_POOL` with `{ id, name, icon, tier, unlockLevel, desc }`. For a stat-buff perk, add a clause to `applyPerkStatBuffs(lane)` (runs in `computeLaneStats` after lane modifiers, before synergies). For a hand/energy-shaping perk, branch inside `getHandSize` / `getMaxEnergyBank` (player-side only — never apply player perks to AI). For a once-per-match bonus, hook it into `newState`. Each perk should affect *one* thing — multi-effect perks are harder for the player to read.
 
 ## Testing
 
@@ -246,18 +255,19 @@ If that prints `JS: OK`, the file at least parses. After that, open it in a brow
 In rough order:
 
 1. **IP rebrand.** Replace NFL teams/names with fictional ones. Decisions pending: league flavor (retro-futurist / grounded / mascot / none), name style (realistic / nicknames / archetypes), possibly rename game. Files to touch: `NFL_TEAMS`, `FIRST_NAMES`, `LAST_NAMES`, `TEAM_COLORS`, `OPPONENT_TEAMS`, and the game title in `<title>`/`.menu-title`.
-2. **PvP.** Will need a backend (likely Firebase Realtime DB or Supabase). Match-making, turn sync, anti-cheat (server-authoritative scoring). Beware: this breaks the "single file, no backend" simplicity. Plan it carefully.
-3. **In-app purchases.** Cosmetic packs, possibly card-back skins, possibly draft chest rerolls. Don't go pay-to-win.
-4. **App Store / Play Store submission.** Wrap with Capacitor. Apple Developer Program ($99/yr), Google Play ($25 once). Privacy policy required.
+2. **Leveling system Phase B.** More perks (Tier 2 + Tier 3), Trophies tab in the Locker Room, lifetime Stats tab. Phase A's `playerData.stats` already tracks the relevant counters. Phase A is **done** — Cash + Coach Level + 7 Tier 1 perks + Locker Room (Loadout tab) + match-end summary + escalating XP curve all shipped.
+3. **PvP.** Will need a backend (likely Firebase Realtime DB or Supabase). Match-making, turn sync, anti-cheat (server-authoritative scoring). Beware: this breaks the "single file, no backend" simplicity. Plan it carefully.
+4. **In-app purchases.** Cosmetic packs, possibly card-back skins, possibly draft chest rerolls. Don't go pay-to-win. Cash stays the only in-game currency.
+5. **App Store / Play Store submission.** Wrap with Capacitor. Apple Developer Program ($99/yr), Google Play ($25 once). Privacy policy required.
 
 Any of these is multi-session work. Don't rush.
 
 ## Quick reference: filenames and IDs
 
 - Main file: `index.html`
-- localStorage key: `gridiron_season_v1`
-- Top-level screen IDs: `menu`, `game`, `result`, `draft`, `season`, `roster`
-- Modals: `howModal`
-- Important DOM IDs: `lanes`, `hand`, `youScore`, `aiScore`, `energyOrb`, `playBtn`, `tooltipOverlay`, `tooltipBubble`
+- localStorage keys: `gridiron_season_v1` (in-progress season), `gridiron_player_v1` (persistent meta-progression: cash, level, perks)
+- Top-level screen IDs: `menu`, `game`, `draft`, `season`, `roster`, `lockerRoom`, `matchSummary`
+- Modals: `howModal`, `conversionModal`, `discardModal`, `draftSkipModal`, `swapPerkModal`
+- Important DOM IDs: `lanes`, `hand`, `youScore`, `aiScore`, `energyOrb`, `playBtn`, `tooltipOverlay`, `tooltipBubble`, `deckBadge`, `discardBadge`, `menuCoachLevel`, `menuCashDisplay`
 
 That's the lay of the land. When in doubt: grep, read the relevant function, then make the smallest possible change.

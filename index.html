@@ -1781,6 +1781,23 @@
   }
   .reset-link:active { color: #aaa; }
 
+  /* Menu stats bar — coach level + cash chip shown on the main menu */
+  .menu-stats-bar {
+    display: flex; gap: 8px; justify-content: center;
+    margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1.5px;
+    color: #888;
+  }
+  .menu-stats-bar .menu-level,
+  .menu-stats-bar .menu-cash {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #333;
+    padding: 5px 10px;
+    border-radius: 3px;
+  }
+  .menu-stats-bar .menu-level span,
+  .menu-stats-bar .menu-cash span { color: #ffb800; font-weight: 700; }
+
   /* === LEVELING PHASE A — SUB-PHASE 4 (MATCH SUMMARY) === */
   #matchSummary { display: none; flex-direction: column; }
   #matchSummary.active { display: flex; }
@@ -1996,6 +2013,11 @@
     <div class="logo-tag">EST. 2026 • WEEK 12</div>
     <div class="logo-main">GRIDIRON<br><span class="accent">TACTICS</span></div>
     <div class="logo-sub">FIRST TO 100 YARDS</div>
+  </div>
+  <!-- === LEVELING PHASE A COMPLETE === -->
+  <div class="menu-stats-bar">
+    <span class="menu-level">LV <span id="menuCoachLevel">1</span></span>
+    <span class="menu-cash">💵 <span id="menuCashDisplay">0</span></span>
   </div>
   <div id="seasonStatus" style="display:none; margin-bottom: 16px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #ffb800; letter-spacing: 2px;"></div>
   <button class="menu-btn" id="continueSeasonBtn" onclick="continueSeason()" style="display:none;">CONTINUE SEASON</button>
@@ -3182,6 +3204,12 @@ function buildQuickPlayDeck() {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  // Whenever the main menu becomes active, refresh the level/cash chips and
+  // the season-status hint. updateMenuSeasonStatus only reads localStorage —
+  // cheap enough to run on every menu return.
+  if (id === 'menu' && typeof updateMenuSeasonStatus === 'function') {
+    updateMenuSeasonStatus();
+  }
 }
 
 // Escape only what would break an HTML attribute value: & and "
@@ -5679,6 +5707,15 @@ function updateMenuSeasonStatus() {
     document.getElementById('seasonStatus').style.display = 'none';
     document.getElementById('continueSeasonBtn').style.display = 'none';
   }
+  updateMenuPlayerStats();
+}
+
+function updateMenuPlayerStats() {
+  if (!playerData) return;
+  const lvl  = document.getElementById('menuCoachLevel');
+  const cash = document.getElementById('menuCashDisplay');
+  if (lvl)  lvl.textContent  = playerData.coachLevel;
+  if (cash) cash.textContent = playerData.cash.toLocaleString();
 }
 
 // ============================================================
