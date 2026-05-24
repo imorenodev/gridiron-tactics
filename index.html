@@ -1102,27 +1102,6 @@
   .reveal-flash.flash { animation: flash 0.3s ease-out; }
   @keyframes flash { 0%{opacity:0;} 50%{opacity:0.4;} 100%{opacity:0;} }
 
-  /* RESULT */
-  #result { justify-content: center; align-items: center; padding: 24px; text-align: center; }
-  .result-banner {
-    font-family: 'Bebas Neue', sans-serif; font-size: 72px; letter-spacing: 6px;
-    margin-bottom: 8px;
-  }
-  .result-banner.win { color: #4aff8a; text-shadow: 0 0 30px #4aff8a; }
-  .result-banner.loss { color: #ff4a4a; text-shadow: 0 0 30px #ff4a4a; }
-  .result-banner.tie { color: #ffb800; text-shadow: 0 0 30px #ffb800; }
-  .result-score {
-    font-family: 'Bebas Neue', sans-serif; font-size: 36px;
-    margin-bottom: 24px;
-  }
-  .result-score .you { color: #4aff8a; }
-  .result-score .ai { color: #ff6a6a; }
-  .scoring-summary {
-    font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888;
-    margin-bottom: 24px; max-width: 300px;
-  }
-  .scoring-summary div { margin: 4px 0; }
-
   /* DECK BUILDER */
   .builder-header {
     padding: 12px; padding-top: calc(env(safe-area-inset-top) + 12px);
@@ -1802,6 +1781,210 @@
   }
   .reset-link:active { color: #aaa; }
 
+  /* === LEVELING PHASE A — SUB-PHASE 4 (MATCH SUMMARY) === */
+  #matchSummary { display: none; flex-direction: column; }
+  #matchSummary.active { display: flex; }
+
+  .summary-scroll {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: calc(env(safe-area-inset-top) + 16px) 16px 12px;
+  }
+
+  .summary-header { text-align: center; margin-bottom: 18px; }
+  .summary-result {
+    font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 6px;
+    color: #888;
+    opacity: 0;
+    transform: scale(0.85);
+    transition: opacity 0.35s ease-out, transform 0.35s cubic-bezier(.2,.7,.3,1.4);
+  }
+  .summary-result.show { opacity: 1; transform: scale(1); }
+  .summary-result.win  { color: #4aff8a; text-shadow: 0 0 18px rgba(74,255,138,0.55); }
+  .summary-result.loss { color: #ff6a6a; text-shadow: 0 0 14px rgba(255,106,106,0.5); }
+  .summary-result.tie  { color: #ffb800; text-shadow: 0 0 14px rgba(255,184,0,0.5); }
+
+  .summary-score {
+    margin-top: 6px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px;
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.4s ease-out 0.05s;
+  }
+  .summary-score .you-score { color: #4aff8a; }
+  .summary-score .ai-score  { color: #ff6a6a; }
+  .summary-score.show { opacity: 1; }
+  .summary-opponent {
+    margin-top: 2px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1.5px;
+    color: #888;
+    opacity: 0;
+    transition: opacity 0.4s ease-out 0.1s;
+  }
+  .summary-opponent.show { opacity: 1; }
+
+  .summary-rewards {
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #333; border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 14px;
+  }
+  .reward-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1.5px;
+    padding: 4px 0;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+  }
+  .reward-row.show { opacity: 1; }
+  .reward-row .reward-label { color: #aaa; }
+  .reward-row .reward-value { color: #ffb800; font-size: 22px; }
+  .reward-breakdown {
+    margin-top: 10px;
+    border-top: 1px solid #2a2a2a;
+    padding-top: 8px;
+  }
+  .reward-breakdown-line {
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 1.4;
+    color: #888;
+    padding: 2px 0;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.25s ease-out, transform 0.25s ease-out;
+  }
+  .reward-breakdown-line.show { opacity: 1; transform: translateX(0); }
+  .reward-breakdown-line .bk-xp   { color: #4aaaff; margin-left: 8px; }
+  .reward-breakdown-line .bk-cash { color: #ffb800; margin-left: 8px; }
+
+  .summary-level {
+    background: linear-gradient(180deg, #1a1605 0%, #0a0805 100%);
+    border: 1px solid #ffb800; border-radius: 6px;
+    padding: 14px 12px;
+    margin-bottom: 14px;
+  }
+  .level-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px;
+    color: #ffb800;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .level-label span { font-size: 22px; }
+  .xp-bar-container {
+    height: 14px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a; border-radius: 7px;
+    position: relative;
+    overflow: hidden;
+  }
+  .xp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff8a00 0%, #ffd84a 100%);
+    width: 0%;
+    transition: width 1s cubic-bezier(.2,.7,.3,1);
+    box-shadow: 0 0 8px rgba(255,184,0,0.35) inset;
+  }
+  .xp-bar-fill.flash {
+    animation: xpBarFlash 0.4s ease-out;
+  }
+  @keyframes xpBarFlash {
+    0%, 100% { filter: brightness(1); }
+    50%      { filter: brightness(1.8); }
+  }
+  .xp-bar-text {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+  .next-perk-hint {
+    margin-top: 8px;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 1px;
+    color: #888;
+    min-height: 12px;
+  }
+  .next-perk-hint .hint-perk { color: #ffb800; }
+
+  .perk-unlock-banner {
+    background: linear-gradient(135deg, #2a1a05 0%, #1a0a05 100%);
+    border: 1px solid #ffb800;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 14px;
+    text-align: center;
+    box-shadow: 0 0 14px rgba(255,184,0,0.4);
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.4s ease-out, transform 0.4s cubic-bezier(.2,.7,.3,1.4);
+  }
+  .perk-unlock-banner.show { opacity: 1; transform: scale(1); }
+  .perk-unlock-banner .pub-label {
+    font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 3px;
+    color: #ffb800;
+    margin-bottom: 4px;
+  }
+  .perk-unlock-banner .pub-icon  { font-size: 28px; line-height: 1; margin: 4px 0; }
+  .perk-unlock-banner .pub-name  {
+    font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 2px;
+    color: #fff;
+  }
+  .perk-unlock-banner .pub-desc {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #aaa;
+    margin-top: 2px;
+  }
+
+  .championship-banner {
+    background: linear-gradient(135deg, #ffd84a 0%, #ff8a00 100%);
+    color: #1a0a00;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 4px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    box-shadow: 0 0 20px rgba(255,216,74,0.55);
+  }
+
+  .summary-continue-wrap {
+    padding: 12px 16px calc(env(safe-area-inset-bottom) + 14px);
+    background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.6) 50%);
+    flex-shrink: 0;
+  }
+  .summary-continue {
+    width: 100%;
+    background: linear-gradient(180deg, #2a6a4a 0%, #144a2a 100%);
+    color: #fff; border: 1px solid #4aff8a;
+    padding: 14px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px;
+    cursor: pointer;
+    border-radius: 4px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.35s ease-out, transform 0.35s ease-out;
+    box-shadow: 0 0 0 rgba(74,255,138,0);
+  }
+  .summary-continue.show {
+    opacity: 1;
+    transform: translateY(0);
+    box-shadow: 0 0 14px rgba(74,255,138,0.4);
+  }
+  .summary-continue:active { transform: translateY(1px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .summary-result,
+    .summary-score,
+    .summary-opponent,
+    .reward-row,
+    .reward-breakdown-line,
+    .perk-unlock-banner,
+    .summary-continue { transition: opacity 0.18s ease-out; transform: none; }
+    .xp-bar-fill { transition: width 0.2s ease-out; }
+    .xp-bar-fill.flash { animation: none; }
+  }
+
 </style>
 </head>
 <body>
@@ -1891,12 +2074,6 @@
   </div>
 </div>
 
-<!-- RESULT -->
-<div class="screen" id="result">
-  <div class="result-banner" id="resultBanner">WIN</div>
-  <div class="result-score" id="resultScore"></div>
-  <div class="scoring-summary" id="scoringSummary"></div>
-</div>
 
 <!-- DRAFT (pack-rip) — populated entirely by renderDraft() -->
 <div class="screen" id="draft"></div>
@@ -1965,6 +2142,51 @@
         <button class="reset-link" onclick="confirmClearProgress()">Reset Progress</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- MATCH SUMMARY (post-match dopamine: XP tick, cash tick, level-up flash) -->
+<div class="screen" id="matchSummary">
+  <div class="summary-scroll">
+    <div class="summary-header">
+      <div class="summary-result" id="summaryResult">VICTORY</div>
+      <div class="summary-score" id="summaryScore"></div>
+      <div class="summary-opponent" id="summaryOpponent"></div>
+    </div>
+
+    <div id="championshipBanner" class="championship-banner" style="display:none;">🏆 CHAMPIONSHIP WON 🏆</div>
+
+    <div class="summary-rewards">
+      <div class="reward-row" id="xpRow">
+        <span class="reward-label">XP Earned</span>
+        <span class="reward-value" id="xpEarnedDisplay">+0</span>
+      </div>
+      <div class="reward-row" id="cashRow">
+        <span class="reward-label">Cash Earned</span>
+        <span class="reward-value" id="cashEarnedDisplay">+$0</span>
+      </div>
+      <div class="reward-breakdown" id="rewardBreakdown"></div>
+    </div>
+
+    <div class="summary-level">
+      <div class="level-label">COACH LEVEL <span id="summaryLevelNum">1</span></div>
+      <div class="xp-bar-container">
+        <div class="xp-bar-fill" id="xpBarFill"></div>
+        <div class="xp-bar-text" id="xpBarText">0 / 100</div>
+      </div>
+      <div class="next-perk-hint" id="nextPerkHint"></div>
+    </div>
+
+    <div class="perk-unlock-banner" id="perkUnlockBanner" style="display:none;">
+      <div class="pub-label">NEW PERK UNLOCKED</div>
+      <div class="pub-icon" id="pubIcon">🃏</div>
+      <div class="pub-name" id="pubName">BIG HAND</div>
+      <div class="pub-desc" id="pubDesc">Hand size +1</div>
+    </div>
+  </div>
+
+  <div class="summary-continue-wrap">
+    <button class="summary-continue" id="summaryContinueBtn" onclick="returnFromSummary()">CONTINUE</button>
   </div>
 </div>
 
@@ -2568,6 +2790,104 @@ function applyPerkStatBuffs(lane) {
   }
 }
 
+// === LEVELING PHASE A — SUB-PHASE 4 (MATCH SUMMARY) ===
+// ============================================================
+// XP CURVE + LEVEL-UP + MATCH REWARDS
+// ============================================================
+const COACH_LEVEL_CAP = 50;
+
+// XP required to advance FROM (level - 1) TO `level`.
+// Returns the bucket for the level *being reached*.
+function xpRequiredForLevel(level) {
+  if (level <= 5)  return 100;
+  if (level <= 15) return 200 + (level - 5)  * 50;   // 250, 300, ..., 700
+  if (level <= 30) return 800 + (level - 15) * 100;  // 900, 1000, ..., 2300
+  if (level <= 50) return 2500 + (level - 30) * 200; // 2700, 2900, ..., 6500
+  return 7000;
+}
+
+function applyXpAndLevelUp(xpToAdd) {
+  // Returns { startLevel, startXp, startXpForNext, levelUps: [{ newLevel, perkUnlocked, cashReward }] }
+  // so the summary screen can animate the bar with full context.
+  const startLevel       = playerData.coachLevel;
+  const startXp          = playerData.coachXp;
+  const startXpForNext   = xpRequiredForLevel(startLevel + 1);
+  const levelUps = [];
+  playerData.coachXp += xpToAdd;
+  while (playerData.coachLevel < COACH_LEVEL_CAP &&
+         playerData.coachXp >= xpRequiredForLevel(playerData.coachLevel + 1)) {
+    playerData.coachXp -= xpRequiredForLevel(playerData.coachLevel + 1);
+    playerData.coachLevel++;
+    const cashReward = 100 * playerData.coachLevel;
+    playerData.cash += cashReward;
+    let perkUnlocked = null;
+    PERK_POOL.forEach(perk => {
+      if (perk.unlockLevel === playerData.coachLevel && !playerData.perksUnlocked.includes(perk.id)) {
+        playerData.perksUnlocked.push(perk.id);
+        perkUnlocked = perk;
+      }
+    });
+    levelUps.push({ newLevel: playerData.coachLevel, perkUnlocked, cashReward });
+  }
+  if (playerData.coachLevel >= COACH_LEVEL_CAP) {
+    // Cap XP at level 50 for now; Phase E will add prestige.
+    playerData.coachXp = 0;
+  }
+  savePlayerData();
+  return { startLevel, startXp, startXpForNext, levelUps };
+}
+
+function playerDataPlayedAMatchToday() {
+  const today = new Date().toISOString().slice(0, 10);
+  return !!(playerData.daily && playerData.daily.lastMatchDate === today);
+}
+
+function markPlayerPlayedToday() {
+  if (!playerData.daily) playerData.daily = {};
+  playerData.daily.lastMatchDate = new Date().toISOString().slice(0, 10);
+}
+
+// matchResult: { won, opponent, finalScore: {you, ai}, stats: { wasTrailingBy14AtHalftime } }
+function calculateMatchRewards(matchResult) {
+  const opponentTier = matchResult.opponent ? matchResult.opponent.tier : 1; // 1 for Quick Play
+  const baseXp   = matchResult.won ? 75 : 25;
+  const baseCash = matchResult.won ? 150 : 50;
+
+  let xpEarned   = baseXp * opponentTier;
+  let cashEarned = baseCash;
+
+  const breakdown = [
+    { label: matchResult.won ? 'Match Won' : 'Match Played', xp: baseXp * opponentTier, cash: baseCash }
+  ];
+  if (opponentTier > 1) {
+    // The tier multiplier is baked into the base line above; surface a hint
+    // so the player sees why their base XP is bigger than the headline number.
+    breakdown[0].label += ' (Tier ' + opponentTier + ')';
+  }
+
+  // Daily first-match bonus
+  const firstToday = !playerDataPlayedAMatchToday();
+  if (firstToday) {
+    xpEarned   += 50;
+    cashEarned += 200;
+    breakdown.push({ label: 'First Match Today', xp: 50, cash: 200 });
+  }
+  markPlayerPlayedToday();
+
+  // Perfect shutout
+  if (matchResult.won && matchResult.finalScore.ai === 0) {
+    xpEarned += 50;
+    breakdown.push({ label: 'Perfect Shutout', xp: 50, cash: 0 });
+  }
+  // Comeback win
+  if (matchResult.won && matchResult.stats.wasTrailingBy14AtHalftime) {
+    xpEarned += 50;
+    breakdown.push({ label: 'Comeback Win', xp: 50, cash: 0 });
+  }
+
+  return { xpEarned, cashEarned, breakdown };
+}
+
 // ============================================================
 // PORTRAIT GENERATOR — stylized SVG silhouettes with team colors
 // ============================================================
@@ -3048,9 +3368,10 @@ function showHowToPlay() { document.getElementById('howModal').classList.add('sh
 // ============================================================
 // GAME FLOW
 // ============================================================
-function startGame(playerDeck, aiDeck, mode) {
+function startGame(playerDeck, aiDeck, mode, opponent) {
   state = newState(playerDeck, aiDeck);
   state.mode = mode || 'quick'; // 'quick' or 'season'
+  state.opponent = opponent || null;  // used by the match-end summary for tier bonus
   showScreen('game');
   render();
 }
@@ -3861,6 +4182,12 @@ async function endTurn() {
   render();
   await sleep(500);
 
+  // Halftime snapshot — drives 1-4 are the first half. If the player ends
+  // drive 4 trailing by 14+, a comeback win pays a summary-screen bonus.
+  if (state.turn === 4 && state._wasTrailingBy14 === undefined) {
+    state._wasTrailingBy14 = (state.aiScore - state.youScore) >= 14;
+  }
+
   // End-of-game check
   if (state.turn >= state.maxTurn) {
     await sleep(400);
@@ -4312,110 +4639,66 @@ function aiMakePlays() {
 // ============================================================
 function endGame() {
   state.gameOver = true;
-  showScreen('result');
-  const banner = document.getElementById('resultBanner');
-  let result;
-  if (state.youScore > state.aiScore) { result = 'win'; banner.textContent = 'VICTORY'; }
-  else if (state.aiScore > state.youScore) { result = 'loss'; banner.textContent = 'DEFEAT'; }
-  else { result = 'tie'; banner.textContent = 'TIE GAME'; }
-  banner.className = 'result-banner ' + result;
 
-  document.getElementById('resultScore').innerHTML = `<span class="you">${state.youScore}</span> — <span class="ai">${state.aiScore}</span>`;
+  const won  = state.youScore >  state.aiScore;
+  const lost = state.aiScore >  state.youScore;
+  const result = won ? 'win' : (lost ? 'loss' : 'tie');
 
-  const summary = document.getElementById('scoringSummary');
-  if (state.scoringLog.length === 0) {
-    summary.innerHTML = '<div>NO POINTS SCORED — DEFENSIVE BATTLE</div>';
-  } else {
-    summary.innerHTML = state.scoringLog.map(s => 
-      `<div><span style="color:${s.team==='you'?'#4aff8a':'#ff6a6a'}">${s.team==='you'?'YOU':'CPU'}</span> · DRIVE ${s.drive} · ${s.lane} · ${s.type} <span style="color:#ffb800">+${s.points}</span></div>`
-    ).join('');
-  }
-
-  // Season mode: update season state based on result
+  // Season bookkeeping — same logic that used to live in the old result screen.
+  // We capture the routing decision into _summaryReturn so the post-summary
+  // CONTINUE button knows where to send the player.
+  let seasonOngoing = false;
+  let championship  = false;
   if (state.mode === 'season' && seasonState) {
     if (result === 'win') {
       seasonState.wins++;
       seasonState.week++;
       if (seasonState.wins >= 7) {
-        // Season won!
-        const seasonBanner = document.createElement('div');
-        seasonBanner.style.cssText = 'font-family: Bebas Neue, sans-serif; font-size: 24px; color: #ffd700; letter-spacing: 3px; margin: 8px 0; text-shadow: 0 0 20px #ffd700;';
-        seasonBanner.textContent = '🏆 CHAMPIONSHIP WON 🏆';
-        banner.parentNode.insertBefore(seasonBanner, banner.nextSibling);
+        championship = true;
         clearSeason();
       } else {
+        seasonOngoing = true;
         saveSeason();
       }
     } else if (result === 'loss') {
-      // Season over — clear it
-      const seasonBanner = document.createElement('div');
-      seasonBanner.style.cssText = 'font-family: Bebas Neue, sans-serif; font-size: 18px; color: #ff6a6a; letter-spacing: 2px; margin: 8px 0;';
-      seasonBanner.textContent = `SEASON ENDED · ${seasonState.wins}/7 WINS`;
-      banner.parentNode.insertBefore(seasonBanner, banner.nextSibling);
       clearSeason();
     } else {
-      // Tie — count as no progress (replay)
+      // Tie: no progress, season remains
+      seasonOngoing = true;
       saveSeason();
     }
     updateMenuSeasonStatus();
   }
-  updateResultButtons(result);
-}
+  _summaryReturn = { mode: state.mode, seasonOngoing, championship };
 
-function updateResultButtons(result) {
-  // Replace default REMATCH / MAIN MENU buttons with context-appropriate ones
-  const resultScreen = document.getElementById('result');
-  // Remove existing buttons
-  resultScreen.querySelectorAll('.menu-btn').forEach(b => b.remove());
-
-  if (state.mode === 'season') {
-    if (result === 'win' && seasonState && seasonState.wins < 7) {
-      // Won match, season continues
-      const next = document.createElement('button');
-      next.className = 'menu-btn';
-      next.textContent = 'CONTINUE SEASON →';
-      next.onclick = () => { showScreen('season'); renderSeason(); };
-      resultScreen.appendChild(next);
-    } else if (result === 'tie') {
-      const replay = document.createElement('button');
-      replay.className = 'menu-btn';
-      replay.textContent = 'REPLAY MATCH';
-      replay.onclick = () => playSeasonMatch();
-      resultScreen.appendChild(replay);
-    } else if (result === 'win') {
-      // Championship!
-      const newSeason = document.createElement('button');
-      newSeason.className = 'menu-btn';
-      newSeason.textContent = 'NEW SEASON';
-      newSeason.onclick = () => startSeasonDraft();
-      resultScreen.appendChild(newSeason);
-    } else {
-      // Loss — offer restart options
-      const newSeason = document.createElement('button');
-      newSeason.className = 'menu-btn';
-      newSeason.textContent = 'NEW DRAFT';
-      newSeason.onclick = () => startSeasonDraft();
-      resultScreen.appendChild(newSeason);
-    }
-    const menu = document.createElement('button');
-    menu.className = 'menu-btn secondary';
-    menu.textContent = 'MAIN MENU';
-    menu.onclick = () => showScreen('menu');
-    resultScreen.appendChild(menu);
-  } else {
-    // Quick play default
-    const rematch = document.createElement('button');
-    rematch.className = 'menu-btn';
-    rematch.textContent = 'REMATCH';
-    rematch.onclick = () => startQuickPlay();
-    resultScreen.appendChild(rematch);
-    const menu = document.createElement('button');
-    menu.className = 'menu-btn secondary';
-    menu.textContent = 'MAIN MENU';
-    menu.onclick = () => showScreen('menu');
-    resultScreen.appendChild(menu);
+  // Lifetime stats — updated regardless of mode
+  playerData.stats.totalMatches++;
+  if (won) {
+    playerData.stats.totalWins++;
+    playerData.stats.currentWinStreak++;
+    playerData.stats.longestWinStreak = Math.max(playerData.stats.longestWinStreak, playerData.stats.currentWinStreak);
+    if (state.aiScore === 0) playerData.stats.shutouts++;
+    if (state._wasTrailingBy14) playerData.stats.comebacks++;
+  } else if (lost) {
+    playerData.stats.totalLosses++;
+    playerData.stats.currentWinStreak = 0;
   }
+
+  // Compute rewards + apply XP / level-ups (mutates playerData, saves at the end)
+  const matchResult = {
+    won,
+    opponent: state.opponent || null,
+    finalScore: { you: state.youScore, ai: state.aiScore },
+    stats: { wasTrailingBy14AtHalftime: !!state._wasTrailingBy14 }
+  };
+  const rewards   = calculateMatchRewards(matchResult);
+  playerData.cash += rewards.cashEarned;
+  const levelInfo = applyXpAndLevelUp(rewards.xpEarned);
+  savePlayerData();
+
+  showMatchSummary(matchResult, rewards, levelInfo);
 }
+
 
 // ============================================================
 // QUICK PLAY
@@ -4621,6 +4904,32 @@ function playSfx(type) {
       subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
       sub.connect(subGain).connect(ctx.destination);
       sub.start(now); sub.stop(now + 0.71);
+    } else if (type === 'levelUp') {
+      // 3-note ascending arpeggio (C, E, G — major triad ~400ms)
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((freq, i) => {
+        const t = now + i * 0.11;
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.18, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.29);
+      });
+    } else if (type === 'perkUnlock') {
+      // 5-note triumphant flourish (~600ms) — C E G C E ascending
+      const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+      notes.forEach((freq, i) => {
+        const t = now + i * 0.10;
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.14, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.31);
+      });
     }
   } catch (e) { /* swallow audio errors during animations */ }
 }
@@ -5349,7 +5658,7 @@ function renderSeason() {
 function playSeasonMatch() {
   const opp = OPPONENT_TEAMS[Math.min(seasonState.wins, OPPONENT_TEAMS.length - 1)];
   const aiDeck = buildAIDeck(opp.tier);
-  startGame(seasonState.roster, aiDeck, 'season');
+  startGame(seasonState.roster, aiDeck, 'season', opp);
 }
 
 function continueSeason() {
@@ -5540,6 +5849,217 @@ function confirmClearProgress() {
   const typed = prompt('Type DELETE to confirm:');
   if (typed !== 'DELETE') return;
   clearPlayerData();
+}
+
+// ============================================================
+// MATCH SUMMARY — post-match dopamine screen
+// ============================================================
+// Routing context stashed at endGame time so returnFromSummary knows where
+// to send the player after they tap CONTINUE. We capture this BEFORE the
+// summary screen replaces the live match state.
+let _summaryReturn = null;
+
+function showMatchSummary(matchResult, rewards, levelInfo) {
+  // Populate static fields up front; the sequence below fades each in on cue.
+  const resultEl = document.getElementById('summaryResult');
+  const result = matchResult.won ? 'win' : (matchResult.finalScore.you === matchResult.finalScore.ai ? 'tie' : 'loss');
+  resultEl.className = 'summary-result ' + result;
+  resultEl.textContent = result === 'win' ? 'VICTORY' : result === 'loss' ? 'DEFEAT' : 'TIE GAME';
+
+  document.getElementById('summaryScore').innerHTML =
+    '<span class="you-score">YOU ' + matchResult.finalScore.you + '</span> — ' +
+    '<span class="ai-score">CPU ' + matchResult.finalScore.ai + '</span>';
+  document.getElementById('summaryOpponent').textContent =
+    matchResult.opponent ? 'vs. ' + matchResult.opponent.name : 'QUICK PLAY';
+
+  document.getElementById('xpEarnedDisplay').textContent   = '+0';
+  document.getElementById('cashEarnedDisplay').textContent = '+$0';
+
+  // Reset visibility classes from any previous summary
+  ['summaryResult','summaryScore','summaryOpponent','xpRow','cashRow'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+  document.getElementById('rewardBreakdown').innerHTML = '';
+  const continueBtn = document.getElementById('summaryContinueBtn');
+  continueBtn.classList.remove('show');
+  const banner = document.getElementById('perkUnlockBanner');
+  banner.style.display = 'none';
+  banner.classList.remove('show');
+
+  // Championship banner only on the final season win
+  const champion = document.getElementById('championshipBanner');
+  champion.style.display = _summaryReturn && _summaryReturn.championship ? 'block' : 'none';
+
+  // Level display starts at the PRE-match level/xp so the bar can fill into the new total
+  document.getElementById('summaryLevelNum').textContent = levelInfo.startLevel;
+  const xpBar = document.getElementById('xpBarFill');
+  const xpText = document.getElementById('xpBarText');
+  xpBar.classList.remove('flash');
+  xpBar.style.width = ((levelInfo.startXp / levelInfo.startXpForNext) * 100).toFixed(1) + '%';
+  xpText.textContent = levelInfo.startXp + ' / ' + levelInfo.startXpForNext;
+  updateNextPerkHint(levelInfo.startLevel);
+
+  showScreen('matchSummary');
+  runSummarySequence(rewards, levelInfo);
+}
+
+function updateNextPerkHint(currentLevel) {
+  const hint = document.getElementById('nextPerkHint');
+  const nextPerk = PERK_POOL.find(p => p.unlockLevel > currentLevel);
+  if (nextPerk) {
+    hint.innerHTML = 'Next: <span class="hint-perk">' + nextPerk.icon + ' ' + nextPerk.name + '</span> at Lv ' + nextPerk.unlockLevel;
+  } else {
+    hint.textContent = currentLevel >= COACH_LEVEL_CAP ? 'MAX LEVEL' : 'All Tier 1 perks unlocked';
+  }
+}
+
+async function runSummarySequence(rewards, levelInfo) {
+  const reduced = prefersReducedMotion();
+
+  // t=0: result banner
+  await sleep(reduced ? 10 : 30);
+  document.getElementById('summaryResult').classList.add('show');
+
+  // t≈500: score + opponent
+  await sleep(reduced ? 100 : 470);
+  document.getElementById('summaryScore').classList.add('show');
+  document.getElementById('summaryOpponent').classList.add('show');
+
+  // t≈900: XP row appears, number ticks up
+  await sleep(reduced ? 100 : 400);
+  document.getElementById('xpRow').classList.add('show');
+  await tickValue('xpEarnedDisplay', 0, rewards.xpEarned, reduced ? 200 : 800, v => '+' + v);
+
+  // t≈1700: Cash row appears, ticks up
+  document.getElementById('cashRow').classList.add('show');
+  await tickValue('cashEarnedDisplay', 0, rewards.cashEarned, reduced ? 200 : 800, v => '+$' + v.toLocaleString());
+
+  // Reward breakdown lines staggered
+  const breakdownEl = document.getElementById('rewardBreakdown');
+  rewards.breakdown.forEach(line => {
+    const div = document.createElement('div');
+    div.className = 'reward-breakdown-line';
+    const xp   = line.xp   ? '<span class="bk-xp">+'  + line.xp   + ' XP</span>'   : '';
+    const cash = line.cash ? '<span class="bk-cash">+$' + line.cash + '</span>'   : '';
+    div.innerHTML = '<span>' + line.label + '</span><span>' + xp + cash + '</span>';
+    breakdownEl.appendChild(div);
+  });
+  const lines = breakdownEl.querySelectorAll('.reward-breakdown-line');
+  for (let i = 0; i < lines.length; i++) {
+    await sleep(reduced ? 30 : 180);
+    lines[i].classList.add('show');
+  }
+
+  // XP bar fill — animates from startXp to (startXp + xpEarned), pausing for each level-up
+  await sleep(reduced ? 60 : 240);
+  await animateXpBar(levelInfo, rewards.xpEarned, reduced);
+
+  // First-time perk unlock banner (the most recent one in this batch wins display)
+  const unlockedPerk = [...levelInfo.levelUps].reverse().map(l => l.perkUnlocked).find(Boolean);
+  if (unlockedPerk) {
+    const banner = document.getElementById('perkUnlockBanner');
+    document.getElementById('pubIcon').textContent = unlockedPerk.icon;
+    document.getElementById('pubName').textContent = unlockedPerk.name;
+    document.getElementById('pubDesc').textContent = unlockedPerk.desc;
+    banner.style.display = 'block';
+    void banner.offsetWidth;
+    banner.classList.add('show');
+    playSfx('perkUnlock');
+    await sleep(reduced ? 80 : 320);
+  }
+
+  // Continue button slides up
+  document.getElementById('summaryContinueBtn').classList.add('show');
+}
+
+function tickValue(elId, from, to, ms, fmt) {
+  return new Promise(resolve => {
+    const el = document.getElementById(elId);
+    if (!el) { resolve(); return; }
+    if (from === to) { el.textContent = fmt(to); resolve(); return; }
+    const startT = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - startT) / ms);
+      const val = Math.round(from + (to - from) * t);
+      el.textContent = fmt(val);
+      if (t < 1) {
+        // Light tick at ~10Hz so the count audibly accelerates
+        if (Math.floor(t * (ms / 100)) % 2 === 0) playSfx('tick');
+        requestAnimationFrame(step);
+      } else {
+        el.textContent = fmt(to);
+        resolve();
+      }
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+async function animateXpBar(levelInfo, totalXpEarned, reduced) {
+  const xpBar  = document.getElementById('xpBarFill');
+  const xpText = document.getElementById('xpBarText');
+  const levelNum = document.getElementById('summaryLevelNum');
+
+  // Walk the bar across each level boundary contained in this XP gain.
+  let curLevel = levelInfo.startLevel;
+  let curXp    = levelInfo.startXp;
+  let xpRemaining = totalXpEarned;
+
+  // Single segment ends either at the next level boundary or at curXp+xpRemaining
+  while (xpRemaining > 0) {
+    const needed = xpRequiredForLevel(curLevel + 1) - curXp;
+    if (curLevel >= COACH_LEVEL_CAP) break;
+    if (xpRemaining < needed) {
+      // Fill partially within current level — final segment
+      curXp += xpRemaining;
+      xpRemaining = 0;
+      const pct = (curXp / xpRequiredForLevel(curLevel + 1)) * 100;
+      xpBar.style.width = pct.toFixed(1) + '%';
+      xpText.textContent = curXp + ' / ' + xpRequiredForLevel(curLevel + 1);
+      await sleep(reduced ? 220 : 1050);
+    } else {
+      // Fill to 100%, level up, then continue with leftover XP
+      xpRemaining -= needed;
+      xpBar.style.width = '100%';
+      xpText.textContent = xpRequiredForLevel(curLevel + 1) + ' / ' + xpRequiredForLevel(curLevel + 1);
+      await sleep(reduced ? 200 : 1050);
+      // Level up moment
+      xpBar.classList.add('flash');
+      playSfx('levelUp');
+      curLevel++;
+      levelNum.textContent = curLevel;
+      updateNextPerkHint(curLevel);
+      await sleep(reduced ? 100 : 360);
+      xpBar.classList.remove('flash');
+      // Reset bar to 0 for next level
+      curXp = 0;
+      xpBar.style.transition = 'none';
+      xpBar.style.width = '0%';
+      void xpBar.offsetWidth;
+      xpBar.style.transition = '';
+      xpText.textContent = '0 / ' + xpRequiredForLevel(curLevel + 1);
+      await sleep(reduced ? 60 : 200);
+    }
+  }
+}
+
+function returnFromSummary() {
+  const ret = _summaryReturn;
+  _summaryReturn = null;
+  if (!ret) { showScreen('menu'); updateMenuSeasonStatus(); return; }
+  // Season match: route to the season hub if it's still in progress; otherwise menu
+  if (ret.mode === 'season') {
+    if (ret.seasonOngoing) {
+      enterSeason();
+    } else {
+      showScreen('menu');
+      updateMenuSeasonStatus();
+    }
+  } else {
+    showScreen('menu');
+    updateMenuSeasonStatus();
+  }
 }
 
 // ============================================================
