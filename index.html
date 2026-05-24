@@ -1618,6 +1618,190 @@
     100% { transform: rotateX(360deg) rotateY(360deg); }
   }
 
+  /* === LEVELING PHASE A — SUB-PHASE 3 (LOCKER ROOM) === */
+  #lockerRoom { display: none; flex-direction: column; }
+  #lockerRoom.active { display: flex; }
+
+  .locker-header {
+    padding: 12px;
+    padding-top: calc(env(safe-area-inset-top) + 12px);
+    background: linear-gradient(180deg, #000 0%, rgba(0,0,0,0.7) 100%);
+    border-bottom: 1px solid #c12c2c;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .locker-header h1 {
+    margin: 0;
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 3px;
+    color: #fff;
+  }
+  .locker-cash {
+    font-family: 'Bebas Neue', sans-serif; font-size: 16px; letter-spacing: 1px;
+    color: #ffb800;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid #ffb800;
+    padding: 4px 10px; border-radius: 4px;
+  }
+
+  .locker-tabs {
+    display: flex;
+    background: rgba(0,0,0,0.5);
+    border-bottom: 1px solid #222;
+    flex-shrink: 0;
+  }
+  .locker-tab {
+    flex: 1;
+    background: transparent; border: none;
+    padding: 12px 8px;
+    color: #777;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 2px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    position: relative;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .locker-tab.active { color: #ffb800; border-bottom-color: #ffb800; }
+  .locker-tab:disabled { color: #444; cursor: not-allowed; }
+  .locker-tab .coming-soon {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 8px; letter-spacing: 1px;
+    color: #666;
+    background: #1a1a1a;
+    padding: 1px 4px;
+    border-radius: 2px;
+    vertical-align: middle;
+  }
+
+  .locker-content {
+    flex: 1; min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .locker-tab-content { display: none; padding: 12px; padding-bottom: calc(env(safe-area-inset-bottom) + 16px); }
+  .locker-tab-content.active { display: block; }
+
+  .loadout-equipped h3,
+  .loadout-pool h3 {
+    margin: 4px 0 8px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 2px;
+    color: #aaa;
+  }
+  .loadout-equipped { margin-bottom: 16px; }
+
+  .equipped-slots {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  }
+  .equipped-slot {
+    min-height: 120px;
+    border: 2px dashed #444; border-radius: 6px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center;
+    padding: 6px;
+    background: rgba(0,0,0,0.3);
+    position: relative;
+  }
+  .equipped-slot.filled {
+    border-style: solid; border-color: #ffb800;
+    background: linear-gradient(180deg, #1a1605 0%, #0a0805 100%);
+    box-shadow: 0 0 12px rgba(255,184,0,0.2);
+  }
+  .equipped-slot .empty-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px;
+    color: #555;
+  }
+  .equipped-slot .perk-icon {
+    font-size: 28px; line-height: 1;
+    margin-bottom: 4px;
+  }
+  .equipped-slot .perk-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 1px;
+    color: #ffb800;
+    margin-bottom: 2px;
+  }
+  .equipped-slot .perk-desc {
+    font-family: 'JetBrains Mono', monospace; font-size: 8px; line-height: 1.2;
+    color: #aaa;
+    margin-bottom: 6px;
+  }
+  .unequip-btn {
+    background: #1a1a1a; color: #aaa;
+    border: 1px solid #444; border-radius: 3px;
+    padding: 3px 8px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 10px; letter-spacing: 1px;
+    cursor: pointer;
+  }
+  .unequip-btn:active { background: #2a2a2a; }
+
+  .perk-pool-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  }
+  .perk-card {
+    position: relative;
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+    border: 1px solid #333; border-radius: 6px;
+    padding: 10px 8px;
+    display: flex; flex-direction: column;
+    align-items: center;
+    text-align: center;
+    min-height: 110px;
+    cursor: pointer;
+    transition: transform 0.12s, border-color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .perk-card:active { transform: scale(0.97); }
+  .perk-card.locked { cursor: not-allowed; opacity: 0.45; }
+  .perk-card.equipped {
+    border-color: #ffb800;
+    box-shadow: 0 0 10px rgba(255,184,0,0.4);
+  }
+  .perk-card-icon { font-size: 26px; line-height: 1; margin-bottom: 4px; }
+  .perk-card-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 1px;
+    color: #fff;
+    margin-bottom: 3px;
+  }
+  .perk-card-desc {
+    font-family: 'JetBrains Mono', monospace; font-size: 8px; line-height: 1.25;
+    color: #aaa;
+  }
+  .perk-card .lock-overlay {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 1.5px;
+    color: #c12c2c;
+    border-radius: 6px;
+    pointer-events: none;
+    padding: 4px;
+  }
+  .perk-card .equipped-badge {
+    position: absolute;
+    top: 4px; right: 4px;
+    background: linear-gradient(135deg, #ffd84a 0%, #ff8a00 100%);
+    color: #1a0a00;
+    font-family: 'Bebas Neue', sans-serif; font-size: 9px; letter-spacing: 1px;
+    padding: 2px 5px;
+    border-radius: 3px;
+  }
+
+  .locker-footer {
+    margin-top: 20px;
+    text-align: center;
+  }
+  .reset-link {
+    background: transparent; border: none;
+    color: #555;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 8px;
+  }
+  .reset-link:active { color: #aaa; }
+
 </style>
 </head>
 <body>
@@ -1634,6 +1818,7 @@
   <button class="menu-btn" id="continueSeasonBtn" onclick="continueSeason()" style="display:none;">CONTINUE SEASON</button>
   <button class="menu-btn" onclick="startSeasonDraft()">START SEASON</button>
   <button class="menu-btn secondary" onclick="startQuickPlay()">QUICK PLAY</button>
+  <button class="menu-btn secondary" onclick="openLockerRoom()">LOCKER ROOM</button>
   <button class="menu-btn secondary" onclick="showHowToPlay()">HOW TO PLAY</button>
   <div class="field-deco"></div>
   <div class="yard-lines"></div>
@@ -1748,10 +1933,50 @@
     <button class="builder-back" onclick="showScreen('season')">← BACK</button>
   </div>
   <div class="builder-count">
-    <span style="color:#ff8a4a">OFFENSE: <span id="rosterOffCount">0</span></span> · 
+    <span style="color:#ff8a4a">OFFENSE: <span id="rosterOffCount">0</span></span> ·
     <span style="color:#4aaaff">DEFENSE: <span id="rosterDefCount">0</span></span>
   </div>
   <div class="builder-list" id="rosterList"></div>
+</div>
+
+<!-- LOCKER ROOM -->
+<div class="screen" id="lockerRoom">
+  <div class="locker-header">
+    <button class="builder-back" onclick="showScreen('menu')">← BACK</button>
+    <h1>LOCKER ROOM</h1>
+    <div class="locker-cash">💵 <span id="lockerCashDisplay">0</span></div>
+  </div>
+  <div class="locker-tabs">
+    <button class="locker-tab active" data-tab="loadout" onclick="switchLockerTab('loadout')">LOADOUT</button>
+    <button class="locker-tab" data-tab="trophies" disabled>TROPHIES <span class="coming-soon">SOON</span></button>
+    <button class="locker-tab" data-tab="progress" disabled>PROGRESS <span class="coming-soon">SOON</span></button>
+  </div>
+  <div class="locker-content">
+    <div class="locker-tab-content active" id="loadoutTab">
+      <div class="loadout-equipped">
+        <h3>EQUIPPED (3 SLOTS)</h3>
+        <div class="equipped-slots" id="equippedSlots"></div>
+      </div>
+      <div class="loadout-pool">
+        <h3>YOUR PERKS</h3>
+        <div class="perk-pool-grid" id="perkPoolGrid"></div>
+      </div>
+      <div class="locker-footer">
+        <button class="reset-link" onclick="confirmClearProgress()">Reset Progress</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SWAP PERK MODAL -->
+<div class="modal-overlay" id="swapPerkModal" onclick="if(event.target===this)closeSwapPerkModal()">
+  <div class="modal">
+    <div class="modal-sub">LOADOUT FULL</div>
+    <div class="modal-title" id="swapPerkTitle">SWAP A PERK</div>
+    <div class="modal-body" id="swapPerkBody"></div>
+    <div id="swapPerkOptions" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px;"></div>
+    <button class="menu-btn secondary" style="width: auto;" onclick="closeSwapPerkModal()">CANCEL</button>
+  </div>
 </div>
 
 <!-- 2-PT CONVERSION MODAL -->
@@ -2194,6 +2419,155 @@ const MAX_ENERGY_BANK = 10;
 // Future perks may increase this — keep it as the single source of truth.
 const HAND_SIZE = 5;
 
+// === LEVELING PHASE A — SUB-PHASE 1 (DATA LAYER) ===
+// ============================================================
+// PLAYER DATA — meta-progression that persists across matches.
+// Saved to localStorage under 'gridiron_player_v1'.
+// Separate from in-progress season state (gridiron_season_v1).
+// ============================================================
+
+const PLAYER_DATA_KEY = 'gridiron_player_v1';
+const PLAYER_DATA_VERSION = 1;
+
+function defaultPlayerData() {
+  return {
+    version: PLAYER_DATA_VERSION,
+    cash: 0,
+    coachLevel: 1,
+    coachXp: 0,
+    prestigeLevel: 0,
+    perksUnlocked: ['bigHand'],   // Big Hand is the starter perk, unlocked at level 1
+    perksEquipped: [],            // empty until player equips one
+    trophies: {},                 // populated in Phase B
+    stats: {
+      totalMatches: 0,
+      totalWins: 0,
+      totalLosses: 0,
+      currentWinStreak: 0,
+      longestWinStreak: 0,
+      pickSixes: 0,
+      shutouts: 0,
+      comebacks: 0
+    },
+    daily: {},                    // populated in Phase C
+    seasonPass: {},               // populated in Phase D
+    cosmeticsUnlocked: []         // populated in Phase F
+  };
+}
+
+let playerData = null;  // populated by loadPlayerData() at app start
+
+function loadPlayerData() {
+  try {
+    const raw = localStorage.getItem(PLAYER_DATA_KEY);
+    if (!raw) {
+      playerData = defaultPlayerData();
+      savePlayerData();
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    // Migration check — older versions get folded into the current shape
+    if (!parsed.version || parsed.version < PLAYER_DATA_VERSION) {
+      playerData = migratePlayerData(parsed);
+      savePlayerData();
+      return;
+    }
+    // Merge over defaults so new top-level fields appear on existing saves
+    playerData = Object.assign(defaultPlayerData(), parsed);
+    // Fill any missing nested fields (stats) with defaults too
+    playerData.stats = Object.assign(defaultPlayerData().stats, parsed.stats || {});
+  } catch (e) {
+    console.error('Failed to load player data, starting fresh:', e);
+    playerData = defaultPlayerData();
+    try { savePlayerData(); } catch (e2) { /* swallow — degrade gracefully */ }
+  }
+}
+
+function savePlayerData() {
+  try {
+    localStorage.setItem(PLAYER_DATA_KEY, JSON.stringify(playerData));
+  } catch (e) {
+    console.error('Failed to save player data:', e);
+    // Don't throw — degrade gracefully so the current session keeps working.
+  }
+}
+
+function migratePlayerData(oldData) {
+  // Phase A: just merge over defaults. Future migrations branch on version.
+  const fresh = defaultPlayerData();
+  return Object.assign(fresh, oldData, { version: PLAYER_DATA_VERSION });
+}
+
+// Triggered by the (yet-to-be-built) "Reset Progress" link in the Locker Room.
+// Three-step confirmation lives in the UI layer; this is the raw nuke.
+function clearPlayerData() {
+  try {
+    localStorage.removeItem(PLAYER_DATA_KEY);
+    playerData = defaultPlayerData();
+    savePlayerData();
+    location.reload();  // simplest way to reset all UI state
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// === LEVELING PHASE A — SUB-PHASE 2 (PERKS DEFINED) ===
+// ============================================================
+// PERKS — equippable bonuses that modify match behavior.
+// Phase A ships 7 Tier 1 perks; more added in Phase B / E.
+// ============================================================
+
+const PERK_POOL = [
+  { id: 'bigHand',       name: 'BIG HAND',        icon: '🃏', tier: 1, unlockLevel: 1,  desc: 'Hand size +1' },
+  { id: 'banker',        name: 'BANKER',          icon: '💰', tier: 1, unlockLevel: 3,  desc: 'Energy bank +2' },
+  { id: 'airItOut',      name: 'AIR IT OUT',      icon: '🏈', tier: 1, unlockLevel: 5,  desc: 'WR and TE cards +3 OFF' },
+  { id: 'groundGame',    name: 'GROUND GAME',     icon: '💪', tier: 1, unlockLevel: 7,  desc: 'RB cards +3 OFF' },
+  { id: 'runStuffer',    name: 'RUN STUFFER',     icon: '🛡️', tier: 1, unlockLevel: 9,  desc: 'DL cards +3 DEF' },
+  { id: 'coverageCoach', name: 'COVERAGE COACH',  icon: '🦅', tier: 1, unlockLevel: 11, desc: 'DB cards +3 DEF' },
+  { id: 'quickReads',    name: 'QUICK READS',     icon: '⚡', tier: 1, unlockLevel: 13, desc: '+2 extra energy on drive 1' }
+];
+
+function getPerk(perkId) {
+  return PERK_POOL.find(p => p.id === perkId);
+}
+
+function hasPerk(perkId) {
+  return !!(playerData && playerData.perksEquipped && playerData.perksEquipped.includes(perkId));
+}
+
+// Getters wrap the base constants so perks can adjust them. `side` defaults to
+// 'you' — perks are the player's, so AI callers must pass 'ai' to opt out.
+function getHandSize(side) {
+  let size = HAND_SIZE;
+  if (side !== 'ai' && hasPerk('bigHand')) size += 1;
+  return size;
+}
+
+function getMaxEnergyBank(side) {
+  let cap = MAX_ENERGY_BANK;
+  if (side !== 'ai' && hasPerk('banker')) cap += 2;
+  return cap;
+}
+
+// Applies the four stat-buff perks to YOUR revealed cards in a lane.
+// Called from computeLaneStats AFTER lane modifiers but BEFORE synergies, so
+// synergies stack on top of the perk-buffed stats (which feels right).
+function applyPerkStatBuffs(lane) {
+  const youCards = lane.youCards.filter(c => c.revealed && !c.ejected);
+  if (hasPerk('airItOut')) {
+    youCards.filter(c => c.pos === 'WR' || c.pos === 'TE').forEach(c => { c.curOff += 3; });
+  }
+  if (hasPerk('groundGame')) {
+    youCards.filter(c => c.pos === 'RB').forEach(c => { c.curOff += 3; });
+  }
+  if (hasPerk('runStuffer')) {
+    youCards.filter(c => c.pos === 'DE' || c.pos === 'DT').forEach(c => { c.curDef += 3; });
+  }
+  if (hasPerk('coverageCoach')) {
+    youCards.filter(c => c.pos === 'CB' || c.pos === 'S').forEach(c => { c.curDef += 3; });
+  }
+}
+
 // ============================================================
 // PORTRAIT GENERATOR — stylized SVG silhouettes with team colors
 // ============================================================
@@ -2365,9 +2739,14 @@ function newState(playerDeckCards, aiDeckCards) {
   };
   // Assign state up front so the helpers below can read it
   state = s;
-  // Draw opening hands using the cycle helpers (handles reshuffle defensively)
-  drawCardsToHand('you', HAND_SIZE);
-  drawCardsToHand('ai',  HAND_SIZE);
+  // Draw opening hands using the cycle helpers (handles reshuffle defensively).
+  // getHandSize() defaults to 'you' (perks apply); 'ai' opts out of player perks.
+  drawCardsToHand('you', getHandSize());
+  drawCardsToHand('ai',  getHandSize('ai'));
+  // Quick Reads perk: +2 energy on drive 1 (capped by the player's energy bank)
+  if (hasPerk('quickReads')) {
+    state.youEnergy = Math.min(getMaxEnergyBank(), state.youEnergy + 2);
+  }
   return s;
 }
 
@@ -2723,7 +3102,7 @@ function renderEnergy() {
     orb.textContent = remaining;
     orb.classList.toggle('depleted', remaining <= 0);
     // Cap pulse — only when the wallet itself is at cap (not affected by pending plays)
-    orb.classList.toggle('at-cap', state.youEnergy >= MAX_ENERGY_BANK);
+    orb.classList.toggle('at-cap', state.youEnergy >= getMaxEnergyBank());
   }
 }
 
@@ -2792,9 +3171,10 @@ function animateDrawHand() {
   return new Promise(resolve => {
     if (!state) { resolve(); return; }
     const reduced = prefersReducedMotion();
-    // Draw HAND_SIZE — drawCardsToHand handles reshuffle internally and triggers the
-    // reshuffle visual via showReshuffleAnimation()
-    const drawn = drawCardsToHand('you', HAND_SIZE);
+    // Draw the player's hand — drawCardsToHand handles reshuffle internally and
+    // triggers the reshuffle visual via showReshuffleAnimation().
+    // getHandSize() applies the Big Hand perk if equipped.
+    const drawn = drawCardsToHand('you', getHandSize());
     render();  // hand cards now in DOM at their natural positions
     if (drawn.length === 0) { resolve(); return; }
 
@@ -3338,6 +3718,9 @@ function computeLaneStats(lane) {
   // Apply lane modifier effects to all revealed cards in lane
   applyLaneModifier(lane);
 
+  // Apply equipped perk stat buffs (your cards only, BEFORE synergies stack)
+  applyPerkStatBuffs(lane);
+
   // Apply card synergies (each side independently)
   applySynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
   applySynergies(lane.aiCards.filter(c => c.revealed && !c.ejected));
@@ -3492,19 +3875,20 @@ async function endTurn() {
   await animateDiscardHand();   // visual: hand cards arc to discard badge
   // AI's discard/draw is silent and instant (hand isn't visible to the player)
   discardHand('ai');
-  drawCardsToHand('ai', HAND_SIZE);
+  drawCardsToHand('ai', getHandSize('ai'));
   await animateDrawHand();      // visual: cards arc from deck badge to hand
   if (!state) return;           // user conceded mid-animation
 
   // === ENERGY GAIN: ESCALATING + CARRYOVER ===
   // Drive N grants +N energy (drive 1 = +1, drive 8 = +8). Unspent energy carries
-  // over, capped at MAX_ENERGY_BANK. state.turn is incremented BEFORE the grant,
-  // so it already represents the drive about to be played.
+  // over, capped at getMaxEnergyBank() (base + Banker perk if equipped).
+  // state.turn is incremented BEFORE the grant, so it already represents the
+  // drive about to be played.
   state.turn++;
   const youCarried = state.youEnergy; // anything > 0 here was unspent last drive
   const gain = state.turn;
-  state.youEnergy = Math.min(MAX_ENERGY_BANK, state.youEnergy + gain);
-  state.aiEnergy  = Math.min(MAX_ENERGY_BANK, state.aiEnergy  + gain);
+  state.youEnergy = Math.min(getMaxEnergyBank(),      state.youEnergy + gain);
+  state.aiEnergy  = Math.min(getMaxEnergyBank('ai'),  state.aiEnergy  + gain);
 
   state.busy = false;
   render();
@@ -5025,9 +5409,144 @@ function showRoster() {
 }
 
 // ============================================================
+// LOCKER ROOM — perk loadout management
+// ============================================================
+const PERK_SWAP_COST = 25;
+
+function openLockerRoom() {
+  renderLockerRoom();
+  showScreen('lockerRoom');
+}
+
+function renderLockerRoom() {
+  document.getElementById('lockerCashDisplay').textContent = playerData.cash.toLocaleString();
+  renderEquippedSlots();
+  renderPerkPool();
+}
+
+function renderEquippedSlots() {
+  const cont = document.getElementById('equippedSlots');
+  cont.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const perkId = playerData.perksEquipped[i];
+    const slot = document.createElement('div');
+    slot.className = 'equipped-slot';
+    if (perkId) {
+      const perk = getPerk(perkId);
+      slot.classList.add('filled');
+      slot.innerHTML = `
+        <div class="perk-icon">${perk.icon}</div>
+        <div class="perk-name">${perk.name}</div>
+        <div class="perk-desc">${perk.desc}</div>
+        <button class="unequip-btn" onclick="unequipPerk('${perkId}')">UNEQUIP</button>
+      `;
+    } else {
+      slot.classList.add('empty');
+      slot.innerHTML = `<div class="empty-label">EMPTY</div>`;
+    }
+    cont.appendChild(slot);
+  }
+}
+
+function renderPerkPool() {
+  const cont = document.getElementById('perkPoolGrid');
+  cont.innerHTML = '';
+  PERK_POOL.forEach(perk => {
+    const unlocked = playerData.perksUnlocked.includes(perk.id);
+    const equipped = playerData.perksEquipped.includes(perk.id);
+    const card = document.createElement('div');
+    card.className = 'perk-card' + (unlocked ? '' : ' locked') + (equipped ? ' equipped' : '');
+    card.innerHTML = `
+      <div class="perk-card-icon">${perk.icon}</div>
+      <div class="perk-card-name">${perk.name}</div>
+      <div class="perk-card-desc">${perk.desc}</div>
+      ${equipped ? '<div class="equipped-badge">EQUIPPED</div>' : ''}
+      ${unlocked ? '' : `<div class="lock-overlay">UNLOCK AT LV ${perk.unlockLevel}</div>`}
+    `;
+    if (unlocked && !equipped) {
+      card.addEventListener('click', () => tryEquipPerk(perk.id));
+    }
+    cont.appendChild(card);
+  });
+}
+
+function tryEquipPerk(perkId) {
+  if (!playerData.perksUnlocked.includes(perkId)) return;
+  if (playerData.perksEquipped.includes(perkId)) return;
+  if (playerData.perksEquipped.length < 3) {
+    playerData.perksEquipped.push(perkId);
+    savePlayerData();
+    renderLockerRoom();
+    return;
+  }
+  // All 3 slots are full — show swap modal
+  showSwapPerkModal(perkId);
+}
+
+function showSwapPerkModal(newPerkId) {
+  const newPerk = getPerk(newPerkId);
+  if (!newPerk) return;
+  const canAfford = playerData.cash >= PERK_SWAP_COST;
+  document.getElementById('swapPerkTitle').textContent = 'SWAP IN ' + newPerk.name + '?';
+  document.getElementById('swapPerkBody').innerHTML = canAfford
+    ? `Loadout is full. Swap costs <strong>$${PERK_SWAP_COST}</strong>. Choose which equipped perk to replace with <strong>${newPerk.icon} ${newPerk.name}</strong>.`
+    : `Loadout is full and swaps cost <strong>$${PERK_SWAP_COST}</strong>. You have <strong>$${playerData.cash.toLocaleString()}</strong>. Unequip a perk first (free) or earn more cash.`;
+  const opts = document.getElementById('swapPerkOptions');
+  opts.innerHTML = '';
+  playerData.perksEquipped.forEach(equippedId => {
+    const equippedPerk = getPerk(equippedId);
+    const btn = document.createElement('button');
+    btn.className = 'menu-btn secondary';
+    btn.style.width = '100%';
+    btn.disabled = !canAfford;
+    btn.textContent = `Replace ${equippedPerk.icon} ${equippedPerk.name}`;
+    btn.onclick = () => confirmSwapPerk(equippedId, newPerkId);
+    opts.appendChild(btn);
+  });
+  document.getElementById('swapPerkModal').classList.add('show');
+}
+
+function confirmSwapPerk(oldPerkId, newPerkId) {
+  if (playerData.cash < PERK_SWAP_COST) return;
+  playerData.cash -= PERK_SWAP_COST;
+  const idx = playerData.perksEquipped.indexOf(oldPerkId);
+  if (idx >= 0) playerData.perksEquipped[idx] = newPerkId;
+  savePlayerData();
+  closeSwapPerkModal();
+  renderLockerRoom();
+}
+
+function closeSwapPerkModal() {
+  document.getElementById('swapPerkModal').classList.remove('show');
+}
+
+function unequipPerk(perkId) {
+  playerData.perksEquipped = playerData.perksEquipped.filter(p => p !== perkId);
+  savePlayerData();
+  renderLockerRoom();
+}
+
+function switchLockerTab(tab) {
+  // Phase A: only 'loadout' is active. Others are disabled at the button level.
+  if (tab !== 'loadout') return;
+  document.querySelectorAll('.locker-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.locker-tab-content').forEach(c => c.classList.toggle('active', c.id === tab + 'Tab'));
+}
+
+// Three-step confirmation so the nuke can't fire accidentally.
+function confirmClearProgress() {
+  if (!confirm('Reset ALL player progress? Cash, Coach Level, perks unlocked — everything goes back to zero.')) return;
+  if (!confirm('Really sure? This cannot be undone.')) return;
+  const typed = prompt('Type DELETE to confirm:');
+  if (typed !== 'DELETE') return;
+  clearPlayerData();
+}
+
+// ============================================================
 // INIT
 // ============================================================
 window.addEventListener('DOMContentLoaded', () => {
+  loadPlayerData();
   updateMenuSeasonStatus();
 });
 
