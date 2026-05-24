@@ -857,10 +857,43 @@
     .hand.draw-glow { animation: none; }
   }
 
+  /* === SCROLLABLE HAND + GESTURE DISCRIMINATION === */
+  .hand-wrapper { position: relative; }
+  .hand-wrapper::before,
+  .hand-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 16px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .hand-wrapper::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+  }
+  .hand-wrapper::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+  }
+  .hand-wrapper.scroll-left::before  { opacity: 1; }
+  .hand-wrapper.scroll-right::after  { opacity: 1; }
+
   .hand {
-    display: flex; gap: 5px; overflow-x: auto; padding: 2px;
+    display: flex;
+    gap: 5px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 2px 12px;
     scrollbar-width: none;
-    justify-content: center;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+    /* Center when content fits, abandon centering when it overflows (so left
+       items aren't clipped at narrow viewports). */
+    justify-content: safe center;
   }
   .hand::-webkit-scrollbar { display: none; }
 
@@ -871,7 +904,14 @@
     overflow: hidden;
     cursor: grab; transition: transform 0.15s, box-shadow 0.15s;
     box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-    touch-action: none;
+    /* pan-x lets the browser handle horizontal scrolling; prepareDrag picks
+       up vertical/diagonal gestures via JS and converts them to a drag. */
+    touch-action: pan-x;
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .hand { scroll-behavior: auto; }
   }
   .hand-card.off-card { border-color: #ff8a4a; }
   .hand-card.def-card { border-color: #4aaaff; }
@@ -1581,20 +1621,67 @@
     color: #888; letter-spacing: 1px;
   }
 
-  /* DICE ANIMATION */
-  .dice-container {
-    display: flex; justify-content: center; gap: 12px; margin: 16px 0;
+  /* === COIN FLIP CONVERSION (REPLACES 2D6) === */
+  .coin-prompt {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px; letter-spacing: 2px;
+    color: #ffb800; margin-bottom: 12px;
   }
-  .dice {
-    width: 50px; height: 50px; background: #fff; border-radius: 8px;
+  .coin-choice-buttons {
+    display: flex; justify-content: center; gap: 12px; margin-bottom: 16px;
+  }
+  .coin-call-btn {
+    background: linear-gradient(180deg, #2a6a4a 0%, #144a2a 100%);
+    color: #fff;
+    border: 1px solid #4aff8a;
+    padding: 12px 24px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px; letter-spacing: 2px;
+    cursor: pointer; border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    transition: transform 0.1s;
+  }
+  .coin-call-btn:active { transform: translateY(1px); }
+  .coin-call-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .coin-container {
+    perspective: 800px;
+    display: flex; justify-content: center;
+    height: 100px; align-items: center;
+    margin: 16px 0;
+  }
+  .coin {
+    width: 80px; height: 80px;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .coin.flipping-heads { transform: rotateY(1800deg); }
+  .coin.flipping-tails { transform: rotateY(1980deg); }
+  .coin-face {
+    position: absolute; inset: 0;
+    border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: #000;
-    box-shadow: 0 4px 0 #aaa;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 40px; font-weight: 700;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border: 3px solid #b8860b;
+    box-shadow:
+      inset 0 -4px 8px rgba(0,0,0,0.3),
+      inset 0 4px 8px rgba(255,255,255,0.4),
+      0 4px 8px rgba(0,0,0,0.5);
   }
-  .dice.rolling { animation: diceRoll 0.6s linear infinite; }
-  @keyframes diceRoll {
-    0% { transform: rotateX(0) rotateY(0); }
-    100% { transform: rotateX(360deg) rotateY(360deg); }
+  .coin-heads {
+    background: radial-gradient(circle at 30% 30%, #ffe580 0%, #ffd700 50%, #b8860b 100%);
+    color: #5c3a00;
+  }
+  .coin-tails {
+    background: radial-gradient(circle at 30% 30%, #ffe580 0%, #ffd700 50%, #b8860b 100%);
+    color: #5c3a00;
+    transform: rotateY(180deg);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .coin { transition: none; }
   }
 
   /* === LEVELING PHASE A — SUB-PHASE 3 (LOCKER ROOM) === */
@@ -2077,7 +2164,9 @@
         <span class="pile-count" id="discardCount">0</span>
       </button>
     </div>
-    <div class="hand" id="hand"></div>
+    <div class="hand-wrapper" id="handWrapper">
+      <div class="hand" id="hand"></div>
+    </div>
     <div class="action-bar">
       <button class="concede-btn" onclick="quitGame()">CONCEDE</button>
       <div class="energy-orb" id="energyOrb" data-tooltip="energyOrb">1</div>
@@ -2229,12 +2318,19 @@
     <div class="modal-sub">AFTER TOUCHDOWN</div>
     <div class="modal-title" id="conversionTitle">EXTRA POINT?</div>
     <div class="modal-body" id="conversionBody"></div>
-    <div id="diceArea" style="display:none;">
-      <div class="dice-container">
-        <div class="dice" id="dice1">?</div>
-        <div class="dice" id="dice2">?</div>
+    <div id="coinArea" style="display:none;">
+      <div class="coin-prompt" id="coinPrompt">CALL IT</div>
+      <div class="coin-choice-buttons" id="coinChoiceButtons">
+        <button class="coin-call-btn" onclick="callCoin('heads')">HEADS</button>
+        <button class="coin-call-btn" onclick="callCoin('tails')">TAILS</button>
       </div>
-      <div id="diceResult" style="font-family: 'Bebas Neue'; font-size: 20px; color: #ffb800; margin: 12px 0;"></div>
+      <div class="coin-container" id="coinContainer" style="display:none;">
+        <div class="coin" id="coinElement">
+          <div class="coin-face coin-heads">H</div>
+          <div class="coin-face coin-tails">T</div>
+        </div>
+      </div>
+      <div id="coinResult" style="font-family: 'Bebas Neue'; font-size: 20px; color: #ffb800; margin: 12px 0;"></div>
     </div>
     <div id="conversionButtons" style="display: flex; flex-direction: column; gap: 8px;">
       <button class="play-btn" id="goForTwoBtn" onclick="goForTwo()">GO FOR 2 (+8 TOTAL)</button>
@@ -2256,7 +2352,7 @@
       <p><strong>THE PUSH:</strong> Your OFFENSE in a lane moves YOUR ball forward. Their DEFENSE pushes it back. (Net = your OFF − their DEF, ~10 yds per 25 power.)</p>
       <p><strong>🏈 TOUCHDOWN (6 pts):</strong> Reach 100 yards on your drive.</p>
       <p><strong>+1 PAT:</strong> Auto if you have a Kicker (K) in that lane → 7 pts.</p>
-      <p><strong>+2 CONVERSION:</strong> More OFF cards than they have DEF → roll 7+ on 2d6 → 8 pts.</p>
+      <p><strong>+2 CONVERSION:</strong> More OFF cards than they have DEF → call HEADS or TAILS → match the coin flip to score → 8 pts.</p>
       <p><strong>🛡 SAFETY (2 pts):</strong> Push their ball past 0.</p>
       <p><strong>🎯 PICK-SIX (6 pts):</strong> Safety + 4+ DBs (CB/S) in lane.</p>
       <p><strong>🟡 LANE MODIFIERS:</strong> Every match each lane has a random condition (weather, tactics, position bonuses, or wild rules). Tap one to read it.</p>
@@ -3816,7 +3912,10 @@ function renderHand() {
       ${card.ability ? `<div class="hc-ability-dot" title="${card.ability}">★</div>` : ''}
     `;
     if (affordable && !state.busy) {
-      el.addEventListener('pointerdown', e => startDrag(e, card, el));
+      // Deferred drag: prepareDrag waits for movement to decide between scroll
+      // (mostly horizontal) and drag (vertical / diagonal-up). See gesture
+      // discrimination block below.
+      el.addEventListener('pointerdown', e => prepareDrag(e, card, el));
     }
     hand.appendChild(el);
   });
@@ -3836,6 +3935,20 @@ function renderHand() {
       btn.classList.remove('ready');
     }
   }
+
+  updateHandScrollShadows();
+}
+
+// Edge-fade affordances: toggle gradients based on scroll position so the
+// player can see there's more hand to scroll to.
+function updateHandScrollShadows() {
+  const wrapper = document.getElementById('handWrapper');
+  const hand    = document.getElementById('hand');
+  if (!wrapper || !hand) return;
+  const scrollLeft = hand.scrollLeft;
+  const maxScroll  = hand.scrollWidth - hand.clientWidth;
+  wrapper.classList.toggle('scroll-left',  scrollLeft > 4);
+  wrapper.classList.toggle('scroll-right', scrollLeft < maxScroll - 4);
 }
 
 function getPendingCost() {
@@ -3843,9 +3956,68 @@ function getPendingCost() {
 }
 
 // ============================================================
-// DRAG & DROP
+// DRAG & DROP — with gesture discrimination so the hand can scroll
 // ============================================================
 let dragState = null;
+
+// === SCROLLABLE HAND + GESTURE DISCRIMINATION ===
+// Defer the drag commit until we've seen enough pointer movement to tell
+// whether the user is trying to scroll the hand (mostly horizontal) or play
+// a card (vertical or diagonal up). Tap-with-no-movement falls through to
+// the existing tooltip system.
+let pendingDrag = null;
+const DRAG_THRESHOLD_PX = 8;
+
+function prepareDrag(e, card, sourceEl) {
+  if (state.busy) return;
+  // Don't preventDefault — let the browser potentially start a horizontal scroll.
+  pendingDrag = {
+    card, sourceEl, pointerId: e.pointerId,
+    startX: e.clientX, startY: e.clientY
+  };
+  sourceEl.addEventListener('pointermove',   onPrepareDragMove);
+  sourceEl.addEventListener('pointerup',     onPrepareDragEnd);
+  sourceEl.addEventListener('pointercancel', onPrepareDragEnd);
+}
+
+function onPrepareDragMove(e) {
+  if (!pendingDrag || pendingDrag.pointerId !== e.pointerId) return;
+  const dx  = e.clientX - pendingDrag.startX;
+  const dy  = e.clientY - pendingDrag.startY;
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < DRAG_THRESHOLD_PX) return;
+
+  // Mostly horizontal AND not moving up (cards live below the lanes — any
+  // upward motion is a clear drag-to-play intent).
+  const mostlyHorizontal = adx > ady * 1.5 && dy >= 0;
+
+  // Decision is final — tear down prepare listeners
+  pendingDrag.sourceEl.removeEventListener('pointermove',   onPrepareDragMove);
+  pendingDrag.sourceEl.removeEventListener('pointerup',     onPrepareDragEnd);
+  pendingDrag.sourceEl.removeEventListener('pointercancel', onPrepareDragEnd);
+
+  if (mostlyHorizontal) {
+    // Scroll intent — let the browser handle it. Do nothing.
+    pendingDrag = null;
+    return;
+  }
+
+  // Drag intent — commit, then immediately position the ghost at current pointer
+  const pd = pendingDrag;
+  pendingDrag = null;
+  startDrag(e, pd.card, pd.sourceEl);
+  onDragMove(e);
+}
+
+function onPrepareDragEnd(e) {
+  if (!pendingDrag) return;
+  pendingDrag.sourceEl.removeEventListener('pointermove',   onPrepareDragMove);
+  pendingDrag.sourceEl.removeEventListener('pointerup',     onPrepareDragEnd);
+  pendingDrag.sourceEl.removeEventListener('pointercancel', onPrepareDragEnd);
+  pendingDrag = null;
+}
 
 function startDrag(e, card, sourceEl) {
   if (state.busy) return;
@@ -4521,10 +4693,10 @@ async function scoreTouchdown(side, lane) {
     // Offer 2-pt conversion
     await showConversionChoice(lane);
   } else if (side === 'ai' && canGoForTwo && !kicker) {
-    // AI decides: 50/50
+    // AI decides: 50% chance to attempt. Attempt is a coin flip — AI calls
+    // randomly, so 50% to match = 25% overall (vs old 2d6's ~29%, close enough).
     if (Math.random() < 0.5) {
-      const roll = (1 + Math.floor(Math.random()*6)) + (1 + Math.floor(Math.random()*6));
-      if (roll >= 7) {
+      if (Math.random() < 0.5) {
         state.aiScore += 2;
         state.scoringLog.push({ team: 'ai', type: '2PT', points: 2, lane: lane.name, drive: state.turn });
         await showScoreBurst('CPU 2-PT!', 'safety', 1400);
@@ -4562,11 +4734,14 @@ async function showConversionChoice(lane) {
   return new Promise(resolve => {
     const modal = document.getElementById('conversionModal');
     const body = document.getElementById('conversionBody');
-    document.getElementById('diceArea').style.display = 'none';
+    document.getElementById('coinArea').style.display = 'none';
     document.getElementById('conversionButtons').style.display = 'flex';
     document.getElementById('conversionTitle').textContent = 'GO FOR 2?';
-    body.innerHTML = '<p>You have more OFF cards than they have DEF in this lane.</p><p>Roll 7+ on 2d6 to convert!</p>';
+    body.innerHTML = '<p>You have more OFF cards than they have DEF in this lane.</p><p>Call HEADS or TAILS and match the flip to score!</p>';
     modal.classList.add('show');
+    // Defensive — clear any lingering resolver from a previous conversion (shouldn't
+    // happen since the modal blocks input, but cheap to be safe).
+    if (window._conversionResolve) { window._conversionResolve(); }
     window._conversionResolve = resolve;
     window._conversionLane = lane;
   });
@@ -4577,35 +4752,63 @@ function kickPAT() {
   if (window._conversionResolve) { window._conversionResolve(); window._conversionResolve = null; }
 }
 
+// === COIN FLIP CONVERSION (REPLACES 2D6) ===
+// goForTwo: opens the coin area with the CALL IT prompt and waits for the
+// player to tap HEADS or TAILS. The actual flip happens in callCoin().
 async function goForTwo() {
   document.getElementById('conversionButtons').style.display = 'none';
-  document.getElementById('diceArea').style.display = 'block';
-  document.getElementById('diceResult').textContent = '';
-  const d1El = document.getElementById('dice1');
-  const d2El = document.getElementById('dice2');
-  d1El.classList.add('rolling'); d2El.classList.add('rolling');
-  d1El.textContent = '?'; d2El.textContent = '?';
-  await sleep(1200);
-  const d1 = 1 + Math.floor(Math.random()*6);
-  const d2 = 1 + Math.floor(Math.random()*6);
-  d1El.classList.remove('rolling'); d2El.classList.remove('rolling');
-  d1El.textContent = d1; d2El.textContent = d2;
-  const total = d1 + d2;
-  const resultEl = document.getElementById('diceResult');
-  if (total >= 7) {
-    resultEl.textContent = `${total} — CONVERTED!`;
+  document.getElementById('coinArea').style.display = 'block';
+  document.getElementById('coinPrompt').style.display = 'block';
+  document.getElementById('coinChoiceButtons').style.display = 'flex';
+  document.getElementById('coinContainer').style.display = 'none';
+  document.getElementById('coinResult').textContent = '';
+  document.getElementById('coinResult').style.color = '#ffb800';
+  // Reset coin rotation in case this is a second conversion in the same match
+  const coinEl = document.getElementById('coinElement');
+  coinEl.classList.remove('flipping-heads', 'flipping-tails');
+  // Re-enable both call buttons (they get disabled after a tap)
+  document.querySelectorAll('.coin-call-btn').forEach(b => { b.disabled = false; });
+}
+
+async function callCoin(playerCall) {
+  // Lock both buttons against double-tap so the second call doesn't fire mid-flip
+  const callBtns = document.querySelectorAll('.coin-call-btn');
+  if (callBtns[0] && callBtns[0].disabled) return;
+  callBtns.forEach(b => { b.disabled = true; });
+
+  document.getElementById('coinPrompt').style.display = 'none';
+  document.getElementById('coinChoiceButtons').style.display = 'none';
+  document.getElementById('coinContainer').style.display = 'flex';
+
+  // 50/50 result
+  const result = Math.random() < 0.5 ? 'heads' : 'tails';
+  const coinEl = document.getElementById('coinElement');
+  const reduced = prefersReducedMotion();
+
+  await sleep(150);  // tiny beat so the player sees the coin before it flips
+  coinEl.classList.add('flipping-' + result);
+  playSfx('coinFlip');
+  await sleep(reduced ? 200 : 1500);  // wait for CSS transition (1.4s) + a beat
+
+  const matched = (playerCall === result);
+  const resultEl = document.getElementById('coinResult');
+  if (matched) {
+    resultEl.textContent = result.toUpperCase() + ' — CONVERTED!';
     resultEl.style.color = '#4aff8a';
     state.youScore += 2;
     const lane = window._conversionLane;
     state.scoringLog.push({ team: 'you', type: '2PT', points: 2, lane: lane.name, drive: state.turn });
+    playSfx('confirm');
     render();
     await sleep(1400);
     await showScoreBurst('2-PT CONVERSION!', 'touchdown', 1600);
   } else {
-    resultEl.textContent = `${total} — NO GOOD`;
+    resultEl.textContent = result.toUpperCase() + ' — NO GOOD';
     resultEl.style.color = '#ff4a4a';
+    playSfx('discard');
     await sleep(1800);
   }
+
   document.getElementById('conversionModal').classList.remove('show');
   if (window._conversionResolve) { window._conversionResolve(); window._conversionResolve = null; }
 }
@@ -4958,6 +5161,30 @@ function playSfx(type) {
         osc.connect(gain).connect(ctx.destination);
         osc.start(t); osc.stop(t + 0.31);
       });
+    } else if (type === 'coinFlip') {
+      // Ascending sine sweep (~200ms) for the spin, then a brief clink near the end
+      const spin = ctx.createOscillator(), spinGain = ctx.createGain();
+      spin.type = 'sine';
+      spin.frequency.setValueAtTime(420, now);
+      spin.frequency.exponentialRampToValueAtTime(900, now + 0.2);
+      spinGain.gain.setValueAtTime(0.12, now);
+      spinGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      spin.connect(spinGain).connect(ctx.destination);
+      spin.start(now); spin.stop(now + 0.23);
+      // High-frequency clink — short noise burst with a fast decay
+      const clinkStart = now + 1.35;
+      const bufSize = Math.floor(ctx.sampleRate * 0.05);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const clinkGain = ctx.createGain();
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'highpass'; filt.frequency.value = 4000;
+      clinkGain.gain.setValueAtTime(0.18, clinkStart);
+      clinkGain.gain.exponentialRampToValueAtTime(0.001, clinkStart + 0.06);
+      src.connect(filt).connect(clinkGain).connect(ctx.destination);
+      src.start(clinkStart);
     }
   } catch (e) { /* swallow audio errors during animations */ }
 }
@@ -6105,6 +6332,9 @@ function returnFromSummary() {
 window.addEventListener('DOMContentLoaded', () => {
   loadPlayerData();
   updateMenuSeasonStatus();
+  // Edge-fade shadows on the hand update as the player swipe-scrolls
+  const hand = document.getElementById('hand');
+  if (hand) hand.addEventListener('scroll', updateHandScrollShadows);
 });
 
 </script>
