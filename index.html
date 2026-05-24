@@ -136,6 +136,7 @@
     font-family: 'JetBrains Mono', monospace; font-size: 9px;
     color: #aaa; letter-spacing: 1px; margin-top: 2px;
     text-align: center; line-height: 1.2;
+    white-space: nowrap;
   }
   .center-status .drive-num {
     font-family: 'Bebas Neue', sans-serif; font-size: 13px;
@@ -2694,7 +2695,7 @@ function render() {
   updatePileCount('deckCount',    'deckBadge',    state.youDeck.length);
   updatePileCount('discardCount', 'discardBadge', state.youDiscard.length);
   document.getElementById('quarterNum').textContent = 'DRIVE ' + state.turn + ' OF 8';
-  document.getElementById('halfLabel').textContent = state.turn <= 4 ? '1ST HALF' : '2ND HALF';
+  document.getElementById('halfLabel').textContent = quarterLabel(state.turn);
   renderEnergy();
   renderLanes();
   renderHand();
@@ -3021,6 +3022,13 @@ function formatYardLine(pos) {
   if (pos === 50) return '50';
   if (pos < 50) return 'OWN ' + pos;
   return 'OPP ' + (100 - pos);
+}
+
+// Map drive number (1-8) to its corresponding quarter label (1, 2 → 1ST, etc.)
+function quarterLabel(drive) {
+  const q = Math.ceil(drive / 2);
+  const labels = { 1: '1ST QUARTER', 2: '2ND QUARTER', 3: '3RD QUARTER', 4: '4TH QUARTER' };
+  return labels[q] || '1ST QUARTER';
 }
 
 function buildFieldCard(card, side, hidden) {

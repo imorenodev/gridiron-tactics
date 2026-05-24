@@ -2,7 +2,7 @@
 
 ## Context
 
-Two small UI text changes in `gridiron-tactics.html`. Re-read CLAUDE.md if it's been a while.
+Two small UI text changes in `index.html`. Re-read CLAUDE.md if it's been a while.
 
 These are surgical edits — find the element, change the surrounding markup and the render-time text update. Don't touch any logic.
 

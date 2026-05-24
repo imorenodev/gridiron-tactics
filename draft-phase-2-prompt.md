@@ -4,7 +4,7 @@
 
 Phase 1 of the pack-rip draft is complete and playtested. Before building the escalating rarity system, the user has three UX refinements from playtesting that must ship first. These are tweaks to Phase 1 code, then we proceed with the planned Phase 2 work.
 
-**Re-read CLAUDE.md and the existing Phase 1 implementation in `gridiron-tactics.html` before editing.** The Phase 1 marker comment is your starting point — look for `// === PHASE 1 COMPLETE ===` and read the surrounding draft code.
+**Re-read CLAUDE.md and the existing Phase 1 implementation in `index.html` before editing.** The Phase 1 marker comment is your starting point — look for `// === PHASE 1 COMPLETE ===` and read the surrounding draft code.
 
 ---
 

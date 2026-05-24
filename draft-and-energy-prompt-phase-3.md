@@ -7,7 +7,7 @@ Phase 2 (escalating rarity, 3+3 pack composition, no-confirm picking, FINAL PICK
 1. **Auto-Pick Remaining** button in the draft — for users who want to skip the remaining packs and start playing
 2. **Energy carryover** — unspent energy at the end of a drive carries forward to the next drive, capped at 10
 
-**Re-read CLAUDE.md and inspect the current state of `gridiron-tactics.html` before editing.** Look for the `// === PHASE 2 COMPLETE ===` marker and the energy-related code in the game-turn flow.
+**Re-read CLAUDE.md and inspect the current state of `index.html` before editing.** Look for the `// === PHASE 2 COMPLETE ===` marker and the energy-related code in the game-turn flow.
 
 Both changes are independent. Build them in the order below.
 

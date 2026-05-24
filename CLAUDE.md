@@ -4,7 +4,7 @@ Hey Claude. This is a single-file HTML5 football card game (Marvel Snap × NFL, 
 
 ## The one rule that matters most
 
-**Everything lives in one file: `gridiron-tactics.html`** (~3500 lines, HTML/CSS/JS all together). When in doubt, `grep` first — there is no module system, no build step, no bundler. The whole game opens in a browser by double-clicking the file. Do not split it into multiple files unless explicitly asked.
+**Everything lives in one file: `index.html`** (~3500 lines, HTML/CSS/JS all together). When in doubt, `grep` first — there is no module system, no build step, no bundler. The whole game opens in a browser by double-clicking the file. Do not split it into multiple files unless explicitly asked.
 
 ## What this game is
 
@@ -233,7 +233,7 @@ There are no automated tests. The user playtests on their phone. Before committi
 # Syntax check the JS
 node -e "
 const fs = require('fs');
-const html = fs.readFileSync('gridiron-tactics.html', 'utf8');
+const html = fs.readFileSync('index.html', 'utf8');
 const m = html.match(/<script>([\s\S]*?)<\/script>/);
 if (m) { try { new Function(m[1]); console.log('JS: OK'); } catch(e) { console.log('JS error:', e.message); } }
 "
@@ -254,7 +254,7 @@ Any of these is multi-session work. Don't rush.
 
 ## Quick reference: filenames and IDs
 
-- Main file: `gridiron-tactics.html`
+- Main file: `index.html`
 - localStorage key: `gridiron_season_v1`
 - Top-level screen IDs: `menu`, `game`, `result`, `draft`, `season`, `roster`
 - Modals: `howModal`

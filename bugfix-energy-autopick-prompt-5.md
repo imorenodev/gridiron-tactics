@@ -2,7 +2,7 @@
 
 ## Context
 
-Three playtest bugs to fix in `gridiron-tactics.html`. Re-read CLAUDE.md if it's been a while.
+Three playtest bugs to fix in `index.html`. Re-read CLAUDE.md if it's been a while.
 
 These are surgical fixes — do not refactor surrounding code. Bug #1 is a design bug (wrong math); bugs #2 and #3 are smaller polish issues.
 
