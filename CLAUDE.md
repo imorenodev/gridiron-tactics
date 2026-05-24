@@ -36,10 +36,12 @@ state = {
   youEnergy, youEnergyMax,  // your energy this drive
   aiEnergy,  aiEnergyMax,
   youScore, aiScore,
-  youDeck:  [...cards],     // draw pile
-  aiDeck:   [...cards],
-  youHand:  [...cards],
-  aiHand:   [...cards],
+  youDeck:    [...cards],   // draw pile
+  aiDeck:     [...cards],
+  youHand:    [...cards],   // fixed-size hand (HAND_SIZE) drawn each drive
+  aiHand:     [...cards],
+  youDiscard: [...cards],   // cards discarded from hand at end of drive
+  aiDiscard:  [...cards],   //   (reshuffles back into deck when deck empties)
   lanes: [                  // always exactly 3
     {
       idx, name, flavor,
@@ -89,8 +91,9 @@ This is the most important sequence in the game. When the player clicks **END TU
    - Math: `yourGain = floor(stats.youOff / 2.5)`, `yourLoss = floor(stats.aiDef / 2.5)`. `yourDelta = yourGain - yourLoss`. Apply to `lane.youPos`. Symmetric for AI.
    - Special modifiers apply here: COIN FLIP doubles/halves; TURNOVER swaps positions on inactivity.
    - `checkScoring(lane)` checks if anyone scored. Returns `'you'`, `'ai'`, or null.
-5. **Cleanup** — `state.turn++`, refill energy, draw cards, render.
-6. If `state.turn > 8` → `endGame()`.
+5. **Draw/discard cycle** — `animateDiscardHand()` arcs unplayed hand cards to the discard pile; AI's discard/draw happens silently. Then `animateDrawHand()` draws `HAND_SIZE` cards from the deck (reshuffling discard back in if needed via `reshuffleDiscardIntoDeck`).
+6. **Cleanup** — `state.turn++`, energy grant (drive N grants +N, capped at `MAX_ENERGY_BANK`), render.
+7. If `state.turn > 8` → `endGame()`.
 
 When in doubt about scoring math, trace through `computeLaneStats` → `processYardageAndScoring` → `checkScoring`. These are the source of truth.
 
@@ -134,7 +137,8 @@ Cards are generated procedurally by `generateCard(side)` using `FIRST_NAMES`, `L
 | Card portraits | `generatePortraitSVG(card, size)` returns raw SVG string, deterministic by `seedRandom(card.id)` |
 | Season mode | `seasonState`, `loadSeason/saveSeason`, `OPPONENT_TEAMS`, `playSeasonMatch` |
 | Draft (pack-rip) | `draftState`, `generateDraftPack`, `PACK_RARITY_TABLE`, `startPack`, `tapPackCard`, `confirmPackPicks`, `applyCardLayout`, `runAutoPickFastForward` |
-| Energy carryover (`MAX_ENERGY_BANK` constant) | `MAX_ENERGY_BANK` declaration, drive-transition block in `endTurn`, `renderEnergy` cap pulse, `showCarriedToast` |
+| Energy: escalating gain + carryover (`MAX_ENERGY_BANK` cap) | `MAX_ENERGY_BANK` declaration, drive-transition block in `endTurn` (drive N grants +N energy, carryover capped), `renderEnergy` cap pulse, `showCarriedToast` |
+| Draw / discard cycle (`HAND_SIZE` per drive, discard reshuffles when deck empties) | `HAND_SIZE` declaration, `drawCardsToHand`, `discardHand`, `reshuffleDiscardIntoDeck`, `animateDiscardHand`, `animateDrawHand`, `showReshuffleAnimation`, `openDiscardModal` |
 
 ## Conventions to follow
 
@@ -209,6 +213,7 @@ Each modifier should be **clearly different** from existing ones in feel. Don't 
 - **Don't add TypeScript.** Same reason.
 - **Don't replace innerHTML rendering with a framework.** React/Vue/Svelte would be massive over-engineering for this.
 - **Don't generate real player photos.** SVG silhouettes only. Even AI-generated photos invite NIL claims.
+- **Don't add a "save card from discard" mechanic.** The discard cycle is the core tension — circumventing it (e.g., a Tutor ability that pulls from discard, an extra-card-per-drive perk that hoards, etc.) defeats the design's purpose. New perks should affect *what enters the cycle* (deck composition, draw quality) or *what flows through it* (hand size, draw count), not bypass it.
 
 ## Common tasks and where to start
 
@@ -217,7 +222,8 @@ Each modifier should be **clearly different** from existing ones in feel. Don't 
 - **"Change scoring rules"** → `scoreTouchdown`, `scoreDefense`, `kickPAT`. The `SCALE = 2.5` constant in `processYardageAndScoring` controls yardage tempo.
 - **"AI is too easy/hard"** → `aiMakePlays()`. Current heuristic just plays affordable cards in the lane where it's losing. Smarter AI is open territory.
 - **"Add a tooltip to X"** → add `data-tooltip="key"` to the element, add an entry to the `TOOLTIPS` object. For dynamic content, also set `data-tooltip-title` and `data-tooltip-body` with `escAttr(...)`.
-- **"Change the energy cap"** → the cap is a single constant: `MAX_ENERGY_BANK` (declared near `MAX_SLOTS`). When adding leveling/perks, modify this value (or wrap it in a getter that checks active perks). **Do not introduce a parallel cap variable** — keep this as the single source of truth. The tooltip body interpolates it (`'... up to a max of ' + MAX_ENERGY_BANK`) so user-facing copy stays in sync.
+- **"Change the energy cap or curve"** → the cap is a single constant: `MAX_ENERGY_BANK` (declared near `MAX_SLOTS`). The per-drive grant is `state.turn` energy (drive N grants +N), set in the `endTurn` drive-transition block. When adding leveling/perks, modify the constant (or wrap it in a getter that checks active perks). **Do not introduce a parallel cap variable** — keep this as the single source of truth. The tooltip body interpolates it (`'... up to a max of ' + MAX_ENERGY_BANK`) so user-facing copy stays in sync.
+- **"Change hand size"** → modify the `HAND_SIZE` constant (declared next to `MAX_ENERGY_BANK`). It's used everywhere the cycle draws cards (`newState` initial draw, `endTurn` per-drive draw, the `deckPile` tooltip body). To make hand size depend on perks later, wrap it in a getter (e.g., `getHandSize()` that consults active perks). Don't hardcode 5 elsewhere.
 
 ## Testing
 

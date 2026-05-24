@@ -742,11 +742,119 @@
     50% { box-shadow: 0 0 0 8px rgba(255,215,0,0); }
   }
 
-  .deck-info-row {
-    text-align: center; padding: 0 0 4px;
-    font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #888;
+  /* Draw + discard pile row (replaces the old DECK REMAINING text) */
+  .pile-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 2px 4px 4px;
   }
-  .deck-info-row span { color: #ffb800; font-weight: 700; }
+  .pile-row-mid {
+    flex: 1;
+    text-align: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 2px;
+    color: #ffb800;
+    opacity: 0;
+    transition: opacity 0.3s ease-out;
+    text-shadow: 0 0 8px rgba(255,184,0,0.6);
+    pointer-events: none;
+  }
+  .pile-row-mid.show { opacity: 1; }
+  .pile-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(20, 20, 20, 0.7);
+    border: 1px solid #555; border-radius: 4px;
+    padding: 6px 9px;
+    min-height: 36px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: #aaa; letter-spacing: 1px;
+    cursor: default;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.18s ease-out, border-color 0.18s;
+  }
+  .pile-badge .pile-icon { font-size: 16px; line-height: 1; }
+  .pile-badge .pile-label { font-weight: 700; }
+  .pile-badge .pile-count { color: #ffb800; font-weight: 700; min-width: 14px; text-align: right; }
+  .deck-badge { border-color: #4a6a4a; }
+  .discard-badge { border-color: #6a4a4a; cursor: pointer; }
+  .discard-badge:active { background: rgba(40, 20, 20, 0.85); }
+  .pile-badge.bump { animation: pileBump 0.22s ease-out; }
+  @keyframes pileBump {
+    0%   { transform: scale(1); }
+    50%  { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+
+  /* Hand cards mid-flight to the discard pile or arriving from the deck */
+  .hand-card.discarding-card {
+    transition: transform 0.6s cubic-bezier(.4,.2,.3,1), opacity 0.6s ease-out;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .hand-card.drawing-in {
+    transition: transform 0.4s cubic-bezier(.2,.6,.3,1), opacity 0.4s ease-out;
+    z-index: 50;
+  }
+  .hand.draw-glow { animation: handDrawGlow 0.4s ease-out; }
+  @keyframes handDrawGlow {
+    0%   { box-shadow: 0 0 0 rgba(255,184,0,0); }
+    40%  { box-shadow: 0 0 14px rgba(255,184,0,0.55); }
+    100% { box-shadow: 0 0 0 rgba(255,184,0,0); }
+  }
+
+  /* Discard pile modal */
+  .discard-modal-list {
+    text-align: left;
+    max-height: 60vh; overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 8px 0 12px;
+  }
+  .discard-modal-drive {
+    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+    color: #ffb800; letter-spacing: 2px;
+    margin: 10px 0 6px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 3px;
+  }
+  .discard-modal-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .discard-modal-card {
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+    border: 1px solid #444; border-radius: 4px;
+    padding: 4px;
+    display: flex; flex-direction: column;
+    align-items: center;
+    min-height: 80px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .discard-modal-card.off-side { border-left: 3px solid #ff8a4a; }
+  .discard-modal-card.def-side { border-left: 3px solid #4aaaff; }
+  .discard-modal-card .dm-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: 10px;
+    color: #fff; text-align: center; line-height: 1.05;
+  }
+  .discard-modal-card .dm-meta {
+    font-size: 8px; color: #888; margin-top: 2px;
+  }
+  .discard-modal-card .dm-stat {
+    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+    margin-top: auto;
+  }
+  .discard-modal-card.off-side .dm-stat { color: #ff8a4a; }
+  .discard-modal-card.def-side .dm-stat { color: #4aaaff; }
+  .discard-modal-empty {
+    text-align: center;
+    padding: 20px 0;
+    color: #777;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hand-card.discarding-card,
+    .hand-card.drawing-in { transition: opacity 0.2s ease-out; }
+    .pile-badge.bump { animation: none; }
+    .hand.draw-glow { animation: none; }
+  }
 
   .hand {
     display: flex; gap: 5px; overflow-x: auto; padding: 2px;
@@ -1111,8 +1219,8 @@
     color: #fff; border: 1px solid #ffb800;
   }
   /* Compressed final-pack intro used by the fast-forward path */
-  .final-pack-banner.ff { animation-duration: 0.4s; }
-  .final-pack-dim.ff    { animation-duration: 0.4s; }
+  .final-pack-banner.ff { animation-duration: 0.6s; }
+  .final-pack-dim.ff    { animation-duration: 0.6s; }
 
   .pack-streaks {
     min-height: 28px;
@@ -1565,7 +1673,19 @@
   </div>
 
   <div class="hand-section">
-    <div class="deck-info-row">DECK REMAINING: <span id="deckCount">12</span></div>
+    <div class="pile-row">
+      <button class="pile-badge deck-badge" id="deckBadge" data-tooltip="deckPile" type="button">
+        <span class="pile-icon">🂠</span>
+        <span class="pile-label">DECK</span>
+        <span class="pile-count" id="deckCount">0</span>
+      </button>
+      <div class="pile-row-mid" id="reshuffleText"></div>
+      <button class="pile-badge discard-badge" id="discardBadge" onclick="openDiscardModal()" type="button">
+        <span class="pile-icon">🗑️</span>
+        <span class="pile-label">DISCARD</span>
+        <span class="pile-count" id="discardCount">0</span>
+      </button>
+    </div>
     <div class="hand" id="hand"></div>
     <div class="action-bar">
       <button class="concede-btn" onclick="quitGame()">CONCEDE</button>
@@ -1687,10 +1807,20 @@
         🏈 KICKING UNIT — K + ST → FG range 35+ instead of 50+
       </p>
       <p><strong>AFTER SCORING:</strong> Lane clears, fresh kickoff.</p>
-      <p><strong>ENERGY:</strong> +1 each drive. Unspent energy carries over (cap 10).</p>
+      <p><strong>ENERGY:</strong> Drive N grants +N energy. Unspent carries over (cap 10).</p>
       <p><strong>SLOTS:</strong> Up to 8 cards per side per lane.</p>
     </div>
     <button class="menu-btn" style="width: auto;" onclick="document.getElementById('howModal').classList.remove('show')">GOT IT</button>
+  </div>
+</div>
+
+<!-- DISCARD PILE -->
+<div class="modal-overlay" id="discardModal" onclick="if(event.target===this)closeDiscardModal()">
+  <div class="modal">
+    <div class="modal-sub">END OF DRIVE</div>
+    <div class="modal-title" id="discardModalTitle">DISCARD PILE</div>
+    <div class="discard-modal-list" id="discardModalList"></div>
+    <button class="menu-btn" style="width: auto;" onclick="closeDiscardModal()">CLOSE</button>
   </div>
 </div>
 
@@ -2057,6 +2187,12 @@ const MAX_SLOTS = 8;
 // (or expose it as a per-match override).
 const MAX_ENERGY_BANK = 10;
 
+// === DRAW/DISCARD CYCLE ENABLED ===
+// Hand size drawn at the start of each drive. Unplayed cards from the previous
+// drive are discarded; when the deck empties, the discard pile reshuffles in.
+// Future perks may increase this — keep it as the single source of truth.
+const HAND_SIZE = 5;
+
 // ============================================================
 // PORTRAIT GENERATOR — stylized SVG silhouettes with team colors
 // ============================================================
@@ -2190,10 +2326,6 @@ function newState(playerDeckCards, aiDeckCards) {
   const playerDeck = shuffle(playerDeckCards.map(c => ({ ...c, uid: uid() })));
   const aiDeck = shuffle(aiDeckCards.map(c => ({ ...c, uid: uid() })));
 
-  // Deal opening hands — guarantee at least one 1-cost card so turn 1 has a play
-  const youHand = dealOpeningHand(playerDeck);
-  const aiHand = dealOpeningHand(aiDeck);
-
   // Randomized kickoff return field position per lane (15-35 yard line)
   const modifiers = drawLaneModifiers();
   const lanes = LANE_DEFS.map((l, i) => ({
@@ -2208,7 +2340,7 @@ function newState(playerDeckCards, aiDeckCards) {
     lockedFor: null  // for SUDDEN DEATH: 'you' | 'ai' | null
   }));
 
-  return {
+  const s = {
     turn: 1,
     maxTurn: 8,
     // Energy starts at 0 conceptually; drive 1's +1 grant lands immediately so
@@ -2216,10 +2348,12 @@ function newState(playerDeckCards, aiDeckCards) {
     // MAX_ENERGY_BANK each drive (see endTurn drive transition).
     youEnergy: 1,
     aiEnergy: 1,
-    youHand: youHand,
+    youHand: [],
     youDeck: playerDeck,
-    aiHand: aiHand,
+    youDiscard: [],
+    aiHand: [],
     aiDeck: aiDeck,
+    aiDiscard: [],
     lanes,
     youScore: 0,
     aiScore: 0,
@@ -2228,21 +2362,57 @@ function newState(playerDeckCards, aiDeckCards) {
     busy: false,
     gameOver: false
   };
+  // Assign state up front so the helpers below can read it
+  state = s;
+  // Draw opening hands using the cycle helpers (handles reshuffle defensively)
+  drawCardsToHand('you', HAND_SIZE);
+  drawCardsToHand('ai',  HAND_SIZE);
+  return s;
 }
 
-function dealOpeningHand(deck) {
-  // Ensures at least one 1-cost card in opening hand of 3
-  const hand = [];
-  // Find a 1-cost card first
-  const oneCostIdx = deck.findIndex(c => c.cost === 1);
-  if (oneCostIdx >= 0) {
-    hand.push(deck.splice(oneCostIdx, 1)[0]);
+// ---- Draw / discard cycle helpers ----
+// Cards keep their identity through deck → hand → discard → deck. When a card
+// is played to a lane it leaves the cycle (lane cleanup handles it on score).
+
+function drawCardsToHand(side, count) {
+  const deck    = (side === 'you') ? state.youDeck    : state.aiDeck;
+  const hand    = (side === 'you') ? state.youHand    : state.aiHand;
+  const discard = (side === 'you') ? state.youDiscard : state.aiDiscard;
+  const drawn = [];
+  for (let i = 0; i < count; i++) {
+    if (deck.length === 0) {
+      if (discard.length === 0) break;       // truly out of cards
+      reshuffleDiscardIntoDeck(side);
+    }
+    if (deck.length === 0) break;            // defensive — shouldn't happen
+    const card = deck.shift();
+    hand.push(card);
+    drawn.push(card);
   }
-  // Fill rest from top of deck
-  while (hand.length < 3 && deck.length > 0) {
-    hand.push(deck.shift());
+  return drawn;
+}
+
+function reshuffleDiscardIntoDeck(side) {
+  const deck    = (side === 'you') ? state.youDeck    : state.aiDeck;
+  const discard = (side === 'you') ? state.youDiscard : state.aiDiscard;
+  while (discard.length > 0) {
+    const c = discard.shift();
+    delete c._discardedOnDrive;  // clear the modal tag — it's back in the deck now
+    deck.push(c);
   }
-  return hand;
+  shuffle(deck);
+  if (side === 'you') showReshuffleAnimation();  // visual moment for the player only
+}
+
+function discardHand(side) {
+  const hand    = (side === 'you') ? state.youHand    : state.aiHand;
+  const discard = (side === 'you') ? state.youDiscard : state.aiDiscard;
+  const drive   = state.turn;
+  while (hand.length > 0) {
+    const c = hand.shift();
+    c._discardedOnDrive = drive;  // used by the discard-pile modal for grouping
+    discard.push(c);
+  }
 }
 
 function kickoffReturn() {
@@ -2364,7 +2534,7 @@ const TOOLTIPS = {
   },
   energyOrb: {
     title: 'ENERGY',
-    body: 'Energy available to spend on cards.<br><br>You gain <strong>+1 energy</strong> each drive. <em>Unspent energy carries over</em> up to a max of ' + MAX_ENERGY_BANK + '.<br><br>Save up for big plays or spend each drive — your call.'
+    body: 'Energy available to spend on cards.<br><br>Each drive grants <strong>energy equal to the drive number</strong> — drive 1 gives +1, drive 2 gives +2, all the way up to +8 on drive 8.<br><br><em>Unspent energy carries over</em> up to a max of ' + MAX_ENERGY_BANK + '. Spend wisely or hoard for big plays.'
   },
   yardageBar: {
     title: 'FIELD POSITION',
@@ -2381,6 +2551,14 @@ const TOOLTIPS = {
   laneMedallion: {
     title: 'LANE MODIFIER',
     body: 'Each lane has a unique random rule for this match. Tap to read its full effect.<br><br>Categories:<br>🟦 Field condition<br>🟡 Tactical<br>🟧 Position-based<br>🟣 Wild (game-changing)'
+  },
+  deckPile: {
+    title: 'DRAW PILE',
+    body: 'Cards remaining in your deck. At the start of each drive, you draw up to <strong>' + HAND_SIZE + '</strong> cards into your hand.<br><br>When this pile empties, your <em>discard pile</em> reshuffles into a new draw pile.'
+  },
+  discardPile: {
+    title: 'DISCARD PILE',
+    body: 'Cards you held but didn\'t play. At the end of each drive, your unplayed hand goes here.<br><br>Tap to see what\'s been discarded. When the draw pile is empty, these cards shuffle back in.'
   },
   handCard: {
     title: 'PLAYER CARD',
@@ -2513,12 +2691,28 @@ function render() {
   if (!state) return;
   document.getElementById('youScore').textContent = state.youScore;
   document.getElementById('aiScore').textContent = state.aiScore;
-  document.getElementById('deckCount').textContent = state.youDeck.length;
+  updatePileCount('deckCount',    'deckBadge',    state.youDeck.length);
+  updatePileCount('discardCount', 'discardBadge', state.youDiscard.length);
   document.getElementById('quarterNum').textContent = 'DRIVE ' + state.turn + ' OF 8';
   document.getElementById('halfLabel').textContent = state.turn <= 4 ? '1ST HALF' : '2ND HALF';
   renderEnergy();
   renderLanes();
   renderHand();
+}
+
+// Update a pile-count element and bump the badge if the value changed.
+function updatePileCount(countId, badgeId, value) {
+  const el = document.getElementById(countId);
+  if (!el) return;
+  const prev = el.textContent;
+  if (prev !== String(value)) {
+    el.textContent = value;
+    const badge = document.getElementById(badgeId);
+    if (badge) {
+      badge.classList.remove('bump'); void badge.offsetWidth; badge.classList.add('bump');
+      setTimeout(() => badge.classList.remove('bump'), 240);
+    }
+  }
 }
 
 function renderEnergy() {
@@ -2544,6 +2738,176 @@ function showCarriedToast(amount) {
   el.style.top = (rect.top - 6) + 'px';
   document.body.appendChild(el);
   setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 1300);
+}
+
+// ---- Draw / discard / reshuffle animations (player-only; AI is silent + instant) ----
+function animateDiscardHand() {
+  return new Promise(resolve => {
+    if (!state || state.youHand.length === 0) {
+      discardHand('you');  // nothing to animate but still move logical state
+      resolve();
+      return;
+    }
+    const reduced = prefersReducedMotion();
+    const discardBadge = document.getElementById('discardBadge');
+    const handEls = Array.from(document.querySelectorAll('#hand .hand-card'));
+    const targetRect = discardBadge ? discardBadge.getBoundingClientRect() : null;
+
+    if (reduced || !targetRect || handEls.length === 0) {
+      // No motion: just move state and re-render
+      discardHand('you');
+      playSfx('discard');
+      render();
+      setTimeout(resolve, 200);
+      return;
+    }
+
+    // Trigger arcs (staggered)
+    handEls.forEach((el, i) => {
+      setTimeout(() => {
+        if (!state) return;
+        const r = el.getBoundingClientRect();
+        const dx = (targetRect.left + targetRect.width / 2) - (r.left + r.width / 2);
+        const dy = (targetRect.top  + targetRect.height / 2) - (r.top  + r.height / 2);
+        el.classList.add('discarding-card');
+        el.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) rotate(30deg) scale(0.4)';
+        el.style.opacity = '0.0';
+        playSfx('discard');
+      }, i * 40);
+    });
+
+    // After the last card finishes its 600ms arc + 40*(n-1) stagger, commit state
+    const totalMs = 600 + 40 * Math.max(0, handEls.length - 1) + 40;
+    setTimeout(() => {
+      if (!state) { resolve(); return; }
+      discardHand('you');
+      render();  // hand renders empty; discard count bumps
+      resolve();
+    }, totalMs);
+  });
+}
+
+function animateDrawHand() {
+  return new Promise(resolve => {
+    if (!state) { resolve(); return; }
+    const reduced = prefersReducedMotion();
+    // Draw HAND_SIZE — drawCardsToHand handles reshuffle internally and triggers the
+    // reshuffle visual via showReshuffleAnimation()
+    const drawn = drawCardsToHand('you', HAND_SIZE);
+    render();  // hand cards now in DOM at their natural positions
+    if (drawn.length === 0) { resolve(); return; }
+
+    const deckBadge = document.getElementById('deckBadge');
+    const startRect = deckBadge ? deckBadge.getBoundingClientRect() : null;
+    if (reduced || !startRect) {
+      drawn.forEach(() => playSfx('draw'));
+      setTimeout(resolve, 200);
+      return;
+    }
+
+    // For each drawn card, find its DOM element and animate from deck → natural slot
+    drawn.forEach((card, i) => {
+      const el = document.querySelector('#hand .hand-card[data-card-uid="' + card.uid + '"]');
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const dx = (startRect.left + startRect.width / 2) - (r.left + r.width / 2);
+      const dy = (startRect.top  + startRect.height / 2) - (r.top  + r.height / 2);
+      // Place at deck position with no transition, then transition to natural spot
+      el.style.transition = 'none';
+      el.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(0.4)';
+      el.style.opacity = '0.35';
+      // Force reflow so the initial transform is committed before we change it
+      void el.offsetWidth;
+      setTimeout(() => {
+        if (!el.isConnected) return;
+        el.style.transition = '';  // restore CSS class transitions
+        el.classList.add('drawing-in');
+        el.style.transform = '';
+        el.style.opacity = '';
+        playSfx('draw');
+      }, i * 80);
+      setTimeout(() => {
+        if (el.isConnected) el.classList.remove('drawing-in');
+      }, i * 80 + 420);
+    });
+
+    // Settle: brief gold glow on the hand
+    setTimeout(() => {
+      const hand = document.getElementById('hand');
+      if (hand) {
+        hand.classList.add('draw-glow');
+        setTimeout(() => hand.classList.remove('draw-glow'), 420);
+      }
+    }, drawn.length * 80 + 200);
+
+    const totalMs = drawn.length * 80 + 480;
+    setTimeout(resolve, totalMs);
+  });
+}
+
+function showReshuffleAnimation() {
+  const reduced = prefersReducedMotion();
+  const discardBadge = document.getElementById('discardBadge');
+  // Pulse the discard badge dramatically (unless reduced-motion)
+  if (discardBadge && !reduced) {
+    discardBadge.classList.remove('bump');
+    void discardBadge.offsetWidth;
+    discardBadge.classList.add('bump');
+    setTimeout(() => discardBadge.classList.remove('bump'), 400);
+  }
+  // Floating text shown in the pile-row middle slot (informational — kept for reduced-motion)
+  const txt = document.getElementById('reshuffleText');
+  if (txt) {
+    txt.textContent = 'RESHUFFLING DECK';
+    txt.classList.add('show');
+    setTimeout(() => { txt.classList.remove('show'); txt.textContent = ''; }, 1000);
+  }
+  playSfx('reshuffle');
+}
+
+// ---- Discard pile modal ----
+function openDiscardModal() {
+  if (!state) return;
+  const modal = document.getElementById('discardModal');
+  const list = document.getElementById('discardModalList');
+  const title = document.getElementById('discardModalTitle');
+  if (!modal || !list || !title) return;
+  const cards = state.youDiscard;
+  title.textContent = 'DISCARD PILE (' + cards.length + ' card' + (cards.length === 1 ? '' : 's') + ')';
+  if (cards.length === 0) {
+    list.innerHTML = '<div class="discard-modal-empty">Nothing discarded yet.</div>';
+  } else {
+    // Group by _discardedOnDrive (oldest drive first)
+    const byDrive = new Map();
+    cards.forEach(c => {
+      const d = c._discardedOnDrive || 0;
+      if (!byDrive.has(d)) byDrive.set(d, []);
+      byDrive.get(d).push(c);
+    });
+    const drives = [...byDrive.keys()].sort((a, b) => a - b);
+    list.innerHTML = drives.map(d => {
+      const cs = byDrive.get(d);
+      const header = d > 0 ? 'AFTER DRIVE ' + d : 'EARLIER';
+      return '<div class="discard-modal-drive">' + header + '</div>' +
+             '<div class="discard-modal-grid">' + cs.map(discardModalCardHTML).join('') + '</div>';
+    }).join('');
+  }
+  modal.classList.add('show');
+}
+
+function closeDiscardModal() {
+  const modal = document.getElementById('discardModal');
+  if (modal) modal.classList.remove('show');
+}
+
+function discardModalCardHTML(card) {
+  const stat = card.side === 'off' ? card.off : card.def;
+  const sideCls = card.side === 'off' ? 'off-side' : 'def-side';
+  return '<div class="discard-modal-card ' + sideCls + '">' +
+         '<div class="dm-name">' + card.name + '</div>' +
+         '<div class="dm-meta">' + card.pos + ' · ' + card.team + ' · ' + card.cost + 'E</div>' +
+         '<div class="dm-stat">' + stat + '</div>' +
+         '</div>';
 }
 
 function renderLanes() {
@@ -3029,15 +3393,26 @@ async function endTurn() {
     return;
   }
 
-  // Advance turn — banked-energy model: +1 each drive, capped at MAX_ENERGY_BANK.
-  // Unspent energy carries over (so saving up for a big drive is a real option).
+  // === DRAW/DISCARD CYCLE ENABLED ===
+  // After scoring, before the new drive starts: discard unplayed hand → draw a
+  // fresh hand. The draw/discard happens BEFORE energy grant so the player sees
+  // their new hand alongside the new energy total when drive N+1 opens.
+  await animateDiscardHand();   // visual: hand cards arc to discard badge
+  // AI's discard/draw is silent and instant (hand isn't visible to the player)
+  discardHand('ai');
+  drawCardsToHand('ai', HAND_SIZE);
+  await animateDrawHand();      // visual: cards arc from deck badge to hand
+  if (!state) return;           // user conceded mid-animation
+
+  // === ENERGY GAIN: ESCALATING + CARRYOVER ===
+  // Drive N grants +N energy (drive 1 = +1, drive 8 = +8). Unspent energy carries
+  // over, capped at MAX_ENERGY_BANK. state.turn is incremented BEFORE the grant,
+  // so it already represents the drive about to be played.
   state.turn++;
   const youCarried = state.youEnergy; // anything > 0 here was unspent last drive
-  state.youEnergy = Math.min(MAX_ENERGY_BANK, state.youEnergy + 1);
-  state.aiEnergy  = Math.min(MAX_ENERGY_BANK, state.aiEnergy + 1);
-
-  if (state.youDeck.length > 0) state.youHand.push(state.youDeck.shift());
-  if (state.aiDeck.length > 0) state.aiHand.push(state.aiDeck.shift());
+  const gain = state.turn;
+  state.youEnergy = Math.min(MAX_ENERGY_BANK, state.youEnergy + gain);
+  state.aiEnergy  = Math.min(MAX_ENERGY_BANK, state.aiEnergy  + gain);
 
   state.busy = false;
   render();
@@ -3091,8 +3466,8 @@ function applyCardSnapAbility(play) {
 
   switch(card.desc) {
     case 'snapDraw':
-      if (side === 'you' && state.youDeck.length > 0) state.youHand.push(state.youDeck.shift());
-      else if (side === 'ai' && state.aiDeck.length > 0) state.aiHand.push(state.aiDeck.shift());
+      // Uses the cycle helper so it reshuffles the discard pile if the deck is empty
+      drawCardsToHand(side, 1);
       break;
     case 'snapBuffOffLane':
       lane[friendlies].filter(c => c.uid !== card.uid && c.revealed && !c.ejected && c.side === 'off')
@@ -3717,6 +4092,37 @@ function playSfx(type) {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
       osc.connect(gain).connect(ctx.destination);
       osc.start(now); osc.stop(now + 0.25);
+    } else if (type === 'draw') {
+      // Soft brief blip when a card lands in hand
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.06);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.11);
+    } else if (type === 'reshuffle') {
+      // Descending swish + brief noise burst — discard pile folding back in
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.45);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.51);
+      // Brief noise burst at the start for "shuffle" texture
+      const bufSize = Math.floor(ctx.sampleRate * 0.18);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.09, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      src.connect(noiseGain).connect(ctx.destination);
+      src.start(now);
     } else if (type === 'finalIntro') {
       // 3-note descending minor arpeggio — deeper than legendaryHit
       const notes = [880.00, 659.25, 440.00]; // A5, E5, A4
@@ -3882,6 +4288,9 @@ async function startPack() {
   await sleep(450);
   if (!draftState) return;
   draftState.busy = false;
+  // Re-render so the AUTO-PICK button's `disabled` attribute updates with the
+  // new busy state (cards re-spawn in spread positions — no visual hiccup).
+  renderDraft();
   startPackTimer();
 }
 
@@ -4327,7 +4736,7 @@ async function runAutoPickFastForward() {
 async function fastForwardClosePack() {
   // Show the chosen picks on the current pack, then animate confirm.
   renderDraft();
-  await sleep(150);
+  await sleep(225);
   if (!draftState) return;
   const cards = document.querySelectorAll('#packArena .pack-card');
   cards.forEach(el => {
@@ -4336,7 +4745,7 @@ async function fastForwardClosePack() {
     if (c === draftState.pickedOff || c === draftState.pickedDef) el.classList.add('flying-to-deck');
     else el.classList.add('discarding');
   });
-  await sleep(150);
+  await sleep(225);
   if (!draftState) return;
   finalizeCurrentPackPicks();
 }
@@ -4361,14 +4770,14 @@ async function runFastForwardPack(packNum) {
   }
 
   renderDraft();
-  await sleep(80); // compressed fan-in
+  await sleep(120); // compressed fan-in (was 80 — slowed 1.5x for readability)
   if (!draftState) return;
 
-  // Flip stagger ~90ms; rare/legendary keep full-volume sound, commons use quiet flip
+  // Flip stagger ~135ms; rare/legendary keep full-volume sound, commons use quiet flip
   for (let i = 0; i < draftState.currentPack.length; i++) {
     if (!draftState) return;
     revealPackCardFast(i);
-    await sleep(90);
+    await sleep(135);
   }
 
   // Spread + brief settle (compressed)
@@ -4376,14 +4785,14 @@ async function runFastForwardPack(packNum) {
   const arena = document.getElementById('packArena');
   if (arena) arena.classList.add('spread');
   applyCardLayout();
-  await sleep(100);
+  await sleep(150);
   if (!draftState) return;
 
   // Reveal the picks (gold halo + same-side fade)
   draftState.pickedOff = offBest;
   draftState.pickedDef = defBest;
   renderDraft();
-  await sleep(150);
+  await sleep(225);
   if (!draftState) return;
 
   // Confirm-transition: picks fly off, others drop down
@@ -4394,7 +4803,7 @@ async function runFastForwardPack(packNum) {
     if (c === draftState.pickedOff || c === draftState.pickedDef) el.classList.add('flying-to-deck');
     else el.classList.add('discarding');
   });
-  await sleep(150);
+  await sleep(225);
   if (!draftState) return;
   finalizeCurrentPackPicks();
 }
@@ -4430,7 +4839,7 @@ async function playFinalPackIntroCompressed() {
   document.body.appendChild(dim);
   document.body.appendChild(banner);
   playSfx('finalIntro'); // sound stays full volume — once-per-run moment
-  await sleep(400);
+  await sleep(600);
   if (banner.parentNode) banner.parentNode.removeChild(banner);
   if (dim.parentNode)    dim.parentNode.removeChild(dim);
 }
