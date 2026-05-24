@@ -138,8 +138,9 @@
     text-align: center; line-height: 1.2;
   }
   .center-status .drive-num {
-    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px;
     color: #ffb800; letter-spacing: 1px;
+    white-space: nowrap;
   }
   .menu-icon {
     width: 28px; height: 28px; background: rgba(0,0,0,0.5);
@@ -689,6 +690,39 @@
   .energy-orb.changed { animation: orbPulse 0.4s ease-out; }
   @keyframes orbPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.25);} }
 
+  /* Cap pulse — energy is at MAX_ENERGY_BANK and the next gain would be wasted */
+  .energy-orb.at-cap {
+    animation: orbCapPulse 1.4s ease-in-out infinite;
+    border-color: #ffb800;
+    background:
+      radial-gradient(circle at 30% 30%, rgba(255,255,255,0.45) 0%, transparent 40%),
+      radial-gradient(circle, #ffb800 0%, #6a4a14 100%);
+  }
+  @keyframes orbCapPulse {
+    0%, 100% { box-shadow: 0 0 16px rgba(255,184,0,0.9),
+                            inset 0 -2px 4px rgba(0,0,0,0.3),
+                            inset 0 2px 4px rgba(255,255,255,0.3); }
+    50%      { box-shadow: 0 0 28px rgba(255,184,0,1),
+                            0 0 44px rgba(255,184,0,0.55),
+                            inset 0 -2px 4px rgba(0,0,0,0.3),
+                            inset 0 2px 4px rgba(255,255,255,0.3); }
+  }
+
+  /* "+N CARRIED" floating text shown briefly when carryover lands */
+  .carried-toast {
+    position: fixed; pointer-events: none; z-index: 250;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 1.5px;
+    color: #ffb800;
+    text-shadow: 0 0 8px rgba(255,184,0,0.85), 0 2px 4px rgba(0,0,0,0.85);
+    animation: carriedFade 1.2s ease-out forwards;
+  }
+  @keyframes carriedFade {
+    0%   { opacity: 0; transform: translate(-50%, 4px); }
+    18%  { opacity: 1; transform: translate(-50%, -8px); }
+    85%  { opacity: 1; transform: translate(-50%, -22px); }
+    100% { opacity: 0; transform: translate(-50%, -32px); }
+  }
+
   .play-btn {
     background: linear-gradient(180deg, #2a6a4a 0%, #144a2a 100%);
     color: #fff; border: 1px solid #4aff8a;
@@ -1039,6 +1073,46 @@
     font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 2px;
     padding: 6px 12px; cursor: pointer;
   }
+  .pack-header-right { display: flex; align-items: center; gap: 6px; }
+  /* === AUTO-PICK REMAINING ADDED === */
+  .pack-skip-btn {
+    background: rgba(20, 14, 0, 0.55);
+    border: 1px solid #ffb800;
+    color: #ffb800;
+    font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 1.5px;
+    padding: 6px 9px;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.18s, background 0.18s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .pack-skip-btn:active { opacity: 1; background: rgba(40, 28, 0, 0.7); }
+  .pack-skip-btn:disabled,
+  .pack-skip-btn.disabled {
+    opacity: 0.28; cursor: not-allowed;
+    border-color: #555; color: #777;
+  }
+  /* Skip-draft modal action buttons */
+  .skip-actions {
+    display: flex; gap: 8px;
+  }
+  .skip-actions button {
+    flex: 1;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px; letter-spacing: 2px;
+    padding: 10px 8px; border-radius: 4px; cursor: pointer;
+  }
+  .skip-actions .cancel-btn {
+    background: #1a1a1a; color: #aaa; border: 1px solid #444;
+  }
+  .skip-actions .confirm-btn {
+    background: linear-gradient(135deg, #d4a017 0%, #ff8a00 100%);
+    color: #fff; border: 1px solid #ffb800;
+  }
+  /* Compressed final-pack intro used by the fast-forward path */
+  .final-pack-banner.ff { animation-duration: 0.4s; }
+  .final-pack-dim.ff    { animation-duration: 0.4s; }
 
   .pack-streaks {
     min-height: 28px;
@@ -1491,7 +1565,7 @@
   </div>
 
   <div class="hand-section">
-    <div class="deck-info-row">DECK: <span id="deckCount">12</span> · DRIVE <span id="turnNum">1</span>/8</div>
+    <div class="deck-info-row">DECK REMAINING: <span id="deckCount">12</span></div>
     <div class="hand" id="hand"></div>
     <div class="action-bar">
       <button class="concede-btn" onclick="quitGame()">CONCEDE</button>
@@ -1613,10 +1687,26 @@
         🏈 KICKING UNIT — K + ST → FG range 35+ instead of 50+
       </p>
       <p><strong>AFTER SCORING:</strong> Lane clears, fresh kickoff.</p>
-      <p><strong>ENERGY:</strong> +1 each drive (1, 2, 3...). Spend it to play cards.</p>
+      <p><strong>ENERGY:</strong> +1 each drive. Unspent energy carries over (cap 10).</p>
       <p><strong>SLOTS:</strong> Up to 8 cards per side per lane.</p>
     </div>
     <button class="menu-btn" style="width: auto;" onclick="document.getElementById('howModal').classList.remove('show')">GOT IT</button>
+  </div>
+</div>
+
+<!-- SKIP DRAFT (AUTO-PICK REMAINING) -->
+<div class="modal-overlay" id="draftSkipModal" onclick="if(event.target===this)closeSkipDraftModal()">
+  <div class="modal">
+    <div class="modal-sub">FAST-FORWARD</div>
+    <div class="modal-title">SKIP REMAINING PACKS?</div>
+    <div class="modal-body">
+      Auto-pick the rest of your draft? You'll see your remaining cards flash by in fast-forward, then jump straight to the season hub.<br><br>
+      Highest-rarity card wins each side; ties broken by stat. <em>This cannot be undone.</em>
+    </div>
+    <div class="skip-actions">
+      <button class="cancel-btn" onclick="closeSkipDraftModal()">CANCEL</button>
+      <button class="confirm-btn" onclick="confirmSkipDraft()">SKIP IT</button>
+    </div>
   </div>
 </div>
 
@@ -1960,6 +2050,13 @@ let seasonState = null;
 
 const MAX_SLOTS = 8;
 
+// === ENERGY CARRYOVER (MAX_ENERGY_BANK) ENABLED ===
+// Maximum banked energy. Future leveling/perk rewards will increase this.
+// IMPORTANT: this constant is the single source of truth — do not hardcode 10
+// elsewhere. To add a "+1 Energy Capacity" perk later, modify only this value
+// (or expose it as a per-match override).
+const MAX_ENERGY_BANK = 10;
+
 // ============================================================
 // PORTRAIT GENERATOR — stylized SVG silhouettes with team colors
 // ============================================================
@@ -2114,10 +2211,11 @@ function newState(playerDeckCards, aiDeckCards) {
   return {
     turn: 1,
     maxTurn: 8,
+    // Energy starts at 0 conceptually; drive 1's +1 grant lands immediately so
+    // the first drive opens with 1 energy. Carryover banks unspent energy up to
+    // MAX_ENERGY_BANK each drive (see endTurn drive transition).
     youEnergy: 1,
-    youEnergyMax: 1,
     aiEnergy: 1,
-    aiEnergyMax: 1,
     youHand: youHand,
     youDeck: playerDeck,
     aiHand: aiHand,
@@ -2266,7 +2364,7 @@ const TOOLTIPS = {
   },
   energyOrb: {
     title: 'ENERGY',
-    body: 'Energy available to spend on cards this drive.<br><br>You gain <strong>+1 energy</strong> each drive (Drive 1 = 1, Drive 2 = 2, etc.). Each card costs the number shown in its gold badge. Unspent energy <em>does not carry over</em>.'
+    body: 'Energy available to spend on cards.<br><br>You gain <strong>+1 energy</strong> each drive. <em>Unspent energy carries over</em> up to a max of ' + MAX_ENERGY_BANK + '.<br><br>Save up for big plays or spend each drive — your call.'
   },
   yardageBar: {
     title: 'FIELD POSITION',
@@ -2415,9 +2513,8 @@ function render() {
   if (!state) return;
   document.getElementById('youScore').textContent = state.youScore;
   document.getElementById('aiScore').textContent = state.aiScore;
-  document.getElementById('turnNum').textContent = state.turn;
   document.getElementById('deckCount').textContent = state.youDeck.length;
-  document.getElementById('quarterNum').textContent = 'DRIVE ' + state.turn;
+  document.getElementById('quarterNum').textContent = 'DRIVE ' + state.turn + ' OF 8';
   document.getElementById('halfLabel').textContent = state.turn <= 4 ? '1ST HALF' : '2ND HALF';
   renderEnergy();
   renderLanes();
@@ -2430,7 +2527,23 @@ function renderEnergy() {
   if (orb) {
     orb.textContent = remaining;
     orb.classList.toggle('depleted', remaining <= 0);
+    // Cap pulse — only when the wallet itself is at cap (not affected by pending plays)
+    orb.classList.toggle('at-cap', state.youEnergy >= MAX_ENERGY_BANK);
   }
+}
+
+function showCarriedToast(amount) {
+  const orb = document.getElementById('energyOrb');
+  if (!orb || amount <= 0) return;
+  const rect = orb.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'carried-toast';
+  el.textContent = '+' + amount + ' CARRIED';
+  // Center horizontally on the orb, place just above it; the keyframe animates upward.
+  el.style.left = (rect.left + rect.width / 2) + 'px';
+  el.style.top = (rect.top - 6) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 1300);
 }
 
 function renderLanes() {
@@ -2916,18 +3029,20 @@ async function endTurn() {
     return;
   }
 
-  // Advance turn
+  // Advance turn — banked-energy model: +1 each drive, capped at MAX_ENERGY_BANK.
+  // Unspent energy carries over (so saving up for a big drive is a real option).
   state.turn++;
-  state.youEnergyMax = Math.min(state.turn, 8);
-  state.aiEnergyMax = Math.min(state.turn, 8);
-  state.youEnergy = state.youEnergyMax;
-  state.aiEnergy = state.aiEnergyMax;
+  const youCarried = state.youEnergy; // anything > 0 here was unspent last drive
+  state.youEnergy = Math.min(MAX_ENERGY_BANK, state.youEnergy + 1);
+  state.aiEnergy  = Math.min(MAX_ENERGY_BANK, state.aiEnergy + 1);
 
   if (state.youDeck.length > 0) state.youHand.push(state.youDeck.shift());
   if (state.aiDeck.length > 0) state.aiHand.push(state.aiDeck.shift());
 
   state.busy = false;
   render();
+  // After render so the orb is in its new spot, show the carryover hint.
+  if (youCarried > 0) showCarriedToast(youCarried);
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -3527,6 +3642,16 @@ function playSfx(type) {
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
       osc.connect(gain).connect(ctx.destination);
       osc.start(now); osc.stop(now + 0.14);
+    } else if (type === 'flipQuiet') {
+      // 0.4x volume of normal flip — used during fast-forward auto-pick
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(900, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.11);
+      gain.gain.setValueAtTime(0.064, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.14);
     } else if (type === 'rareFlash') {
       const osc = ctx.createOscillator(), gain = ctx.createGain();
       osc.type = 'triangle';
@@ -3951,10 +4076,17 @@ function renderDraft() {
     draftState.layoutMode === 'spread' ? 'spread' : 'fan',
     isFinal ? 'final-pack' : ''
   ].filter(Boolean).join(' ');
+  // === AUTO-PICK REMAINING ADDED === (button hidden on final pack)
+  const skipBtnHTML = isFinal ? '' :
+    '<button class="pack-skip-btn" ' + (draftState.busy ? 'disabled' : '') +
+    ' onclick="openSkipDraftModal()">⏩ AUTO-PICK</button>';
   screen.innerHTML = `
     <div class="pack-header">
       ${headerHTML}
-      <button class="pack-exit" onclick="cancelDraft()">EXIT</button>
+      <div class="pack-header-right">
+        ${skipBtnHTML}
+        <button class="pack-exit" onclick="cancelDraft()">EXIT</button>
+      </div>
     </div>
     <div class="pack-streaks" id="packStreaks"></div>
     <div class="pack-timer-wrap">
@@ -4092,6 +4224,215 @@ function finishDraft() {
   saveSeason();
   draftState = null;
   enterSeason();
+}
+
+// ---- AUTO-PICK REMAINING (Phase 3) ----
+const RARITY_RANK = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
+
+function bestAutoPickFromSide(cards) {
+  if (!cards || cards.length === 0) return null;
+  return [...cards].sort((a, b) => {
+    const r = RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity];
+    if (r !== 0) return r;
+    const aStat = a.side === 'off' ? a.off : a.def;
+    const bStat = b.side === 'off' ? b.off : b.def;
+    return bStat - aStat;
+  })[0];
+}
+
+function openSkipDraftModal() {
+  if (!draftState || draftState.busy) return;
+  if (draftState.packNum >= draftState.totalPacks) return; // button shouldn't be visible here anyway
+  const modal = document.getElementById('draftSkipModal');
+  if (modal) modal.classList.add('show');
+}
+
+function closeSkipDraftModal() {
+  const modal = document.getElementById('draftSkipModal');
+  if (modal) modal.classList.remove('show');
+}
+
+function confirmSkipDraft() {
+  closeSkipDraftModal();
+  runAutoPickFastForward();
+}
+
+// Move the current pack's picks into the roster and advance packNum.
+function finalizeCurrentPackPicks() {
+  if (!draftState) return;
+  if (!draftState.pickedOff || !draftState.pickedDef) return;
+  const off = draftState.pickedOff;
+  const def = draftState.pickedDef;
+  delete off._revealed; delete def._revealed;
+  draftState.roster.push(off);
+  draftState.roster.push(def);
+  draftState.history.push({ packNum: draftState.packNum, picks: [off, def] });
+  draftState.pickedOff = null;
+  draftState.pickedDef = null;
+  draftState.packNum++;
+}
+
+async function runAutoPickFastForward() {
+  if (!draftState || draftState.busy) return;
+  clearDraftTimer();
+  cancelGraceTimer();
+  draftState.busy = true;
+
+  // Honor any existing picks; auto-fill any missing side on the current pack.
+  if (!draftState.pickedOff) {
+    draftState.pickedOff = bestAutoPickFromSide(draftState.currentPack.filter(c => c.side === 'off'));
+  }
+  if (!draftState.pickedDef) {
+    draftState.pickedDef = bestAutoPickFromSide(draftState.currentPack.filter(c => c.side === 'def'));
+  }
+
+  const reduced = prefersReducedMotion();
+  if (reduced) {
+    // Reduced-motion: skip animation. Audio still plays for rare/legendary.
+    const remaining = draftState.totalPacks - draftState.packNum + 1;
+    finalizeCurrentPackPicks();
+    while (draftState && draftState.packNum <= draftState.totalPacks) {
+      const pack = generateDraftPack(draftState.packNum);
+      const offBest = bestAutoPickFromSide(pack.filter(c => c.side === 'off'));
+      const defBest = bestAutoPickFromSide(pack.filter(c => c.side === 'def'));
+      [offBest, defBest].forEach(c => {
+        if (!c) return;
+        if (c.rarity === 'legendary') playSfx('legendaryHit');
+        else if (c.rarity === 'rare')  playSfx('rareFlash');
+        delete c._revealed;
+        draftState.roster.push(c);
+      });
+      draftState.history.push({ packNum: draftState.packNum, picks: [offBest, defBest].filter(Boolean) });
+      draftState.packNum++;
+    }
+    showToast('AUTO-PICKED ' + remaining + ' PACK' + (remaining !== 1 ? 'S' : ''), 1400);
+    await sleep(400);
+    if (!draftState) return;
+    finishDraft();
+    return;
+  }
+
+  // Animated fast-forward: close out current pack, then run compressed packs.
+  await fastForwardClosePack();
+  if (!draftState) return;
+  while (draftState && draftState.packNum <= draftState.totalPacks) {
+    await runFastForwardPack(draftState.packNum);
+    if (!draftState) return;
+  }
+  if (!draftState) return;
+  await sleep(400);
+  finishDraft();
+}
+
+async function fastForwardClosePack() {
+  // Show the chosen picks on the current pack, then animate confirm.
+  renderDraft();
+  await sleep(150);
+  if (!draftState) return;
+  const cards = document.querySelectorAll('#packArena .pack-card');
+  cards.forEach(el => {
+    const idx = parseInt(el.dataset.packIdx, 10);
+    const c = draftState.currentPack[idx];
+    if (c === draftState.pickedOff || c === draftState.pickedDef) el.classList.add('flying-to-deck');
+    else el.classList.add('discarding');
+  });
+  await sleep(150);
+  if (!draftState) return;
+  finalizeCurrentPackPicks();
+}
+
+async function runFastForwardPack(packNum) {
+  if (!draftState) return;
+  const isFinal = packNum >= draftState.totalPacks;
+  draftState.layoutMode = 'fan';
+  draftState.currentPack = generateDraftPack(packNum);
+  draftState.currentPack.forEach(c => { c._revealed = false; });
+
+  // Decide picks up front
+  const offBest = bestAutoPickFromSide(draftState.currentPack.filter(c => c.side === 'off'));
+  const defBest = bestAutoPickFromSide(draftState.currentPack.filter(c => c.side === 'def'));
+  // Render initially with picks hidden so the gold halo doesn't appear pre-reveal
+  draftState.pickedOff = null;
+  draftState.pickedDef = null;
+
+  if (isFinal) {
+    await playFinalPackIntroCompressed();
+    if (!draftState) return;
+  }
+
+  renderDraft();
+  await sleep(80); // compressed fan-in
+  if (!draftState) return;
+
+  // Flip stagger ~90ms; rare/legendary keep full-volume sound, commons use quiet flip
+  for (let i = 0; i < draftState.currentPack.length; i++) {
+    if (!draftState) return;
+    revealPackCardFast(i);
+    await sleep(90);
+  }
+
+  // Spread + brief settle (compressed)
+  draftState.layoutMode = 'spread';
+  const arena = document.getElementById('packArena');
+  if (arena) arena.classList.add('spread');
+  applyCardLayout();
+  await sleep(100);
+  if (!draftState) return;
+
+  // Reveal the picks (gold halo + same-side fade)
+  draftState.pickedOff = offBest;
+  draftState.pickedDef = defBest;
+  renderDraft();
+  await sleep(150);
+  if (!draftState) return;
+
+  // Confirm-transition: picks fly off, others drop down
+  const cards = document.querySelectorAll('#packArena .pack-card');
+  cards.forEach(el => {
+    const idx = parseInt(el.dataset.packIdx, 10);
+    const c = draftState.currentPack[idx];
+    if (c === draftState.pickedOff || c === draftState.pickedDef) el.classList.add('flying-to-deck');
+    else el.classList.add('discarding');
+  });
+  await sleep(150);
+  if (!draftState) return;
+  finalizeCurrentPackPicks();
+}
+
+function revealPackCardFast(idx) {
+  if (!draftState || !draftState.currentPack[idx]) return;
+  const card = draftState.currentPack[idx];
+  card._revealed = true;
+  const el = document.querySelector('[data-pack-idx="' + idx + '"]');
+  if (el) el.classList.add('revealed');
+  if (card.rarity === 'legendary') {
+    document.body.classList.add('body-shake');
+    setTimeout(() => document.body.classList.remove('body-shake'), 320);
+    playSfx('legendaryHit'); // preserved moment — full volume
+  } else if (card.rarity === 'rare') {
+    playSfx('rareFlash'); // preserved moment — full volume
+  } else {
+    playSfx('flipQuiet'); // 0.4x of normal flip volume
+  }
+}
+
+async function playFinalPackIntroCompressed() {
+  const reduced = prefersReducedMotion();
+  if (reduced) {
+    playSfx('finalIntro');
+    return;
+  }
+  const banner = document.createElement('div');
+  banner.className = 'final-pack-banner ff';
+  banner.textContent = 'FINAL PACK';
+  const dim = document.createElement('div');
+  dim.className = 'final-pack-dim ff';
+  document.body.appendChild(dim);
+  document.body.appendChild(banner);
+  playSfx('finalIntro'); // sound stays full volume — once-per-run moment
+  await sleep(400);
+  if (banner.parentNode) banner.parentNode.removeChild(banner);
+  if (dim.parentNode)    dim.parentNode.removeChild(dim);
 }
 
 // ============================================================

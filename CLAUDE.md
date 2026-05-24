@@ -133,7 +133,8 @@ Cards are generated procedurally by `generateCard(side)` using `FIRST_NAMES`, `L
 | Tooltips | `TOOLTIPS` object, `showTooltip(key, targetEl)`, `data-tooltip="..."` attrs in HTML |
 | Card portraits | `generatePortraitSVG(card, size)` returns raw SVG string, deterministic by `seedRandom(card.id)` |
 | Season mode | `seasonState`, `loadSeason/saveSeason`, `OPPONENT_TEAMS`, `playSeasonMatch` |
-| Draft | `draftState`, `drawDraftOptions`, `selectDraftCard`, `confirmDraftPicks` |
+| Draft (pack-rip) | `draftState`, `generateDraftPack`, `PACK_RARITY_TABLE`, `startPack`, `tapPackCard`, `confirmPackPicks`, `applyCardLayout`, `runAutoPickFastForward` |
+| Energy carryover (`MAX_ENERGY_BANK` constant) | `MAX_ENERGY_BANK` declaration, drive-transition block in `endTurn`, `renderEnergy` cap pulse, `showCarriedToast` |
 
 ## Conventions to follow
 
@@ -216,6 +217,7 @@ Each modifier should be **clearly different** from existing ones in feel. Don't 
 - **"Change scoring rules"** → `scoreTouchdown`, `scoreDefense`, `kickPAT`. The `SCALE = 2.5` constant in `processYardageAndScoring` controls yardage tempo.
 - **"AI is too easy/hard"** → `aiMakePlays()`. Current heuristic just plays affordable cards in the lane where it's losing. Smarter AI is open territory.
 - **"Add a tooltip to X"** → add `data-tooltip="key"` to the element, add an entry to the `TOOLTIPS` object. For dynamic content, also set `data-tooltip-title` and `data-tooltip-body` with `escAttr(...)`.
+- **"Change the energy cap"** → the cap is a single constant: `MAX_ENERGY_BANK` (declared near `MAX_SLOTS`). When adding leveling/perks, modify this value (or wrap it in a getter that checks active perks). **Do not introduce a parallel cap variable** — keep this as the single source of truth. The tooltip body interpolates it (`'... up to a max of ' + MAX_ENERGY_BANK`) so user-facing copy stays in sync.
 
 ## Testing
 
