@@ -3169,7 +3169,16 @@ function onDragEnd(e) {
         ds.ghost.style.top = (rect.top + rect.height/2) + 'px';
         ds.ghost.style.transform = 'translate(-50%, -50%) scale(0.5)';
         ds.ghost.style.opacity = '0.4';
-        setTimeout(() => { placeCardInLane(ds.card, ds.currentLane); ds.ghost.remove(); }, 180);
+        // Commit placement SYNCHRONOUSLY. Previously this was deferred 180ms
+        // inside a setTimeout to let the ghost snap-animate first, but during
+        // that window the dimmed source card stayed draggable — a quick player
+        // could re-drag the same card into a second lane and the second drop
+        // would silently bail (the card was no longer in state.youHand), so
+        // the second card appeared to vanish. Committing immediately wipes
+        // the source DOM via render() and closes the race entirely. The ghost
+        // still snap-animates as eye candy and is removed after 180ms.
+        placeCardInLane(ds.card, ds.currentLane);
+        setTimeout(() => ds.ghost.remove(), 180);
         dropped = true;
       }
     } else showToast('Lane is full');
