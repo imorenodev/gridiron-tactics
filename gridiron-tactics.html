@@ -1018,142 +1018,275 @@
   }
   .builder-actions button.primary { background: #c12c2c; color: #fff; border-color: #c12c2c; }
 
-  /* DRAFT SCREEN */
-  .draft-progress { padding: 8px 12px; background: rgba(0,0,0,0.6); flex-shrink: 0; }
-  .draft-progress-bar {
-    height: 6px; background: #1a1a1a; border-radius: 3px; overflow: hidden;
-    border: 1px solid #333;
-  }
-  .draft-progress-fill {
-    height: 100%; background: linear-gradient(90deg, #ff8a4a 0%, #4aaaff 100%);
-    transition: width 0.4s ease-out;
-  }
-  .draft-progress-text {
-    display: flex; justify-content: space-between; margin-top: 6px;
-    font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #888;
-  }
-  .draft-progress-text span span { color: #ffb800; font-weight: 700; }
+  /* DRAFT — PACK RIP */
+  #draft { display: none; flex-direction: column; }
+  #draft.active { display: flex; }
 
-  .draft-instructions {
-    text-align: center; padding: 8px 12px;
-    font-family: 'JetBrains Mono', monospace; font-size: 10px;
-    color: #aaa; letter-spacing: 1px;
-    border-bottom: 1px solid #222;
-  }
-
-  .draft-scroll {
-    flex: 1; min-height: 0; overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    display: flex; flex-direction: column;
-  }
-
-  .draft-section {
-    padding: 8px;
-    display: flex; flex-direction: column;
+  .pack-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px;
+    padding-top: calc(env(safe-area-inset-top) + 8px);
+    background: rgba(0,0,0,0.6); border-bottom: 1px solid #222;
     flex-shrink: 0;
   }
-  .draft-section-label {
-    font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px;
-    margin-bottom: 6px; padding: 0 4px;
+  .pack-header .pack-title {
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px;
+    color: #fff;
   }
-  .draft-options {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
-    min-height: 0;
+  .pack-header .pack-title .pack-num { color: #ffb800; }
+  .pack-exit {
+    background: #1a1a1a; border: 1px solid #333; color: #aaa;
+    font-family: 'Bebas Neue', sans-serif; font-size: 12px; letter-spacing: 2px;
+    padding: 6px 12px; cursor: pointer;
   }
-  .draft-card {
-    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
-    border: 1px solid #333; border-radius: 4px;
-    display: flex; flex-direction: column;
-    cursor: pointer; transition: all 0.15s;
-    position: relative; overflow: hidden;
-    padding: 0;
-    min-height: 180px;
-  }
-  .draft-card.off-card { border-left: 3px solid #ff8a4a; }
-  .draft-card.def-card { border-left: 3px solid #4aaaff; }
-  .draft-card.selected {
-    border-color: #4aff8a; box-shadow: 0 0 16px rgba(74,255,138,0.5);
-    transform: translateY(-2px);
-  }
-  .draft-card .rarity-glow {
-    position: absolute; inset: 0; pointer-events: none; opacity: 0.3;
-    background: radial-gradient(ellipse at top, var(--rarity-color, transparent) 0%, transparent 60%);
-  }
-  .draft-card-header {
-    display: flex; justify-content: space-between; padding: 4px 5px;
-    background: rgba(0,0,0,0.4);
-  }
-  .draft-card-cost {
-    background: #ffb800; color: #000; font-family: 'Bebas Neue', sans-serif;
-    font-size: 16px; padding: 1px 6px; border-radius: 2px; min-width: 22px; text-align: center;
-  }
-  .draft-card-pos {
-    font-family: 'JetBrains Mono', monospace; font-size: 9px;
-    color: #aaa; padding-top: 3px; letter-spacing: 0.5px; font-weight: 700;
-  }
-  .draft-card-rarity {
-    position: absolute; top: 2px; right: 2px;
-    font-size: 10px; line-height: 1; z-index: 2;
-  }
-  .draft-card-name {
-    text-align: center; padding: 6px 4px;
-    font-family: 'Bebas Neue', sans-serif; font-size: 11px; line-height: 1.1;
-    color: #fff; min-height: 36px;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .draft-card-team {
-    text-align: center; padding: 0 2px 2px;
-    font-family: 'JetBrains Mono', monospace; font-size: 8px;
-    color: #c12c2c; letter-spacing: 1px;
-  }
-  .draft-card-stat {
-    text-align: center; padding: 4px 0;
-    font-family: 'Bebas Neue', sans-serif; font-size: 28px; line-height: 1;
-  }
-  .draft-card.off-card .draft-card-stat { color: #ff8a4a; }
-  .draft-card.def-card .draft-card-stat { color: #4aaaff; }
-  .draft-card-stat-label {
-    text-align: center;
-    font-family: 'JetBrains Mono', monospace; font-size: 7px;
-    opacity: 0.5; letter-spacing: 1px; margin-top: -2px;
-  }
-  .draft-card-ability {
-    font-family: 'JetBrains Mono', monospace; font-size: 7px;
-    padding: 3px 2px; line-height: 1.15;
-    background: rgba(193,44,44,0.18); color: #ffaaaa;
-    text-align: center; min-height: 26px;
-    display: flex; align-items: center; justify-content: center;
-    border-top: 1px solid #2a2a2a;
-  }
-  .draft-card-ability:empty { background: rgba(0,0,0,0.3); }
 
-  /* Rarity coloring */
-  .draft-card.rarity-common { --rarity-color: transparent; }
-  .draft-card.rarity-uncommon { --rarity-color: #4aaaff; border-color: #4aaaff; }
-  .draft-card.rarity-rare { --rarity-color: #ffb800; border-color: #ffb800; box-shadow: 0 0 8px rgba(255,184,0,0.3); }
-  .draft-card.rarity-legendary { 
-    --rarity-color: #ff4aff; border-color: #ff4aff;
-    box-shadow: 0 0 12px rgba(255,74,255,0.5);
+  .pack-streaks {
+    min-height: 28px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 4px 10px;
+    align-items: center; justify-content: center;
+  }
+  .pack-streak-badge {
+    background: linear-gradient(135deg, #2a1a05 0%, #1a0a05 100%);
+    border: 1px solid #ffb800; border-radius: 12px;
+    padding: 3px 8px;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #ffb800; letter-spacing: 1px;
+    cursor: pointer;
+  }
+
+  .pack-timer-wrap {
+    display: flex; justify-content: center; padding: 4px 0;
+  }
+  .pack-timer {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    border: 3px solid #4aff8a;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: #4aff8a;
+    background: rgba(0,0,0,0.5);
+    transition: border-color 0.2s, color 0.2s, transform 0.1s;
+  }
+  .pack-timer.warn { border-color: #ffb800; color: #ffb800; }
+  .pack-timer.urgent {
+    border-color: #ff4a4a; color: #ff4a4a;
+    animation: timerUrgentPulse 0.5s ease-in-out infinite;
+  }
+  @keyframes timerUrgentPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.12); box-shadow: 0 0 12px rgba(255,74,74,0.7); }
+  }
+
+  .pack-fan {
+    position: relative;
+    flex: 1; min-height: 180px;
+    margin: 8px 0 4px;
+  }
+  .pack-card {
+    position: absolute;
+    width: 88px; height: 132px;
+    top: 50%; left: 50%;
+    margin-left: -44px; margin-top: -66px;
+    perspective: 800px;
+    cursor: pointer;
+    transition: transform 0.5s cubic-bezier(.4,.2,.3,1.2), opacity 0.5s, filter 0.5s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  .pack-card .card-inner {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 0.6s cubic-bezier(.4,.2,.3,1.2);
+  }
+  .pack-card.revealed .card-inner { transform: rotateY(180deg); }
+  .pack-card .card-back,
+  .pack-card .card-front {
+    position: absolute; inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 8px; overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  }
+  .pack-card .card-back {
+    background:
+      radial-gradient(ellipse at center, rgba(255,255,255,0.1) 0%, transparent 60%),
+      linear-gradient(135deg, #1a3a5c 0%, #0a1a2c 60%, #050a1a 100%);
+    border: 2px solid #4aaaff;
+    display: flex; align-items: center; justify-content: center;
+    color: #4aaaff;
+    font-family: 'Bebas Neue', sans-serif; font-size: 44px;
+    text-shadow: 0 0 8px rgba(74,170,255,0.6);
+  }
+  .pack-card .card-front {
+    transform: rotateY(180deg);
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+    border: 2px solid #444;
+    display: flex; flex-direction: column;
+  }
+  .pack-card.rarity-uncommon .card-front { border-color: #4aaaff; }
+  .pack-card.rarity-rare .card-front {
+    border-color: #ffb800;
+    box-shadow: 0 0 14px rgba(255,184,0,0.5), 0 4px 12px rgba(0,0,0,0.6);
+  }
+  .pack-card.rarity-legendary .card-front {
+    border-color: #ff4aff;
+    box-shadow: 0 0 20px rgba(255,74,255,0.7), 0 0 30px rgba(255,184,0,0.4), 0 4px 12px rgba(0,0,0,0.6);
     animation: legendaryPulse 2s ease-in-out infinite;
   }
   @keyframes legendaryPulse {
-    0%,100% { box-shadow: 0 0 12px rgba(255,74,255,0.5); }
-    50% { box-shadow: 0 0 24px rgba(255,74,255,0.9); }
+    0%, 100% { box-shadow: 0 0 20px rgba(255,74,255,0.7), 0 0 30px rgba(255,184,0,0.4), 0 4px 12px rgba(0,0,0,0.6); }
+    50%      { box-shadow: 0 0 30px rgba(255,74,255,1),   0 0 42px rgba(255,184,0,0.7), 0 4px 12px rgba(0,0,0,0.6); }
   }
 
-  .draft-actions {
-    padding: 8px;
+  .pack-card.picked .card-front {
+    box-shadow: 0 0 18px rgba(74,255,138,0.9), 0 4px 12px rgba(0,0,0,0.6);
+    outline: 2px solid #4aff8a; outline-offset: -2px;
+  }
+
+  .pack-card.flipping-rare { animation: rareFlashAnim 0.7s ease-out; }
+  @keyframes rareFlashAnim {
+    0%   { filter: none; }
+    40%  { filter: brightness(1.6) drop-shadow(0 0 16px #ffb800); }
+    100% { filter: none; }
+  }
+  .pack-card.flipping-legendary { animation: legendaryFlashAnim 1s ease-out; }
+  @keyframes legendaryFlashAnim {
+    0%   { filter: none; }
+    30%  { filter: brightness(1.7) drop-shadow(0 0 18px #ff4aff) drop-shadow(0 0 28px gold); }
+    70%  { filter: brightness(1.3) drop-shadow(0 0 12px #ff4aff); }
+    100% { filter: none; }
+  }
+
+  .pack-card.discarding {
+    transform: translate(0, 260px) rotate(0deg) !important;
+    filter: grayscale(1) brightness(0.45);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  .pack-card.flying-to-deck {
+    transform: translate(0, -360px) scale(0.6) rotate(0deg) !important;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Pack card front content */
+  .pc-portrait {
+    width: 100%; height: 56px; overflow: hidden;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .pc-portrait svg { width: 100%; height: 100%; display: block; }
+  .pc-header {
+    display: flex; justify-content: space-between; padding: 2px 4px;
+    background: rgba(0,0,0,0.5);
+  }
+  .pc-cost {
+    background: #ffb800; color: #000;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px;
+    padding: 0 5px; border-radius: 2px; min-width: 18px; text-align: center;
+  }
+  .pc-pos {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #aaa; padding-top: 2px; letter-spacing: 0.5px; font-weight: 700;
+  }
+  .pc-name {
+    text-align: center; padding: 2px 3px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 10px; line-height: 1.05;
+    color: #fff;
+  }
+  .pc-team {
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 7px;
+    color: #c12c2c; letter-spacing: 1px;
+  }
+  .pc-stat {
+    text-align: center; padding: 1px 0;
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px; line-height: 1;
+    flex: 1; display: flex; align-items: center; justify-content: center;
+  }
+  .pack-card.off-side .pc-stat { color: #ff8a4a; }
+  .pack-card.def-side .pc-stat { color: #4aaaff; }
+  .pc-ability {
+    font-family: 'JetBrains Mono', monospace; font-size: 6px;
+    padding: 2px 2px; line-height: 1.1;
+    background: rgba(193,44,44,0.18); color: #ffaaaa;
+    text-align: center; min-height: 12px;
+    border-top: 1px solid #2a2a2a;
+  }
+  .pc-ability:empty { background: rgba(0,0,0,0.3); }
+
+  /* Picked slots */
+  .pack-slots {
+    display: flex; justify-content: center; gap: 14px;
+    padding: 6px 12px 4px;
+    flex-shrink: 0;
+  }
+  .pack-slot {
+    width: 88px; height: 132px;
+    border: 2px dashed #444;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #555;
+    font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 2px;
+    background: rgba(0,0,0,0.3);
+    position: relative; overflow: hidden;
+  }
+  .pack-slot.off { border-color: #663520; color: #ff8a4a; }
+  .pack-slot.def { border-color: #1f4060; color: #4aaaff; }
+  .pack-slot.filled {
+    border-style: solid;
+    background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+  }
+  .pack-slot .slot-card {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+  }
+  .pack-slot.off .slot-card .pc-stat { color: #ff8a4a; }
+  .pack-slot.def .slot-card .pc-stat { color: #4aaaff; }
+
+  .pack-confirm {
+    display: flex; justify-content: center;
+    padding: 8px 12px;
     padding-bottom: calc(env(safe-area-inset-bottom) + 8px);
-    display: flex; gap: 8px; background: #000; border-top: 1px solid #333;
+    background: #000; border-top: 1px solid #222;
+    flex-shrink: 0;
   }
-  .draft-actions button {
-    flex: 1; padding: 12px;
-    background: #1a2820; color: #6a8a6a;
-    border: 1px solid #2a3a30; font-family: 'Bebas Neue', sans-serif;
-    font-size: 14px; letter-spacing: 2px; cursor: pointer;
+  .pack-confirm button {
+    padding: 12px 28px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px;
+    background: #1a1a1a; color: #666; border: 2px solid #333;
+    border-radius: 6px;
+    cursor: not-allowed;
+    min-width: 200px;
   }
-  .draft-actions button.primary { background: #c12c2c; color: #fff; border-color: #c12c2c; }
-  .draft-actions button.primary:disabled { background: #333; color: #777; border-color: #444; cursor: not-allowed; }
+  .pack-confirm button.ready {
+    background: linear-gradient(135deg, #d4a017 0%, #ff8a00 100%);
+    color: #fff; border-color: #ffb800; cursor: pointer;
+    animation: confirmPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes confirmPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,184,0,0.7); }
+    50%      { box-shadow: 0 0 0 10px rgba(255,184,0,0); }
+  }
+
+  /* Body shake on legendary reveal */
+  .body-shake { animation: bodyShakeAnim 0.32s ease-in-out; }
+  @keyframes bodyShakeAnim {
+    0%, 100% { transform: translate(0, 0); }
+    15%  { transform: translate(-4px, -2px); }
+    30%  { transform: translate(4px, 2px); }
+    45%  { transform: translate(-3px, 3px); }
+    60%  { transform: translate(3px, -3px); }
+    75%  { transform: translate(-2px, 1px); }
+    90%  { transform: translate(2px, -1px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .body-shake { animation: none; }
+    .pack-card.flipping-rare,
+    .pack-card.flipping-legendary { animation: none; }
+    .pack-confirm button.ready { animation: none; }
+  }
 
   /* SEASON HUB */
   .season-hub {
@@ -1309,39 +1442,8 @@
   <div class="scoring-summary" id="scoringSummary"></div>
 </div>
 
-<!-- DRAFT -->
-<div class="screen" id="draft">
-  <div class="builder-header">
-    <div class="builder-title">DRAFT · ROUND <span id="draftRound">1</span>/25</div>
-    <button class="builder-back" onclick="cancelDraft()">EXIT</button>
-  </div>
-  <div class="draft-progress">
-    <div class="draft-progress-bar">
-      <div class="draft-progress-fill" id="draftProgressFill"></div>
-    </div>
-    <div class="draft-progress-text">
-      <span>OFFENSE: <span id="draftOffCount">0</span>/25</span>
-      <span>DEFENSE: <span id="draftDefCount">0</span>/25</span>
-    </div>
-  </div>
-  <div class="draft-instructions" id="draftInstructions">
-    Pick ONE Offense and ONE Defense card to add to your roster.
-  </div>
-  <div class="draft-scroll">
-    <div class="draft-section">
-      <div class="draft-section-label" style="color:#ff8a4a;">🏈 OFFENSE — PICK ONE</div>
-      <div class="draft-options" id="draftOffOptions"></div>
-    </div>
-    <div class="draft-section">
-      <div class="draft-section-label" style="color:#4aaaff;">🛡 DEFENSE — PICK ONE</div>
-      <div class="draft-options" id="draftDefOptions"></div>
-    </div>
-  </div>
-  <div class="draft-actions">
-    <button onclick="autoDraftRest()">AUTO-DRAFT REST</button>
-    <button class="primary" id="confirmDraftBtn" onclick="confirmDraftPicks()" disabled>NEXT ROUND</button>
-  </div>
-</div>
+<!-- DRAFT (pack-rip) — populated entirely by renderDraft() -->
+<div class="screen" id="draft"></div>
 
 <!-- SEASON HUB -->
 <div class="screen" id="season">
@@ -3280,166 +3382,448 @@ function startQuickPlay() {
 }
 
 // ============================================================
-// DRAFT — 25 rounds, pick 1 OFF + 1 DEF per round
+// DRAFT — Pack-Rip (10 packs × 5 cards, pick 2 each; 30 starter)
+// === PHASE 1 COMPLETE — playtest before continuing to Phase 2 ===
 // ============================================================
 let draftState = null;
 
+// ---- Web Audio synth helpers (Phase 1) ----
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { return null; }
+  }
+  if (_audioCtx && _audioCtx.state === 'suspended') {
+    try { _audioCtx.resume(); } catch (e) {}
+  }
+  return _audioCtx;
+}
+
+function playSfx(type) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  try {
+    if (type === 'flip') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(900, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.11);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.14);
+    } else if (type === 'rareFlash') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1760, now + 0.18);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.23);
+    } else if (type === 'legendaryHit') {
+      // 4-note ascending arpeggio (slot-machine win)
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((freq, i) => {
+        const t = now + i * 0.07;
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.13, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.29);
+      });
+    } else if (type === 'tick') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(880, now);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.06);
+    } else if (type === 'tickUrgent') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1320, now);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.09);
+    } else if (type === 'pick') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.exponentialRampToValueAtTime(990, now + 0.08);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.14);
+    } else if (type === 'confirm') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.14);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.21);
+    } else if (type === 'discard') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(240, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.22);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.25);
+    }
+  } catch (e) { /* swallow audio errors during animations */ }
+}
+
+// ---- Starter deck (30 commons: 15 OFF + 15 DEF, balanced positions) ----
+const STARTER_POSITION_PLAN = {
+  off: ['QB','QB','RB','RB','RB','WR','WR','WR','WR','TE','TE','OL','OL','OL','K'],
+  def: ['CB','CB','CB','S','S','LB','LB','LB','DE','DE','DT','DT','ST','ST','ST']
+};
+
+function generateStarterCard(side, pos) {
+  // Force common rarity, gentle cost curve weighted low/mid
+  const costWeights = [
+    { value: 1, weight: 22 }, { value: 2, weight: 28 }, { value: 3, weight: 26 },
+    { value: 4, weight: 16 }, { value: 5, weight: 6 },  { value: 6, weight: 2 }
+  ];
+  const cost = pickWeighted(costWeights).value;
+  const statRange = STAT_BY_COST[cost];
+  const baseStat = statRange.min + Math.floor(Math.random() * (statRange.max - statRange.min + 1));
+  const off = side === 'off' ? baseStat : 0;
+  const def = side === 'def' ? baseStat : 0;
+  let ability = '', desc = '';
+  if (Math.random() < 0.12) {
+    const apool = ABILITY_POOL[side].filter(a => cost >= a.minCost && (!a.posOnly || a.posOnly.includes(pos)));
+    if (apool.length > 0) {
+      const picked = pickOne(apool);
+      ability = picked.ability; desc = picked.desc;
+    }
+  }
+  if (pos === 'K' && !ability) ability = 'PAT bonus on TD in this lane';
+  const name = pickOne(FIRST_NAMES) + ' ' + pickOne(LAST_NAMES);
+  const team = pickOne(NFL_TEAMS);
+  return {
+    id: uid(), name, pos, team, cost, off, def, side, ability, desc,
+    rarity: 'common'
+  };
+}
+
+function generateStarterDeck() {
+  const cards = [];
+  STARTER_POSITION_PLAN.off.forEach(pos => cards.push(generateStarterCard('off', pos)));
+  STARTER_POSITION_PLAN.def.forEach(pos => cards.push(generateStarterCard('def', pos)));
+  return cards;
+}
+
+// ---- Pack generation (Phase 1: flat rarity, ensure both sides) ----
+function generateDraftPack(packNum) {
+  // Phase 1: use the default RARITY_DISTRIBUTION (no escalating bias yet)
+  const cards = [];
+  for (let i = 0; i < 5; i++) cards.push(generateCard());
+  // Guarantee at least one OFF and one DEF (re-roll last slot if needed)
+  const offCount = cards.filter(c => c.side === 'off').length;
+  if (offCount === 0) cards[4] = generateCard('off');
+  else if (offCount === 5) cards[4] = generateCard('def');
+  cards.forEach(c => { c._revealed = false; });
+  return cards;
+}
+
+// ---- Draft lifecycle ----
 function startSeasonDraft() {
-  // If there's an existing season, confirm before overwriting
   const existing = loadSeason();
   if (existing && existing.wins < 7) {
     if (!confirm('You have a season in progress. Start a new draft and abandon it?')) return;
     clearSeason();
   }
+  // Kick the AudioContext awake on this user gesture so the first flip plays
+  getAudioCtx();
   draftState = {
-    round: 1,
-    maxRounds: 25,
-    pool: generateMasterPool(200), // big pool — never run out
-    roster: [],
-    currentOffOptions: [],
-    currentDefOptions: [],
-    selectedOff: null,
-    selectedDef: null
+    packNum: 1,
+    totalPacks: 10,
+    currentPack: [],
+    pickedOff: null,
+    pickedDef: null,
+    history: [],
+    roster: generateStarterDeck(), // 30 commons (15/15) granted up front
+    timeLeft: 12,
+    timerInterval: null,
+    busy: false,
+    autoPickedThisPack: false
   };
-  drawDraftOptions();
   showScreen('draft');
-  renderDraft();
+  startPack();
 }
 
 function cancelDraft() {
-  if (confirm('Cancel the draft and lose your picks?')) {
-    draftState = null;
-    showScreen('menu');
+  if (!confirm('Cancel the draft and lose your picks?')) return;
+  clearDraftTimer();
+  draftState = null;
+  showScreen('menu');
+}
+
+function clearDraftTimer() {
+  if (draftState && draftState.timerInterval) {
+    clearInterval(draftState.timerInterval);
+    draftState.timerInterval = null;
   }
 }
 
-function drawDraftOptions() {
-  const offPool = draftState.pool.filter(c => c.side === 'off');
-  const defPool = draftState.pool.filter(c => c.side === 'def');
-  draftState.currentOffOptions = shuffle(offPool).slice(0, 3);
-  draftState.currentDefOptions = shuffle(defPool).slice(0, 3);
-  draftState.selectedOff = null;
-  draftState.selectedDef = null;
+async function startPack() {
+  if (!draftState) return;
+  draftState.busy = true;
+  draftState.pickedOff = null;
+  draftState.pickedDef = null;
+  draftState.autoPickedThisPack = false;
+  draftState.timeLeft = 12;
+  draftState.currentPack = generateDraftPack(draftState.packNum);
+  renderDraft();
+  await sleep(500);
+  if (!draftState) return;
+  for (let i = 0; i < draftState.currentPack.length; i++) {
+    if (!draftState) return;
+    revealPackCard(i);
+    await sleep(350);
+  }
+  if (!draftState) return;
+  draftState.busy = false;
+  startPackTimer();
 }
 
-function renderDraft() {
-  document.getElementById('draftRound').textContent = draftState.round;
-  const offCount = draftState.roster.filter(c => c.side === 'off').length;
-  const defCount = draftState.roster.filter(c => c.side === 'def').length;
-  document.getElementById('draftOffCount').textContent = offCount;
-  document.getElementById('draftDefCount').textContent = defCount;
-  document.getElementById('draftProgressFill').style.width = ((draftState.round - 1) / 25 * 100) + '%';
-
-  renderDraftOptions('draftOffOptions', draftState.currentOffOptions, 'off');
-  renderDraftOptions('draftDefOptions', draftState.currentDefOptions, 'def');
-
-  // Confirm button
-  const canConfirm = draftState.selectedOff && draftState.selectedDef;
-  const btn = document.getElementById('confirmDraftBtn');
-  btn.disabled = !canConfirm;
-  btn.textContent = draftState.round >= draftState.maxRounds ? 'COMPLETE DRAFT' : 'NEXT ROUND →';
+function revealPackCard(idx) {
+  if (!draftState || !draftState.currentPack[idx]) return;
+  const card = draftState.currentPack[idx];
+  card._revealed = true;
+  const el = document.querySelector('[data-pack-idx="' + idx + '"]');
+  if (el) {
+    el.classList.add('revealed');
+    if (card.rarity === 'rare') {
+      el.classList.add('flipping-rare');
+      setTimeout(() => el && el.classList.remove('flipping-rare'), 800);
+    } else if (card.rarity === 'legendary') {
+      el.classList.add('flipping-legendary');
+      setTimeout(() => el && el.classList.remove('flipping-legendary'), 1100);
+    }
+  }
+  if (card.rarity === 'legendary') {
+    document.body.classList.add('body-shake');
+    setTimeout(() => document.body.classList.remove('body-shake'), 320);
+    playSfx('legendaryHit');
+  } else if (card.rarity === 'rare') {
+    playSfx('rareFlash');
+  } else {
+    playSfx('flip');
+  }
 }
 
-function renderDraftOptions(containerId, options, side) {
-  const cont = document.getElementById(containerId);
-  cont.innerHTML = '';
-  options.forEach(card => {
-    const el = document.createElement('div');
-    const sideClass = card.side === 'off' ? 'off-card' : 'def-card';
-    el.className = 'draft-card ' + sideClass + ' rarity-' + card.rarity;
-    const selectedId = side === 'off' ? draftState.selectedOff?.id : draftState.selectedDef?.id;
-    if (card.id === selectedId) el.classList.add('selected');
-    
-    const statValue = card.side === 'off' ? card.off : card.def;
-    const rarityEmoji = card.rarity === 'legendary' ? '✦' :
-                       card.rarity === 'rare' ? '★' :
-                       card.rarity === 'uncommon' ? '◆' : '';
-    el.innerHTML = `
-      <div class="rarity-glow"></div>
-      ${rarityEmoji ? `<div class="draft-card-rarity">${rarityEmoji}</div>` : ''}
-      <div class="draft-card-header">
-        <span class="draft-card-cost">${card.cost}</span>
-        <span class="draft-card-pos">${card.pos}</span>
-      </div>
-      <div class="draft-card-name">${card.name}</div>
-      <div class="draft-card-team">${card.team}</div>
-      <div class="draft-card-stat">${statValue}</div>
-      <div class="draft-card-stat-label">${card.side === 'off' ? 'OFFENSE' : 'DEFENSE'}</div>
-      <div class="draft-card-ability">${card.ability || ''}</div>
-    `;
-    el.onclick = () => selectDraftCard(card, side);
-    cont.appendChild(el);
-  });
+function startPackTimer() {
+  clearDraftTimer();
+  updateTimerUI();
+  draftState.timerInterval = setInterval(() => {
+    if (!draftState) { clearDraftTimer(); return; }
+    // Pause timer while a tooltip is open
+    const overlay = document.getElementById('tooltipOverlay');
+    if (overlay && overlay.classList.contains('show')) return;
+    draftState.timeLeft--;
+    if (draftState.timeLeft > 1 && draftState.timeLeft <= 4) playSfx('tick');
+    else if (draftState.timeLeft === 1) playSfx('tickUrgent');
+    updateTimerUI();
+    if (draftState.timeLeft <= 0) {
+      clearDraftTimer();
+      autoPickRemaining();
+    }
+  }, 1000);
 }
 
-function selectDraftCard(card, side) {
-  if (side === 'off') draftState.selectedOff = card;
-  else draftState.selectedDef = card;
+function updateTimerUI() {
+  const t = document.getElementById('packTimer');
+  if (!t || !draftState) return;
+  t.textContent = Math.max(0, draftState.timeLeft);
+  t.classList.remove('warn', 'urgent');
+  if (draftState.timeLeft <= 2) t.classList.add('urgent');
+  else if (draftState.timeLeft <= 4) t.classList.add('warn');
+}
+
+async function autoPickRemaining() {
+  if (!draftState) return;
+  draftState.busy = true;
+  draftState.autoPickedThisPack = true;
+  if (!draftState.pickedOff) {
+    const cand = draftState.currentPack
+      .filter(c => c.side === 'off')
+      .sort((a, b) => b.off - a.off);
+    if (cand[0]) draftState.pickedOff = cand[0];
+  }
+  if (!draftState.pickedDef) {
+    const cand = draftState.currentPack
+      .filter(c => c.side === 'def')
+      .sort((a, b) => b.def - a.def);
+    if (cand[0]) draftState.pickedDef = cand[0];
+  }
+  renderDraft();
+  showToast('AUTO-PICKED', 1000);
+  await sleep(900);
+  if (!draftState) return;
+  confirmPackPicks(true);
+}
+
+function tapPackCard(idx) {
+  if (!draftState || draftState.busy) return;
+  const card = draftState.currentPack[idx];
+  if (!card || !card._revealed) return;
+  // Toggle off if already picked on its side
+  if (card.side === 'off') {
+    if (draftState.pickedOff === card) { draftState.pickedOff = null; }
+    else { draftState.pickedOff = card; playSfx('pick'); }
+  } else {
+    if (draftState.pickedDef === card) { draftState.pickedDef = null; }
+    else { draftState.pickedDef = card; playSfx('pick'); }
+  }
   renderDraft();
 }
 
-function confirmDraftPicks() {
-  if (!draftState.selectedOff || !draftState.selectedDef) return;
-  // Add picks to roster
-  draftState.roster.push(draftState.selectedOff);
-  draftState.roster.push(draftState.selectedDef);
-  // Remove from pool
-  draftState.pool = draftState.pool.filter(c => 
-    c.id !== draftState.selectedOff.id && c.id !== draftState.selectedDef.id
-  );
-  // Advance round or finish
-  if (draftState.round >= draftState.maxRounds) {
+// Legacy alias kept for compatibility with old call sites
+function selectDraftCard(card, side) {
+  if (!draftState) return;
+  if (side === 'off') draftState.pickedOff = card;
+  else draftState.pickedDef = card;
+  renderDraft();
+}
+
+async function confirmPackPicks(fromAuto) {
+  if (!draftState) return;
+  if (!fromAuto && draftState.busy) return;
+  if (!draftState.pickedOff || !draftState.pickedDef) return;
+  clearDraftTimer();
+  draftState.busy = true;
+
+  // Record history + add to roster (clean transient flag)
+  const off = draftState.pickedOff;
+  const def = draftState.pickedDef;
+  delete off._revealed;
+  delete def._revealed;
+  draftState.roster.push(off);
+  draftState.roster.push(def);
+  draftState.history.push({ packNum: draftState.packNum, picks: [off, def] });
+
+  // Animate: picked cards fly up toward deck, others slide down + gray
+  const cards = document.querySelectorAll('#packFan .pack-card');
+  cards.forEach(el => {
+    const idx = parseInt(el.dataset.packIdx, 10);
+    const card = draftState.currentPack[idx];
+    if (card === off || card === def) el.classList.add('flying-to-deck');
+    else el.classList.add('discarding');
+  });
+  playSfx('discard');
+  if (!fromAuto) playSfx('confirm');
+  await sleep(600);
+  if (!draftState) return;
+
+  draftState.packNum++;
+  if (draftState.packNum > draftState.totalPacks) {
     finishDraft();
   } else {
-    draftState.round++;
-    drawDraftOptions();
-    renderDraft();
+    startPack();
   }
 }
 
-function autoDraftRest() {
-  if (!confirm('Auto-draft the rest of your roster?')) return;
-  // Include current picks if selected
-  if (draftState.selectedOff) {
-    draftState.roster.push(draftState.selectedOff);
-    draftState.pool = draftState.pool.filter(c => c.id !== draftState.selectedOff.id);
-  }
-  if (draftState.selectedDef) {
-    draftState.roster.push(draftState.selectedDef);
-    draftState.pool = draftState.pool.filter(c => c.id !== draftState.selectedDef.id);
-  }
-  // Auto-pick remaining
-  while (draftState.roster.filter(c => c.side === 'off').length < 25) {
-    const offPool = draftState.pool.filter(c => c.side === 'off');
-    if (offPool.length === 0) break;
-    // Pick a card weighted toward better stats
-    const pick = pickBestAutoCard(offPool);
-    draftState.roster.push(pick);
-    draftState.pool = draftState.pool.filter(c => c.id !== pick.id);
-  }
-  while (draftState.roster.filter(c => c.side === 'def').length < 25) {
-    const defPool = draftState.pool.filter(c => c.side === 'def');
-    if (defPool.length === 0) break;
-    const pick = pickBestAutoCard(defPool);
-    draftState.roster.push(pick);
-    draftState.pool = draftState.pool.filter(c => c.id !== pick.id);
-  }
-  finishDraft();
+// Legacy name kept since other call sites may still reference it
+function confirmDraftPicks() { confirmPackPicks(false); }
+
+// ---- Render ----
+function renderDraft() {
+  if (!draftState) return;
+  const screen = document.getElementById('draft');
+  if (!screen) return;
+  const haveBoth = draftState.pickedOff && draftState.pickedDef;
+  const isFinal = draftState.packNum >= draftState.totalPacks;
+  screen.innerHTML = `
+    <div class="pack-header">
+      <div class="pack-title">PACK <span class="pack-num">${draftState.packNum}</span> / ${draftState.totalPacks}</div>
+      <button class="pack-exit" onclick="cancelDraft()">EXIT</button>
+    </div>
+    <div class="pack-streaks" id="packStreaks"></div>
+    <div class="pack-timer-wrap">
+      <div class="pack-timer" id="packTimer">${draftState.timeLeft}</div>
+    </div>
+    <div class="pack-fan" id="packFan">
+      ${draftState.currentPack.map((card, i) => renderPackCardHTML(card, i)).join('')}
+    </div>
+    <div class="pack-slots">
+      <div class="pack-slot off ${draftState.pickedOff ? 'filled' : ''}">
+        ${draftState.pickedOff ? '<div class="slot-card">' + packCardFrontHTML(draftState.pickedOff) + '</div>' : 'OFFENSE'}
+      </div>
+      <div class="pack-slot def ${draftState.pickedDef ? 'filled' : ''}">
+        ${draftState.pickedDef ? '<div class="slot-card">' + packCardFrontHTML(draftState.pickedDef) + '</div>' : 'DEFENSE'}
+      </div>
+    </div>
+    <div class="pack-confirm">
+      <button class="${haveBoth ? 'ready' : ''}" onclick="confirmPackPicks(false)">${isFinal ? 'FINISH DRAFT' : 'CONFIRM PICKS'}</button>
+    </div>
+  `;
+  updateTimerUI();
+  fanOutPackCards();
 }
 
-function pickBestAutoCard(pool) {
-  // Pick a card with reasonable stat-per-cost, with light cost distribution preference
-  const scored = pool.map(c => {
-    const stat = c.side === 'off' ? c.off : c.def;
-    const valuePerCost = stat / c.cost;
-    return { card: c, score: valuePerCost + Math.random() * 3 };
+function renderPackCardHTML(card, idx) {
+  const picked = (card === draftState.pickedOff || card === draftState.pickedDef);
+  const revealed = card._revealed ? 'revealed' : '';
+  const sideCls = card.side === 'off' ? 'off-side' : 'def-side';
+  return `
+    <div class="pack-card rarity-${card.rarity} ${sideCls} ${picked ? 'picked' : ''} ${revealed}"
+         data-pack-idx="${idx}" onclick="tapPackCard(${idx})">
+      <div class="card-inner">
+        <div class="card-back">?</div>
+        <div class="card-front">${packCardFrontHTML(card)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function packCardFrontHTML(card) {
+  const statValue = card.side === 'off' ? card.off : card.def;
+  return `
+    <div class="pc-portrait">${generatePortraitSVG(card, 80)}</div>
+    <div class="pc-header">
+      <span class="pc-cost">${card.cost}</span>
+      <span class="pc-pos">${card.pos}</span>
+    </div>
+    <div class="pc-name">${card.name}</div>
+    <div class="pc-team">${card.team}</div>
+    <div class="pc-stat">${statValue}</div>
+    <div class="pc-ability">${card.ability || ''}</div>
+  `;
+}
+
+function fanOutPackCards() {
+  const cards = document.querySelectorAll('#packFan .pack-card');
+  const count = cards.length;
+  if (count === 0) return;
+  // Spread within available width (mobile-first: tight overlap on narrow screens)
+  const fanEl = document.getElementById('packFan');
+  const available = Math.min((fanEl && fanEl.clientWidth) || window.innerWidth, 360) - 24;
+  const cardWidth = 88;
+  const maxSpread = Math.max(0, available - cardWidth);
+  cards.forEach((el, i) => {
+    const pct = count > 1 ? (i / (count - 1)) - 0.5 : 0; // -0.5..0.5
+    const x = pct * maxSpread;
+    const angle = pct * 14; // gentle fan
+    const lift = -Math.abs(pct) * 6; // outer cards drop slightly
+    el.style.transform = 'translate(' + x.toFixed(1) + 'px, ' + lift.toFixed(1) + 'px) rotate(' + angle.toFixed(1) + 'deg)';
   });
-  scored.sort((a, b) => b.score - a.score);
-  return scored[0].card;
 }
 
 function finishDraft() {
-  // Roster is complete (50 cards). Start a new season.
+  // Roster is complete (30 starter + 20 picks = 50 cards). Start a new season.
+  clearDraftTimer();
   seasonState = {
     roster: draftState.roster,
     wins: 0,
