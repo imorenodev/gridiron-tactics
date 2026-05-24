@@ -2925,13 +2925,18 @@ function renderLanes() {
     const youSynergies = detectSynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
     const aiSynergies = detectSynergies(lane.aiCards.filter(c => c.revealed && !c.ejected));
 
-    // Net yards each side will gain this drive (matches scoring engine math)
-    const SCALE = 2.5;
-    let youNet = Math.floor(stats.youOff / SCALE) - Math.floor(stats.aiDef / SCALE);
-    let aiNet = Math.floor(stats.aiOff / SCALE) - Math.floor(stats.youDef / SCALE);
-    // Lockdown CB yard block
-    lane.youCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) aiNet -= 5; });
-    lane.aiCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) youNet -= 5; });
+    // Net yards each side will gain this drive (matches scoring engine math).
+    // Use the breakdown helper so the pill value and the tooltip stay in lockstep.
+    const youBreakdown = breakdownPowerPill(lane, 'you', stats);
+    const aiBreakdown  = breakdownPowerPill(lane, 'ai',  stats);
+    const youNet = youBreakdown.net;
+    const aiNet  = aiBreakdown.net;
+    const youSign = youNet >= 0 ? '+' : '';
+    const aiSign  = aiNet  >= 0 ? '+' : '';
+    const youTipTitle = 'YOUR NET YARDS: ' + youSign + youNet;
+    const aiTipTitle  = 'CPU NET YARDS: '  + aiSign  + aiNet;
+    const youTipBody  = buildPowerPillTooltipBody(youBreakdown, 'you');
+    const aiTipBody   = buildPowerPillTooltipBody(aiBreakdown,  'ai');
 
     laneEl.innerHTML = `
       <div class="lane-side ai-side">
@@ -2951,7 +2956,10 @@ function renderLanes() {
         </div>
       </div>
       <div class="lane-medallion-row">
-        <div class="lane-power-pill ai ${aiNet > 0 ? 'winning' : ''} ${aiNet < 0 ? 'losing' : ''}" data-tooltip="powerPillAi">${aiNet > 0 ? '+' : ''}${aiNet}</div>
+        <div class="lane-power-pill ai ${aiNet > 0 ? 'winning' : ''} ${aiNet < 0 ? 'losing' : ''}"
+             data-tooltip="powerPillAi"
+             data-tooltip-title="${escAttr(aiTipTitle)}"
+             data-tooltip-body="${escAttr(aiTipBody)}">${aiNet > 0 ? '+' : ''}${aiNet}</div>
         ${mod ? `
           <div class="lane-medallion cat-${mod.category}" data-tooltip="laneMedallion"
                data-tooltip-title="${escAttr(mod.icon + ' ' + mod.name)}"
@@ -2961,7 +2969,10 @@ function renderLanes() {
             <div class="medallion-desc">${mod.desc}</div>
           </div>
         ` : `<div style="flex:1;"></div>`}
-        <div class="lane-power-pill you ${youNet > 0 ? 'winning' : ''} ${youNet < 0 ? 'losing' : ''}" data-tooltip="powerPillYou">${youNet > 0 ? '+' : ''}${youNet}</div>
+        <div class="lane-power-pill you ${youNet > 0 ? 'winning' : ''} ${youNet < 0 ? 'losing' : ''}"
+             data-tooltip="powerPillYou"
+             data-tooltip-title="${escAttr(youTipTitle)}"
+             data-tooltip-body="${escAttr(youTipBody)}">${youNet > 0 ? '+' : ''}${youNet}</div>
       </div>
       <div class="lane-side you-side">
         <div class="yardage-bar you-bar" data-tooltip="yardageBar">
@@ -3205,6 +3216,70 @@ function placeCardInLane(card, laneIdx) {
 // ============================================================
 // LANE STATS — computes current OFF/DEF for each card with field effects
 // ============================================================
+// === POWER PILL BREAKDOWN TOOLTIPS ===
+// Modifier IDs that don't change OFF/DEF totals (cost discounts, reveal timing,
+// ability trigger counts). These are skipped in the breakdown tooltip since
+// they don't move the displayed math. All other lane modifiers are surfaced.
+const MOD_IDS_NO_STAT_IMPACT = new Set(['hurryUp', 'preventD', 'scouted', 'blitzZone']);
+
+function breakdownPowerPill(lane, side, precomputedStats) {
+  const stats = precomputedStats || computeLaneStats(lane);
+  const myOff    = side === 'you' ? stats.youOff : stats.aiOff;
+  const theirDef = side === 'you' ? stats.aiDef  : stats.youDef;
+
+  const SCALE = 2.5;
+  const gain = Math.floor(myOff    / SCALE);
+  const loss = Math.floor(theirDef / SCALE);
+  let net = gain - loss;
+
+  // Lockdown CB yard-block: -5 to OUR net per opposing CB with fieldYardBlock
+  let yardBlockPenalty = 0;
+  const opposingCards = side === 'you' ? lane.aiCards : lane.youCards;
+  opposingCards.forEach(c => {
+    if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) yardBlockPenalty += 5;
+  });
+  net -= yardBlockPenalty;
+
+  const bonuses = [];
+  // Lane modifier — include if it touches stat math, or any wild modifier
+  if (lane.modifier && !MOD_IDS_NO_STAT_IMPACT.has(lane.modifier.id)) {
+    bonuses.push({ icon: lane.modifier.icon, name: lane.modifier.name });
+  }
+  // Our active synergies (all sides — they're informative even if def-side
+  // synergies don't directly affect our own net)
+  const myCards = side === 'you' ? lane.youCards : lane.aiCards;
+  detectSynergies(myCards.filter(c => c.revealed && !c.ejected))
+    .forEach(syn => bonuses.push({ icon: syn.icon, name: syn.name }));
+  // Opposing DEF synergies (they buff their defense, reducing OUR net)
+  const oppCards = side === 'you' ? lane.aiCards : lane.youCards;
+  detectSynergies(oppCards.filter(c => c.revealed && !c.ejected))
+    .filter(s => s.side === 'def')
+    .forEach(syn => bonuses.push({ icon: syn.icon, name: 'Opp ' + syn.name }));
+
+  return { net, myOff, theirDef, gain, loss, yardBlockPenalty, bonuses };
+}
+
+function buildPowerPillTooltipBody(breakdown, side) {
+  const sideLabel = side === 'you' ? 'Your' : 'Their';
+  const oppLabel  = side === 'you' ? 'Their' : 'Your';
+  const sign = breakdown.net >= 0 ? '+' : '';
+  let body = '';
+  body += '<strong>' + sideLabel + ' OFF</strong> · ' + breakdown.myOff + '<br>';
+  body += '<strong>' + oppLabel  + ' DEF</strong> · ' + breakdown.theirDef + '<br>';
+  if (breakdown.bonuses.length > 0) {
+    body += '<br><em>Active bonuses:</em><br>';
+    breakdown.bonuses.forEach(b => { body += b.icon + ' ' + b.name + '<br>'; });
+  }
+  body += '<br><strong>Math:</strong> ⌊' + breakdown.myOff + '÷2.5⌋ − ⌊' + breakdown.theirDef + '÷2.5⌋';
+  if (breakdown.yardBlockPenalty > 0) body += ' − ' + breakdown.yardBlockPenalty;
+  body += '<br>= ' + breakdown.gain + ' − ' + breakdown.loss;
+  if (breakdown.yardBlockPenalty > 0) {
+    body += ' − ' + breakdown.yardBlockPenalty + ' <em>(Lockdown CB)</em>';
+  }
+  body += ' = <strong>' + sign + breakdown.net + '</strong> yards/drive';
+  return body;
+}
+
 function computeLaneStats(lane) {
   // Reset all curOff/curDef to base
   [...lane.youCards, ...lane.aiCards].forEach(c => {
