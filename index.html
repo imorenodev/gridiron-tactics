@@ -39,20 +39,32 @@
   /* ============ MENU ============ */
   #menu {
     justify-content: center; align-items: center; padding: 24px;
+    /* Dark vignette overlay layered above the football-field photo keeps the
+       buttons and chips readable regardless of where the photo is bright. */
     background:
-      linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.7) 100%),
-      repeating-linear-gradient(90deg, transparent 0px, transparent 40px, rgba(255,255,255,0.02) 40px, rgba(255,255,255,0.02) 41px);
+      linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.75) 100%),
+      url('src/assets/football-field-bg.png') center/cover no-repeat;
   }
   .logo-wrap { text-align: center; margin-bottom: 40px; }
   .logo-tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 6px; color: #c12c2c; margin-bottom: 8px; font-weight: 700; }
   .logo-main {
-    font-family: 'Bebas Neue', sans-serif; font-size: 64px; line-height: 0.85; letter-spacing: 2px;
-    background: linear-gradient(180deg, #fff 0%, #888 100%);
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    display: block;
+    width: 100%;
+    max-width: 80%;
+    height: auto;
+    margin: 0 auto;
+    /* drop-shadow respects the image's alpha channel, so the glow hugs the
+       logo outline (box-shadow would draw a rectangle behind the file). */
     filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 20px rgba(193,44,44,0.3));
   }
-  .logo-main .accent { color: #c12c2c; -webkit-text-fill-color: #c12c2c; }
-  .logo-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 4px; color: #6a8a6a; margin-top: 12px; }
+  .logo-sub {
+    display: block;
+    width: 100%;
+    max-width: 40%;
+    height: auto;
+    margin: 12px auto 0;
+    filter: drop-shadow(0 1px 0 #000) drop-shadow(0 0 12px rgba(0,0,0,0.5));
+  }
   .menu-btn {
     width: 280px; max-width: 80vw; padding: 18px 24px; margin: 8px 0;
     background: #c12c2c; color: #fff; border: none;
@@ -64,18 +76,6 @@
   .menu-btn:active { transform: scale(0.96); }
   .menu-btn.secondary { background: #1a2820; color: #6a8a6a; border: 1px solid #2a3a30; }
   .menu-btn.secondary:active { background: #243028; }
-  .field-deco {
-    position: absolute; bottom: 0; left: 0; right: 0; height: 30%; pointer-events: none;
-    background: linear-gradient(180deg, transparent 0%, rgba(20,60,30,0.4) 60%, rgba(20,60,30,0.6) 100%);
-  }
-  .yard-lines {
-    position: absolute; bottom: 0; left: 0; right: 0; height: 25%; pointer-events: none; opacity: 0.4;
-  }
-  .yard-lines::before {
-    content: ''; position: absolute; inset: 0;
-    background: repeating-linear-gradient(90deg, transparent 0px, transparent 60px, rgba(255,255,255,0.3) 60px, rgba(255,255,255,0.3) 62px);
-    transform: perspective(200px) rotateX(60deg); transform-origin: bottom;
-  }
 
   /* ============ GAME TOP BAR — broadcast scoreboard style ============ */
   .top-bar {
@@ -1239,8 +1239,8 @@
     color: #fff; border: 1px solid #ffb800;
   }
   /* Compressed final-pack intro used by the fast-forward path */
-  .final-pack-banner.ff { animation-duration: 0.6s; }
-  .final-pack-dim.ff    { animation-duration: 0.6s; }
+  .final-pack-banner.ff { animation-duration: 0.9s; }
+  .final-pack-dim.ff    { animation-duration: 0.9s; }
 
   .pack-streaks {
     min-height: 28px;
@@ -2098,8 +2098,8 @@
 <div class="screen active" id="menu">
   <div class="logo-wrap">
     <div class="logo-tag">EST. 2026 • WEEK 12</div>
-    <div class="logo-main">GRIDIRON<br><span class="accent">TACTICS</span></div>
-    <div class="logo-sub">FIRST TO 100 YARDS</div>
+    <img class="logo-main" src="src/assets/logo.png" alt="GRIDIRON TACTICS">
+    <img class="logo-sub" src="src/assets/subtitle-logo.png" alt="First to 100 yards">
   </div>
   <!-- === LEVELING PHASE A COMPLETE === -->
   <div class="menu-stats-bar">
@@ -2112,8 +2112,6 @@
   <button class="menu-btn secondary" onclick="startQuickPlay()">QUICK PLAY</button>
   <button class="menu-btn secondary" onclick="openLockerRoom()">LOCKER ROOM</button>
   <button class="menu-btn secondary" onclick="showHowToPlay()">HOW TO PLAY</button>
-  <div class="field-deco"></div>
-  <div class="yard-lines"></div>
 </div>
 
 <!-- GAME -->
@@ -5328,9 +5326,12 @@ async function startPack() {
   await sleep(450);
   if (!draftState) return;
   draftState.busy = false;
-  // Re-render so the AUTO-PICK button's `disabled` attribute updates with the
-  // new busy state (cards re-spawn in spread positions — no visual hiccup).
-  renderDraft();
+  // Imperatively flip the AUTO-PICK button's disabled attribute. We used to
+  // renderDraft() here, but that wipes the arena DOM and the new cards re-run
+  // the fan→spread transition from center, causing a visible "double expand".
+  // The button is the only thing whose state changes when busy flips false.
+  const skipBtn = document.querySelector('#draft .pack-skip-btn');
+  if (skipBtn) skipBtn.disabled = false;
   startPackTimer();
 }
 
@@ -5776,7 +5777,7 @@ async function runAutoPickFastForward() {
 async function fastForwardClosePack() {
   // Show the chosen picks on the current pack, then animate confirm.
   renderDraft();
-  await sleep(225);
+  await sleep(340);
   if (!draftState) return;
   const cards = document.querySelectorAll('#packArena .pack-card');
   cards.forEach(el => {
@@ -5785,7 +5786,7 @@ async function fastForwardClosePack() {
     if (c === draftState.pickedOff || c === draftState.pickedDef) el.classList.add('flying-to-deck');
     else el.classList.add('discarding');
   });
-  await sleep(225);
+  await sleep(340);
   if (!draftState) return;
   finalizeCurrentPackPicks();
 }
@@ -5810,14 +5811,14 @@ async function runFastForwardPack(packNum) {
   }
 
   renderDraft();
-  await sleep(120); // compressed fan-in (was 80 — slowed 1.5x for readability)
+  await sleep(180); // compressed fan-in (slowed another 1.5x so picks are readable)
   if (!draftState) return;
 
-  // Flip stagger ~135ms; rare/legendary keep full-volume sound, commons use quiet flip
+  // Flip stagger ~200ms; rare/legendary keep full-volume sound, commons use quiet flip
   for (let i = 0; i < draftState.currentPack.length; i++) {
     if (!draftState) return;
     revealPackCardFast(i);
-    await sleep(135);
+    await sleep(200);
   }
 
   // Spread + brief settle (compressed)
@@ -5825,14 +5826,14 @@ async function runFastForwardPack(packNum) {
   const arena = document.getElementById('packArena');
   if (arena) arena.classList.add('spread');
   applyCardLayout();
-  await sleep(150);
+  await sleep(225);
   if (!draftState) return;
 
-  // Reveal the picks (gold halo + same-side fade)
+  // Reveal the picks (gold halo + same-side fade) — held long enough to see
   draftState.pickedOff = offBest;
   draftState.pickedDef = defBest;
   renderDraft();
-  await sleep(225);
+  await sleep(340);
   if (!draftState) return;
 
   // Confirm-transition: picks fly off, others drop down
@@ -5843,7 +5844,7 @@ async function runFastForwardPack(packNum) {
     if (c === draftState.pickedOff || c === draftState.pickedDef) el.classList.add('flying-to-deck');
     else el.classList.add('discarding');
   });
-  await sleep(225);
+  await sleep(340);
   if (!draftState) return;
   finalizeCurrentPackPicks();
 }
@@ -5879,7 +5880,7 @@ async function playFinalPackIntroCompressed() {
   document.body.appendChild(dim);
   document.body.appendChild(banner);
   playSfx('finalIntro'); // sound stays full volume — once-per-run moment
-  await sleep(600);
+  await sleep(900);
   if (banner.parentNode) banner.parentNode.removeChild(banner);
   if (dim.parentNode)    dim.parentNode.removeChild(dim);
 }
