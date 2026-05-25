@@ -78,10 +78,16 @@
   .menu-btn.secondary:active { background: #243028; }
 
   /* ============ GAME TOP BAR — broadcast scoreboard style ============ */
+  /* === ASSET PHASE 2: SCOREBOARD + RINGS === */
   .top-bar {
     display: flex; justify-content: space-between; align-items: center;
     padding: 8px 12px;
-    background: linear-gradient(180deg, #0a1a0a 0%, #051005 100%);
+    background-color: transparent;
+    background-image: url('src/assets/ui/01_scoreboard_frame.png'),
+      linear-gradient(180deg, #0a1a0a 0%, #051005 100%);
+    background-size: 100% 100%, auto;
+    background-repeat: no-repeat, no-repeat;
+    background-position: center, center;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     position: relative; z-index: 5;
     padding-top: calc(env(safe-area-inset-top) + 8px);
@@ -94,17 +100,24 @@
   .team-block.ai { flex-direction: row-reverse; }
   .team-avatar {
     width: 36px; height: 36px; border-radius: 50%;
-    background: linear-gradient(135deg, #2a5a3a 0%, #1a3a2a 100%);
-    border: 2px solid #4aff8a;
+    background-color: transparent;
+    background-image: url('src/assets/ui/12_ring_you.png'),
+      linear-gradient(135deg, #2a5a3a 0%, #1a3a2a 100%);
+    background-size: contain, auto;
+    background-position: center, center;
+    background-repeat: no-repeat, no-repeat;
+    border: none;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 11px;
     color: #fff; flex-shrink: 0;
-    box-shadow: 0 0 10px rgba(74,255,138,0.3);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    box-shadow: none;
   }
   .team-block.ai .team-avatar {
-    background: linear-gradient(135deg, #5a2a2a 0%, #3a1a1a 100%);
-    border-color: #ff6a6a;
-    box-shadow: 0 0 10px rgba(255,106,106,0.3);
+    background-image: url('src/assets/ui/13_ring_cpu.png'),
+      linear-gradient(135deg, #5a2a2a 0%, #3a1a1a 100%);
+    border: none;
+    box-shadow: none;
   }
   .team-info { display: flex; flex-direction: column; }
   .team-block.ai .team-info { align-items: flex-end; }
@@ -124,7 +137,12 @@
   .center-icon {
     width: 32px; height: 32px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 26px;
+    font-size: 0;  /* hide emoji fallback; PNG provides the football */
+    color: transparent;
+    background-image: url('src/assets/ui/11_football_scoreboard.png');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
     animation: ballSpin 8s linear infinite;
   }
@@ -180,9 +198,11 @@
   @keyframes energyFlash { 0%,100%{transform:scale(1);} 50%{transform:scale(1.2); filter: brightness(1.5);} }
 
   /* ============ FIELD / LANES ============ */
+  /* === ASSET PHASE 1: FIELD + ENDZONES === */
   .field {
     flex: 1; position: relative; display: flex; flex-direction: column;
-    background:
+    background-image:
+      url('src/assets/ui/04_stadium_bg.png'),
       /* Subtle grass texture */
       radial-gradient(ellipse at 30% 20%, rgba(120,200,80,0.15) 0%, transparent 50%),
       radial-gradient(ellipse at 70% 80%, rgba(60,140,40,0.15) 0%, transparent 50%),
@@ -192,6 +212,9 @@
         #408a40 28px, #408a40 56px),
       /* Base green */
       linear-gradient(180deg, #4ea64e 0%, #3a803a 100%);
+    background-size: cover, auto, auto, auto, auto;
+    background-position: center, center, center, center, center;
+    background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
     overflow: hidden;
   }
   /* Yard lines overlay */
@@ -230,9 +253,12 @@
   .lane-medallion-row {
     display: flex; justify-content: center; align-items: center;
     padding: 4px 2px; gap: 4px;
-    background: linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.4) 100%);
-    border-top: 1px solid rgba(255,255,255,0.1);
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    background-color: transparent;
+    background-image: url('src/assets/ui/05_medallion_pill.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: none;
     position: relative;
     flex-shrink: 0;
   }
@@ -243,23 +269,23 @@
     display: flex; align-items: center; justify-content: center;
     font-family: 'Bebas Neue', sans-serif; font-size: 14px;
     line-height: 1; flex-shrink: 0;
-    border: 2px solid currentColor;
-    background: radial-gradient(circle, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.9) 100%);
-    box-shadow: 0 0 6px currentColor, inset 0 0 4px rgba(0,0,0,0.5);
+    background: transparent;
+    border: none;
+    box-shadow: none;
     letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7);
   }
   .lane-power-pill.you { color: #4aff8a; }
   .lane-power-pill.ai { color: #ff6a6a; }
   /* Losing state: opposite color to indicate this side is being pushed back */
   .lane-power-pill.you.losing { color: #ff6a6a; opacity: 0.8; }
   .lane-power-pill.ai.losing { color: #4aff8a; opacity: 0.8; }
-  .lane-power-pill.winning { 
-    box-shadow: 0 0 14px currentColor, inset 0 0 8px rgba(0,0,0,0.5);
+  .lane-power-pill.winning {
     animation: pillPulse 1.5s ease-in-out infinite;
   }
   @keyframes pillPulse {
-    0%,100% { box-shadow: 0 0 10px currentColor, inset 0 0 4px rgba(0,0,0,0.5); }
-    50% { box-shadow: 0 0 20px currentColor, inset 0 0 8px rgba(0,0,0,0.5); }
+    0%,100% { text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 6px currentColor; }
+    50%     { text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 14px currentColor; }
   }
 
   .lane-medallion {
@@ -392,19 +418,29 @@
   }
   /* AI endzone (top, where AI cards live) — red painted endzone */
   .lane-side.ai-side .slot-row {
-    background: 
+    background-image:
+      url('src/assets/ui/02_endzone_red.png'),
       repeating-linear-gradient(45deg,
         rgba(255,255,255,0.06) 0 4px,
         transparent 4px 12px),
       linear-gradient(180deg, #8a2222 0%, #5a1414 100%);
+    background-size: cover, auto, auto;
+    background-position: center, center, center;
+    background-repeat: no-repeat, repeat, no-repeat;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15), inset 0 0 0 1000px rgba(0,0,0,0.12);
   }
   /* YOU endzone (bottom, where your cards live) — green painted endzone */
   .lane-side.you-side .slot-row {
-    background: 
+    background-image:
+      url('src/assets/ui/03_endzone_green.png'),
       repeating-linear-gradient(-45deg,
         rgba(255,255,255,0.06) 0 4px,
         transparent 4px 12px),
       linear-gradient(180deg, #2a7a2a 0%, #1a5a1a 100%);
+    background-size: cover, auto, auto;
+    background-position: center, center, center;
+    background-repeat: no-repeat, repeat, no-repeat;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15), inset 0 0 0 1000px rgba(0,0,0,0.12);
   }
   /* Subtle "ENDZONE" text watermark via pseudo-element */
   .slot-row::before {
@@ -416,29 +452,8 @@
     pointer-events: none;
     z-index: 0;
   }
-  /* Team name watermark in the endzone */
-  .lane-side.ai-side .slot-row::after {
-    content: 'CPU';
-    position: absolute;
-    top: 4px; left: 50%;
-    transform: translateX(-50%);
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 14px; letter-spacing: 4px;
-    color: rgba(255,255,255,0.25);
-    pointer-events: none;
-    z-index: 0;
-  }
-  .lane-side.you-side .slot-row::after {
-    content: 'HOME';
-    position: absolute;
-    bottom: 4px; left: 50%;
-    transform: translateX(-50%);
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 14px; letter-spacing: 4px;
-    color: rgba(255,255,255,0.25);
-    pointer-events: none;
-    z-index: 0;
-  }
+  /* Team name watermark in the endzone — removed because the endzone PNGs
+     (02_endzone_red.png / 03_endzone_green.png) already bake in CPU/HOME text. */
   .slot {
     border: 1px dashed rgba(255,255,255,0.3);
     border-radius: 2px; min-height: 0;
@@ -449,6 +464,8 @@
   .slot.empty { background: rgba(0,0,0,0.15); }
 
   /* FIELD POSITION BAR — shows where each team is currently driving from */
+  /* Yardage strip asset (06_yardage_strip.png) not used — yardage display is
+     embedded inside the yardage-bar via .yardage-text for now. */
   .yardage-bar {
     height: 26px; position: relative;
     background: #1a3a1a;
@@ -591,11 +608,42 @@
     content: '🏈'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: 18px; opacity: 0.6;
   }
+  /* === ASSET PHASE 5: CARD FRAMES + PORTRAITS === */
   .fc-portrait {
     position: absolute; inset: 0;
+    z-index: 0;
     display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
   }
-  .fc-portrait svg { width: 100%; height: 100%; }
+  .fc-portrait svg, .fc-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .fc-frame {
+    position: absolute; inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+  .fc-frame-common_off    { background-image: url('src/assets/ui/18_card_common_off.png'); }
+  .fc-frame-common_def    { background-image: url('src/assets/ui/19_card_common_def.png'); }
+  .fc-frame-uncommon_off  { background-image: url('src/assets/ui/20_card_uncommon_off.png'); }
+  .fc-frame-uncommon_def  { background-image: url('src/assets/ui/21_card_uncommon_def.png'); }
+  .fc-frame-rare_off      { background-image: url('src/assets/ui/22_card_rare_off.png'); }
+  .fc-frame-rare_def      { background-image: url('src/assets/ui/23_card_rare_def.png'); }
+  .fc-frame-legendary_off { background-image: url('src/assets/ui/24_card_legendary_off.png'); }
+  .fc-frame-legendary_def { background-image: url('src/assets/ui/25_card_legendary_def.png'); }
+  .fc-ability-star {
+    position: absolute;
+    bottom: 22px; right: 3px;
+    width: 12px; height: 12px;
+    z-index: 3;
+    background-image: url('src/assets/ui/27_star_ability.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
+    pointer-events: none;
+  }
   .fc-overlay {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
@@ -653,32 +701,49 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 8px; padding: 4px 4px 8px;
   }
+  /* === ASSET PHASE 3: BUTTONS + ORB + MEDALLIONS === */
   .concede-btn {
-    background: linear-gradient(180deg, #6a2a2a 0%, #3a1414 100%);
-    color: #fff; border: 1px solid #8a4444;
+    background-color: transparent;
+    background-image: url('src/assets/ui/07_button_concede.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: #fff; border: none;
     padding: 8px 12px; font-family: 'Bebas Neue', sans-serif;
     font-size: 13px; letter-spacing: 2px; cursor: pointer;
     border-radius: 3px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+    box-shadow: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
   }
   .concede-btn:active { transform: translateY(1px); }
 
   .energy-orb {
+    position: relative;
     width: 48px; height: 48px; border-radius: 50%;
-    background: 
-      radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4) 0%, transparent 40%),
-      radial-gradient(circle, #4aff8a 0%, #1a6a4a 100%);
-    border: 2px solid #4aff8a;
+    background-color: transparent;
+    background-image: url('src/assets/ui/09_energy_orb_frame.png');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: none;
     display: flex; align-items: center; justify-content: center;
-    font-family: 'Bebas Neue', sans-serif; font-size: 26px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px;
     color: #fff;
-    box-shadow: 
-      0 0 16px rgba(74,255,138,0.6),
-      inset 0 -2px 4px rgba(0,0,0,0.3),
-      inset 0 2px 4px rgba(255,255,255,0.3);
-    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    box-shadow: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.8);
     transition: transform 0.15s;
     flex-shrink: 0;
+    z-index: 1;
+  }
+  .energy-orb::before {
+    content: '';
+    position: absolute; inset: 18%;
+    background-image: url('src/assets/ui/10_football_icon.png');
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -1;
+    pointer-events: none;
   }
   .energy-orb.depleted {
     background: 
@@ -724,18 +789,25 @@
     100% { opacity: 0; transform: translate(-50%, -32px); }
   }
 
+  /* SNAP button: asset is 07_button_snap.png (NOT 08_*; user has two 07_* files). */
   .play-btn {
-    background: linear-gradient(180deg, #2a6a4a 0%, #144a2a 100%);
-    color: #fff; border: 1px solid #4aff8a;
+    background-color: transparent;
+    background-image: url('src/assets/ui/07_button_snap.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    color: #fff; border: none;
     padding: 8px 14px; font-family: 'Bebas Neue', sans-serif;
     font-size: 13px; letter-spacing: 2px;
     cursor: pointer; border-radius: 3px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.15);
+    box-shadow: none;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
   }
-  .play-btn:disabled { background: #333; color: #777; border-color: #444; box-shadow: none; }
-  .play-btn.ready { 
-    background: linear-gradient(180deg, #ffb800 0%, #cc8000 100%);
-    border-color: #ffd700; color: #000;
+  .play-btn:disabled { opacity: 0.5; color: #ddd; border: none; box-shadow: none; filter: grayscale(0.6); }
+  .play-btn.ready {
+    /* Keep the PNG; layer a warm tint + pulse so it still reads as "actionable" */
+    color: #fff;
+    filter: brightness(1.15) saturate(1.2);
     animation: btnPulse 1s ease-in-out infinite;
   }
   @keyframes btnPulse {
@@ -774,9 +846,33 @@
   .pile-badge .pile-icon { font-size: 16px; line-height: 1; }
   .pile-badge .pile-label { font-weight: 700; }
   .pile-badge .pile-count { color: #ffb800; font-weight: 700; min-width: 14px; text-align: right; }
-  .deck-badge { border-color: #4a6a4a; }
-  .discard-badge { border-color: #6a4a4a; cursor: pointer; }
-  .discard-badge:active { background: rgba(40, 20, 20, 0.85); }
+  /* === ASSET PHASE 4: BADGES === */
+  .deck-badge {
+    background-color: transparent;
+    background-image: url('src/assets/ui/16_badge_deck.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: none;
+    color: #fff;
+  }
+  .discard-badge {
+    background-color: transparent;
+    background-image: url('src/assets/ui/17_badge_discard.png');
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+  }
+  .discard-badge:active { filter: brightness(0.85); }
+
+  /* Standalone power-circle assets (not currently used — wells are baked into
+     05_medallion_pill.png). Kept ready for future tooltip/preview features.
+  .lane-power-pill.standalone.ai  { background-image: url('src/assets/ui/14_power_circle_red.png'); }
+  .lane-power-pill.standalone.you { background-image: url('src/assets/ui/15_power_circle_green.png'); }
+  */
   .pile-badge.bump { animation: pileBump 0.22s ease-out; }
   @keyframes pileBump {
     0%   { transform: scale(1); }
@@ -928,9 +1024,19 @@
 
   .hc-portrait {
     position: absolute; inset: 0;
+    z-index: 0;
     display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
   }
-  .hc-portrait svg { width: 100%; height: 100%; }
+  .hc-portrait svg, .hc-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .hc-frame {
+    position: absolute; inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
   .hc-overlay {
     position: absolute; inset: 0; z-index: 2;
     display: flex; flex-direction: column; justify-content: flex-end;
@@ -979,6 +1085,17 @@
     position: absolute; bottom: 22px; right: 3px; z-index: 3;
     font-size: 12px; color: #ffd700;
     text-shadow: 0 0 6px #ffd700, 0 1px 2px #000;
+  }
+  .hc-ability-star {
+    position: absolute;
+    bottom: 22px; right: 3px;
+    width: 14px; height: 14px;
+    z-index: 3;
+    background-image: url('src/assets/ui/27_star_ability.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
   }
 
   /* DRAG GHOST */
@@ -1657,29 +1774,88 @@
   }
   .coin.flipping-heads { transform: rotateY(1800deg); }
   .coin.flipping-tails { transform: rotateY(1980deg); }
+  /* === ASSET PHASE 6: COIN + ICONS === */
   .coin-face {
     position: absolute; inset: 0;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-family: 'Bebas Neue', sans-serif;
-    font-size: 40px; font-weight: 700;
+    font-size: 0; font-weight: 700;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    border: 3px solid #b8860b;
-    box-shadow:
-      inset 0 -4px 8px rgba(0,0,0,0.3),
-      inset 0 4px 8px rgba(255,255,255,0.4),
-      0 4px 8px rgba(0,0,0,0.5);
+    border: none;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-color: transparent;
+    color: transparent;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
   }
   .coin-heads {
-    background: radial-gradient(circle at 30% 30%, #ffe580 0%, #ffd700 50%, #b8860b 100%);
-    color: #5c3a00;
+    background-image: url('src/assets/ui/30_coin_heads.png');
   }
   .coin-tails {
-    background: radial-gradient(circle at 30% 30%, #ffe580 0%, #ffd700 50%, #b8860b 100%);
-    color: #5c3a00;
+    background-image: url('src/assets/ui/31_coin_tails.png');
     transform: rotateY(180deg);
   }
+
+  /* Position icon sprite (28_position_icons_grid.png is a 4x3 grid of silhouettes).
+     Classes defined for future "filter by position" UI / icon badges; not
+     actively rendered yet — existing text labels stay in place. */
+  .position-icon {
+    width: 24px; height: 24px;
+    background-image: url('src/assets/ui/28_position_icons_grid.png');
+    background-size: 400% 300%;
+    background-repeat: no-repeat;
+    display: inline-block;
+  }
+  .position-icon.pos-qb { background-position: 0% 0%; }
+  .position-icon.pos-rb { background-position: 33.33% 0%; }
+  .position-icon.pos-wr { background-position: 66.67% 0%; }
+  .position-icon.pos-te { background-position: 100% 0%; }
+  .position-icon.pos-ol { background-position: 0% 50%; }
+  .position-icon.pos-de { background-position: 33.33% 50%; }
+  .position-icon.pos-dt { background-position: 66.67% 50%; }
+  .position-icon.pos-lb { background-position: 100% 50%; }
+  .position-icon.pos-cb { background-position: 0% 100%; }
+  .position-icon.pos-s  { background-position: 33.33% 100%; }
+  .position-icon.pos-k  { background-position: 66.67% 100%; }
+  .position-icon.pos-st { background-position: 100% 100%; }
+
+  /* Modifier icon sprite (29_modifier_icons_grid.png is a 5x4 grid of 20 icons).
+     Mapped 1:1 to LANE_MODIFIERS order (rows: field, tactical, position, wild). */
+  .modifier-icon {
+    width: 22px; height: 22px;
+    background-image: url('src/assets/ui/29_modifier_icons_grid.png');
+    background-size: 500% 400%;
+    background-repeat: no-repeat;
+    display: inline-block;
+    line-height: 1;
+  }
+  /* Row 0 — field (6 mods, but grid is 5-wide; we wrap the 6th into row 1) */
+  .modifier-icon.mod-homeTurf     { background-position:   0%   0%; }
+  .modifier-icon.mod-muddyField   { background-position:  25%   0%; }
+  .modifier-icon.mod-windTunnel   { background-position:  50%   0%; }
+  .modifier-icon.mod-frozenTundra { background-position:  75%   0%; }
+  .modifier-icon.mod-blindingSun  { background-position: 100%   0%; }
+  /* Row 1 — redZone (last field) + 5 tactical */
+  .modifier-icon.mod-redZone      { background-position:   0% 33.33%; }
+  .modifier-icon.mod-hurryUp      { background-position:  25% 33.33%; }
+  .modifier-icon.mod-preventD     { background-position:  50% 33.33%; }
+  .modifier-icon.mod-scouted      { background-position:  75% 33.33%; }
+  .modifier-icon.mod-blitzZone    { background-position: 100% 33.33%; }
+  /* Row 2 — scramble (last tactical) + 5 position */
+  .modifier-icon.mod-scramble     { background-position:   0% 66.67%; }
+  .modifier-icon.mod-groundPound  { background-position:  25% 66.67%; }
+  .modifier-icon.mod-airRaid      { background-position:  50% 66.67%; }
+  .modifier-icon.mod-trenches     { background-position:  75% 66.67%; }
+  .modifier-icon.mod-secondary    { background-position: 100% 66.67%; }
+  /* Row 3 — specialUnit (last position) + 4 wild */
+  .modifier-icon.mod-specialUnit  { background-position:   0% 100%; }
+  .modifier-icon.mod-coinFlip     { background-position:  25% 100%; }
+  .modifier-icon.mod-turnover     { background-position:  50% 100%; }
+  .modifier-icon.mod-suddenDeath  { background-position:  75% 100%; }
+  .modifier-icon.mod-playOfGame   { background-position: 100% 100%; }
   @media (prefers-reduced-motion: reduce) {
     .coin { transition: none; }
   }
@@ -3788,7 +3964,7 @@ function renderLanes() {
           <div class="lane-medallion cat-${mod.category}" data-tooltip="laneMedallion"
                data-tooltip-title="${escAttr(mod.icon + ' ' + mod.name)}"
                data-tooltip-body="${escAttr(mod.desc + '<br><br><em>' + (mod.category[0].toUpperCase() + mod.category.slice(1)) + ' modifier</em> — each lane has a unique random rule this match.')}">
-            <div class="medallion-icon">${mod.icon}</div>
+            <div class="medallion-icon modifier-icon mod-${mod.id}"></div>
             <div class="medallion-name">${mod.name}</div>
             <div class="medallion-desc">${mod.desc}</div>
           </div>
@@ -3854,6 +4030,31 @@ function quarterLabel(drive) {
   return labels[q] || '1ST QUARTER';
 }
 
+// === ASSET PHASE 5: CARD FRAMES + PORTRAITS ===
+// Maps a card to a real PNG portrait ID (under src/assets/ui/26_portraits/),
+// or null to fall back to the procedural SVG portrait. Today only one
+// portrait exists (qb_black_navy.png); expand this mapping as more are
+// generated.
+function getPortraitIdForCard(card) {
+  if (card.pos === 'QB') return 'qb_black_navy';
+  return null;
+}
+
+// Returns markup for the portrait layer. Uses a real PNG if mapped, with an
+// onerror fallback that swaps in the procedural SVG so the card is never empty.
+function getPortraitMarkup(card, size) {
+  const portraitId = getPortraitIdForCard(card);
+  if (portraitId) {
+    const fallbackSvg = generatePortraitSVG(card, size)
+      .replace(/'/g, '&#39;')
+      .replace(/\n/g, ' ');
+    return `<img src="src/assets/ui/26_portraits/${portraitId}.png" alt="" `
+      + `onerror="this.outerHTML='${fallbackSvg}'" `
+      + `style="width:100%;height:100%;object-fit:cover;display:block;">`;
+  }
+  return generatePortraitSVG(card, size);
+}
+
 function buildFieldCard(card, side, hidden) {
   const el = document.createElement('div');
   const sideClass = card.side === 'off' ? 'off-card' : 'def-card';
@@ -3863,9 +4064,12 @@ function buildFieldCard(card, side, hidden) {
   const statValue = card.side === 'off' ? card.curOff : card.curDef;
   const statClass = card.side === 'off' ? 'off' : 'def';
   const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
+  const rarity = card.rarity || 'common';
+  const frameAsset = `${rarity}_${card.side}`;
 
   el.innerHTML = `
-    <div class="fc-portrait">${generatePortraitSVG(card, 100)}</div>
+    <div class="fc-portrait">${getPortraitMarkup(card, 100)}</div>
+    <div class="fc-frame fc-frame-${frameAsset}"></div>
     <div class="fc-overlay">
       <div class="fc-top">
         <span class="fc-cost">${card.cost}</span>
@@ -3878,6 +4082,7 @@ function buildFieldCard(card, side, hidden) {
       ${card.flagged ? '<div class="fc-badge flag">!</div>' : ''}
       ${card.ejected ? '<div class="fc-badge ejected">X</div>' : ''}
     </div>
+    ${card.ability ? '<div class="fc-ability-star"></div>' : ''}
   `;
   return el;
 }
@@ -3894,11 +4099,14 @@ function renderHand() {
     const statValue = card.side === 'off' ? card.off : card.def;
     const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
     const el = document.createElement('div');
+    const rarity = card.rarity || 'common';
+    const frameAsset = `${rarity}_${card.side}`;
     el.className = 'hand-card ' + sideClass + ' ' + (affordable ? 'affordable' : 'unaffordable');
     el.dataset.cardUid = card.uid;
     el.dataset.tooltip = 'handCard';
     el.innerHTML = `
-      <div class="hc-portrait">${generatePortraitSVG(card, 80)}</div>
+      <div class="hc-portrait">${getPortraitMarkup(card, 80)}</div>
+      <div class="hc-frame fc-frame-${frameAsset}"></div>
       <div class="hc-cost">${card.cost}</div>
       <div class="hc-pos-badge">${card.pos}</div>
       <div class="hc-overlay">
@@ -3907,7 +4115,7 @@ function renderHand() {
           <div class="hc-stat-num">${statValue}</div>
         </div>
       </div>
-      ${card.ability ? `<div class="hc-ability-dot" title="${card.ability}">★</div>` : ''}
+      ${card.ability ? '<div class="hc-ability-star" title="' + (card.ability||'').replace(/"/g,'&quot;') + '"></div>' : ''}
     `;
     if (affordable && !state.busy) {
       // Deferred drag: prepareDrag waits for movement to decide between scroll

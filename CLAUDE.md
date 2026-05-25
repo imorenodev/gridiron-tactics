@@ -4,7 +4,9 @@ Hey Claude. This is a single-file HTML5 football card game (Marvel Snap × NFL, 
 
 ## The one rule that matters most
 
-**Everything lives in one file: `index.html`** (~3500 lines, HTML/CSS/JS all together). When in doubt, `grep` first — there is no module system, no build step, no bundler. The whole game opens in a browser by double-clicking the file. Do not split it into multiple files unless explicitly asked.
+**The game's CODE lives in one file: `index.html`** (~6400 lines, HTML/CSS/JS all together). When in doubt about code architecture, `grep` the HTML first — there is no module system, no build step, no bundler. The whole game opens in a browser by double-clicking the file. Do not split the code into multiple files unless explicitly asked.
+
+**Visual assets (PNGs) live in `src/assets/ui/`** next to the HTML. CSS references them via `url('src/assets/ui/...')`. Inlining 30+ PNGs as base64 would balloon the HTML to 15-25MB, so visuals are external. Capacitor will bundle the folder with the HTML at ship time. See the `// === ASSET PHASE N: ... ===` markers in index.html for which CSS rules use which assets.
 
 ## What this game is
 
@@ -145,6 +147,7 @@ Cards are generated procedurally by `generateCard(side)` using `FIRST_NAMES`, `L
 | Perks system | `PERK_POOL`, `hasPerk`, `getPerk`, `getHandSize(side)`, `getMaxEnergyBank(side)`, `applyPerkStatBuffs`, Quick Reads bonus inside `newState` |
 | Locker Room (Loadout tab) | `openLockerRoom`, `renderLockerRoom`, `renderEquippedSlots`, `renderPerkPool`, `tryEquipPerk`, `showSwapPerkModal`, `confirmSwapPerk`, `unequipPerk`, `switchLockerTab`, `confirmClearProgress` |
 | Match-end summary (XP tick, cash tick, level-up flash, perk unlock) | `endGame`, `calculateMatchRewards`, `showMatchSummary`, `runSummarySequence`, `animateXpBar`, `tickValue`, `returnFromSummary`, `_summaryReturn` |
+| UI assets (PNGs) | Files in `src/assets/ui/`, referenced via CSS `url('src/assets/ui/...')` rules. Card-portrait fallback chain: `getPortraitMarkup(card, size)` → `getPortraitIdForCard(card)` → `generatePortraitSVG(card, size)`. Grep for `// === ASSET PHASE N: ... ===` markers in index.html to find which CSS rules consume which assets. |
 
 ## Conventions to follow
 
@@ -222,6 +225,8 @@ Each modifier should be **clearly different** from existing ones in feel. Don't 
 - **Don't add a "save card from discard" mechanic.** The discard cycle is the core tension — circumventing it (e.g., a Tutor ability that pulls from discard, an extra-card-per-drive perk that hoards, etc.) defeats the design's purpose. New perks should affect *what enters the cycle* (deck composition, draw quality) or *what flows through it* (hand size, draw count), not bypass it.
 - **Don't read `HAND_SIZE` or `MAX_ENERGY_BANK` directly** — call `getHandSize()` / `getMaxEnergyBank()` so perks (Big Hand, Banker) apply. The getters take an optional `side` arg defaulting to `'you'`; pass `'ai'` from AI-side code paths to keep the CPU on the base values (perks are player-only).
 - **Don't introduce new currencies.** Cash is the only currency, ever. If you need a "premium" axis later, it should be a different earn-rate / spend-sink on Cash, not a parallel currency.
+- **Don't inline UI assets as base64.** Keep them as external PNGs in `src/assets/ui/`. The HTML stays code-only; visuals stay file-based. Capacitor will bundle the folder at ship time.
+- **Don't remove the SVG portrait fallback (`generatePortraitSVG`).** Only one real PNG portrait exists today (`26_portraits/qb_black_navy.png`); every other card relies on the procedural generator. `getPortraitIdForCard(card)` returning `null` is the signal to fall back, and the `<img onerror>` swap handles missing files too.
 
 ## Common tasks and where to start
 
@@ -233,6 +238,8 @@ Each modifier should be **clearly different** from existing ones in feel. Don't 
 - **"Change the energy cap or curve"** → the cap is a single constant: `MAX_ENERGY_BANK` (declared near `MAX_SLOTS`). The per-drive grant is `state.turn` energy (drive N grants +N), set in the `endTurn` drive-transition block. When adding leveling/perks, modify the constant (or wrap it in a getter that checks active perks). **Do not introduce a parallel cap variable** — keep this as the single source of truth. The tooltip body interpolates it (`'... up to a max of ' + MAX_ENERGY_BANK`) so user-facing copy stays in sync.
 - **"Change hand size"** → modify the `HAND_SIZE` constant (declared next to `MAX_ENERGY_BANK`). All live JS reads go through `getHandSize(side)` so the Big Hand perk applies cleanly; the tooltip body for `deckPile` interpolates `HAND_SIZE` directly (frozen at module load — fine for a generic hint). Don't hardcode 5 elsewhere.
 - **"Add a new perk"** → push an entry into `PERK_POOL` with `{ id, name, icon, tier, unlockLevel, desc }`. For a stat-buff perk, add a clause to `applyPerkStatBuffs(lane)` (runs in `computeLaneStats` after lane modifiers, before synergies). For a hand/energy-shaping perk, branch inside `getHandSize` / `getMaxEnergyBank` (player-side only — never apply player perks to AI). For a once-per-match bonus, hook it into `newState`. Each perk should affect *one* thing — multi-effect perks are harder for the player to read.
+- **"Swap in a new UI asset PNG"** → save the file to `src/assets/ui/`, then grep the filename in `index.html` and update the CSS rule that references it. No JS changes needed unless the asset is a card portrait.
+- **"Add a new card portrait"** → save the PNG to `src/assets/ui/26_portraits/<id>.png`, then update `getPortraitIdForCard(card)` to return that `<id>` (without extension) for matching cards. The `<img onerror>` chain falls back to `generatePortraitSVG` automatically if the file is missing.
 
 ## Testing
 
