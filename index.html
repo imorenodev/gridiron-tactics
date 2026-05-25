@@ -250,36 +250,76 @@
   .lane-name { font-family: 'Bebas Neue', sans-serif; font-size: 11px; letter-spacing: 1.5px; color: #fff; line-height: 1; }
 
   /* LANE MODIFIER MEDALLION — sits in the lane center */
+  /* Pill row is a 3-column grid: left cap | middle (stretches) | right cap.
+     Each cap keeps its square aspect ratio so the circular wells never deform.
+     The middle is a thin uniform metal slice (repeat-x) — featureless so
+     stretching never reveals distortion. */
   .lane-medallion-row {
-    display: flex; justify-content: center; align-items: center;
-    padding: 4px 2px; gap: 4px;
-    background-color: transparent;
-    background-image: url('src/assets/ui/05_medallion_pill.png');
-    background-size: 100% 100%;
-    background-repeat: no-repeat;
-    background-position: center;
-    border: none;
+    display: grid;
+    align-items: stretch;
+    padding: 0;
+    gap: 0;
     position: relative;
     flex-shrink: 0;
   }
+  .lane-medallion-row::before,
+  .lane-medallion-row::after {
+    content: '';
+    align-self: center;
+    display: block;
+    aspect-ratio: 1 / 1;
+    height: 75%;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+  }
+  .lane-medallion-row::before {
+    background-image: url('src/assets/ui/05_pill_left.png');
+    grid-column: 1;
+  }
+  .lane-medallion-row::after {
+    background-image: url('src/assets/ui/05_pill_right.png');
+    grid-column: 3;
+  }
+  /* Middle wrapper: holds the lane-medallion and tiles the metal strip behind it.
+     Strip height matches the cap height (75% of row) so it lines up visually. */
+  .lane-medallion-row > .pill-middle {
+    grid-column: 2;
+    background-image: url('src/assets/ui/05_pill_middle.png');
+    background-size: auto 75%;
+    background-repeat: repeat-x;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    min-width: 0;
+  }
+  /* Power pills overlay the caps so the +N number sits inside the red/green well. */
   .lane-power-pill {
-    min-width: 38px; height: 30px;
-    padding: 0 6px;
-    border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Bebas Neue', sans-serif; font-size: 14px;
-    line-height: 1; flex-shrink: 0;
+    position: absolute;
+    top: 50%;
+    width: 34px;
+    height: 34px;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    line-height: 1;
     background: transparent;
     border: none;
     box-shadow: none;
+    z-index: 2;
     letter-spacing: 0.5px;
     text-shadow: 0 1px 2px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.7);
   }
-  .lane-power-pill.you { color: #4aff8a; }
-  .lane-power-pill.ai { color: #ff6a6a; }
+  .lane-power-pill.ai  { left: 2px;  color: #ff6a6a; }   /* over red well */
+  .lane-power-pill.you { right: 2px; color: #4aff8a; }   /* over green well */
   /* Losing state: opposite color to indicate this side is being pushed back */
   .lane-power-pill.you.losing { color: #ff6a6a; opacity: 0.8; }
-  .lane-power-pill.ai.losing { color: #4aff8a; opacity: 0.8; }
+  .lane-power-pill.ai.losing  { color: #4aff8a; opacity: 0.8; }
   .lane-power-pill.winning {
     animation: pillPulse 1.5s ease-in-out infinite;
   }
@@ -3960,15 +4000,17 @@ function renderLanes() {
              data-tooltip="powerPillAi"
              data-tooltip-title="${escAttr(aiTipTitle)}"
              data-tooltip-body="${escAttr(aiTipBody)}">${aiNet > 0 ? '+' : ''}${aiNet}</div>
-        ${mod ? `
-          <div class="lane-medallion cat-${mod.category}" data-tooltip="laneMedallion"
-               data-tooltip-title="${escAttr(mod.icon + ' ' + mod.name)}"
-               data-tooltip-body="${escAttr(mod.desc + '<br><br><em>' + (mod.category[0].toUpperCase() + mod.category.slice(1)) + ' modifier</em> — each lane has a unique random rule this match.')}">
-            <div class="medallion-icon modifier-icon mod-${mod.id}"></div>
-            <div class="medallion-name">${mod.name}</div>
-            <div class="medallion-desc">${mod.desc}</div>
-          </div>
-        ` : `<div style="flex:1;"></div>`}
+        <div class="pill-middle">
+          ${mod ? `
+            <div class="lane-medallion cat-${mod.category}" data-tooltip="laneMedallion"
+                 data-tooltip-title="${escAttr(mod.icon + ' ' + mod.name)}"
+                 data-tooltip-body="${escAttr(mod.desc + '<br><br><em>' + (mod.category[0].toUpperCase() + mod.category.slice(1)) + ' modifier</em> — each lane has a unique random rule this match.')}">
+              <div class="medallion-icon modifier-icon mod-${mod.id}"></div>
+              <div class="medallion-name">${mod.name}</div>
+              <div class="medallion-desc">${mod.desc}</div>
+            </div>
+          ` : ''}
+        </div>
         <div class="lane-power-pill you ${youNet > 0 ? 'winning' : ''} ${youNet < 0 ? 'losing' : ''}"
              data-tooltip="powerPillYou"
              data-tooltip-title="${escAttr(youTipTitle)}"
