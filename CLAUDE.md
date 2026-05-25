@@ -14,7 +14,8 @@ Gridiron Tactics is a Marvel Snap-style card game with a football theme, being p
 
 ## Phase log
 
-- **Phase 0: complete (vertical slice).** Defold project skeleton, custom render script with fit-to-shortest-axis letterboxing, menu ↔ match collection-proxy flow, hardcoded test card driving a yards counter, and a save/load smoke test that persists `total_taps` across launches. See "Phase 0 — Vertical slice notes" at the bottom of this file for details and stubs left for later phases.
+- **Phase 0: complete (vertical slice).** Defold project skeleton, menu ↔ match collection-proxy flow, hardcoded test card driving a yards counter, and a save/load smoke test that persists `total_taps` across launches. See "Phase 0 — Vertical slice notes" at the bottom of this file for details and stubs left for later phases.
+- **Phase 0.6.5: complete (render script fix-up — reverted to default render).** The Phase 0 custom render script broke `gui.pick_node`; reverted to `/builtins/render/default.renderc` and deleted the custom files. Letterboxing is deferred to a post-TestFlight phase.
 
 ## Hard rules — non-negotiable
 
@@ -30,6 +31,7 @@ These were debated and settled in earlier conversations. Do not re-litigate.
 8. **Portrait-only orientation.** Don't add landscape support.
 9. **No third-party Lua libraries** unless explicitly approved. Defold's stdlib + the project's own modules only. Exception: lightweight, well-known utilities like `defold-tween` may be considered case-by-case.
 10. **No Lua `loadstring` or `require()` of dynamic paths.** Defold builds bundle resources statically; dynamic loading breaks builds.
+11. **Custom render scripts are a known footgun.** Use `/builtins/render/default.renderc` unless we have a specific, tested reason to customize. Any custom render script must verify that `gui.pick_node` correctly registers taps on visible GUI buttons before being merged. The Phase 0 letterbox attempt broke input picking even though rendering looked correct.
 
 ## File layout
 
@@ -38,8 +40,7 @@ gridiron-tactics-defold/
 ├── game.project              # Project config, resolution, bundle ID
 ├── input/
 │   └── game.input_binding    # Input mappings
-├── render/
-│   └── gridiron.render_script
+├── render/                   # Reserved. Currently empty; we use /builtins/render/default.renderc.
 ├── main/
 │   ├── main.collection       # Root scene
 │   ├── match/                # In-match game objects and scripts
@@ -253,9 +254,8 @@ The Phase 0 prompt (`defold-phase-0-vertical-slice-prompt.md`) produced a runnab
 
 ### What was built
 
-- **Project config** (`game.project`): 1170×2532 portrait, 60Hz, bundle `com.imoreno.gridirontactics`, custom render at `/render/gridiron.renderc`.
-- **Input bindings** (`input/game.input_binding`): `MOUSE_BUTTON_LEFT`, `TOUCH_1` → `touch`; `KEY_ESC` → `back`.
-- **Render script** (`render/gridiron.render_script`): fit-to-shortest-axis with centered viewport, full-window clear to `#0a1410` (letterbox color), based on Defold's default render script — only the scaling math was changed.
+- **Project config** (`game.project`): 1170×2532 portrait, 60Hz, bundle `com.imoreno.gridirontactics`, render via `/builtins/render/default.renderc` (a custom render script was attempted and reverted — see Phase 0.6.5 below).
+- **Input bindings** (`input/game.input_binding`): `MOUSE_BUTTON_LEFT`, `TOUCH_MULTI` → `touch`; `KEY_ESC` → `back`.
 - **Root scene** (`main/main.collection` + `main/loader.go` + `main/loader.script`): one `loader` GO that owns two collection proxies (`#proxy_menu`, `#proxy_match`) and the in-memory `save_data` table.
 - **Menu** (`main/ui/menu.collection` + `menu.gui` + `menu.gui_script`): title, subtitle, total-taps counter, single PLAY button. Posts `show_match` to the loader on tap.
 - **Match** (`main/match/match.collection` + `lane.go`/`lane.script` + `card_factory.go` + `card.go`/`card.script` + `main/ui/hud.gui`/`hud.gui_script`): one lane, one card spawned via factory, HUD with a TEST CARD button that drives a yards counter through the lane.
@@ -284,3 +284,13 @@ The Phase 0 prompt (`defold-phase-0-vertical-slice-prompt.md`) produced a runnab
 ### Known repo-state quirk
 
 The repo still contains `src/assets/` with PNGs from the HTML prototype. CLAUDE.md's file layout places `assets/` at the project root and we created that empty structure in Phase 0. The `src/assets/` PNGs need to be migrated (and the `src/` folder removed) in a Phase 1 asset-pipeline task — Phase 0 left them in place to avoid touching tracked files without authorization.
+
+### Phase 0.6.5 — Render script lesson learned
+
+After Phase 0 was first committed, testing revealed that `gui.pick_node` was returning false for taps on visible GUI buttons — the menu's PLAY button and the HUD's TEST CARD and MENU buttons all failed to register reliably.
+
+- **What broke:** The custom render script (`render/gridiron.render_script`) implemented fit-to-shortest-axis letterboxing — full-window clear to `#0a1410`, then a centered viewport sized to the design resolution with an orthographic projection of `(0, design_width, 0, design_height)`. Rendering looked correct.
+- **Why it broke input:** Defold's GUI input pipeline derives `action.x` / `action.y` from the window in a way that assumes the default render's view/projection. The custom projection + offset viewport combination didn't align with that transform, so the coordinates fed to `gui.pick_node` lived in a different space than the node bounds. Picking silently failed.
+- **Fix:** Reverted `[bootstrap] render` in `game.project` to `/builtins/render/default.renderc`. Deleted `render/gridiron.render_script` and `render/gridiron.render`. The `render/` folder stays as a reserved `.gitkeep`-only directory; CLAUDE.md's file layout note was updated to reflect that.
+- **Trade-off accepted:** The default render auto-stretches the viewport to the window. iPhone 11+ are all within ~5% of the 1170×2532 design aspect ratio, so the visible distortion is minimal and acceptable for v1. The right time to revisit letterboxing is post-TestFlight, when we have real-device data and can do a controlled re-introduction with a verified `gui.pick_node` test.
+- **Codified as hard rule #11** in the "Hard rules" section above: any future custom render script must demonstrate that `gui.pick_node` still works for taps on visible GUI nodes before merge.

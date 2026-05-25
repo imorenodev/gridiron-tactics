@@ -5,7 +5,7 @@ write_log = 0
 
 [bootstrap]
 main_collection = /main/main.collectionc
-render = /render/gridiron.renderc
+render = /builtins/render/default.renderc
 
 [display]
 width = 1170
@@ -30,3 +30,4 @@ package = com.imoreno.gridirontactics
 
 [script]
 shared_state = 1
+
