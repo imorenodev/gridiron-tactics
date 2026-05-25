@@ -1,0 +1,17 @@
+# Defold
+build/
+.internal/
+*.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*~
+/.editor_settings
+/.internal
+/build

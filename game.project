@@ -1,0 +1,32 @@
+[project]
+title = Gridiron Tactics
+version = 0.1.0
+write_log = 0
+
+[bootstrap]
+main_collection = /main/main.collectionc
+render = /render/gridiron.renderc
+
+[display]
+width = 1170
+height = 2532
+high_dpi = 1
+samples = 0
+fullscreen = 0
+update_frequency = 60
+vsync = 1
+display_profiles = /builtins/render/default.display_profilesc
+dynamic_orientation = 0
+
+[input]
+game_binding = /input/game.input_bindingc
+use_accelerometer = 0
+
+[ios]
+bundle_identifier = com.imoreno.gridirontactics
+
+[android]
+package = com.imoreno.gridirontactics
+
+[script]
+shared_state = 1

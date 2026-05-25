@@ -1,0 +1,65 @@
+name: "match"
+scale_along_z: 0
+instances {
+  id: "lane"
+  prototype: "/main/match/lane.go"
+  position {
+    x: 585.0
+    y: 1266.0
+    z: 0.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  scale3 {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+  }
+}
+instances {
+  id: "card_factory"
+  prototype: "/main/match/card_factory.go"
+  position {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  scale3 {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+  }
+}
+embedded_instances {
+  id: "hud"
+  data: "components {\n"
+  "  id: \"gui\"\n"
+  "  component: \"/main/ui/hud.gui\"\n"
+  "}\n"
+  position {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+  }
+  rotation {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 1.0
+  }
+  scale3 {
+    x: 1.0
+    y: 1.0
+    z: 1.0
+  }
+}

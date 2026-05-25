@@ -1,0 +1,96 @@
+-- Fit-to-shortest-axis render script for portrait 1170x2532.
+-- Clears the full window to the letterbox color (#0a1410, matching the HTML
+-- prototype's body background), then sets a centered viewport sized to the
+-- design resolution and draws world + GUI inside it. No stretching, no clipping.
+--
+-- Based on Defold's default render script (/builtins/render/default.render_script).
+-- Keep this minimal — custom render scripts are a debugging black hole.
+
+local LETTERBOX_COLOR = vmath.vector4(10 / 255, 20 / 255, 16 / 255, 1)
+
+function init(self)
+    self.tile_pred = render.predicate({ "tile" })
+    self.gui_pred = render.predicate({ "gui" })
+    self.text_pred = render.predicate({ "text" })
+    self.particle_pred = render.predicate({ "particle" })
+
+    self.clear_color = vmath.vector4(0, 0, 0, 0)
+    self.clear_color.x = sys.get_config_number("render.clear_color_red", 0)
+    self.clear_color.y = sys.get_config_number("render.clear_color_green", 0)
+    self.clear_color.z = sys.get_config_number("render.clear_color_blue", 0)
+    self.clear_color.w = sys.get_config_number("render.clear_color_alpha", 0)
+
+    self.view = vmath.matrix4()
+
+    self.design_width = sys.get_config_int("display.width", 960)
+    self.design_height = sys.get_config_int("display.height", 540)
+end
+
+local function update_viewport(self)
+    local window_w = render.get_window_width()
+    local window_h = render.get_window_height()
+    if window_w == 0 or window_h == 0 then
+        return 0, 0, 0, 0
+    end
+
+    local scale = math.min(window_w / self.design_width, window_h / self.design_height)
+    local viewport_w = self.design_width * scale
+    local viewport_h = self.design_height * scale
+    local viewport_x = (window_w - viewport_w) * 0.5
+    local viewport_y = (window_h - viewport_h) * 0.5
+    return viewport_x, viewport_y, viewport_w, viewport_h
+end
+
+function update(self)
+    local window_w = render.get_window_width()
+    local window_h = render.get_window_height()
+    if window_w == 0 or window_h == 0 then
+        return
+    end
+
+    -- 1) Clear the whole window to the letterbox color.
+    render.set_viewport(0, 0, window_w, window_h)
+    render.set_depth_mask(true)
+    render.set_stencil_mask(0xff)
+    render.clear({
+        [render.BUFFER_COLOR_BIT] = LETTERBOX_COLOR,
+        [render.BUFFER_DEPTH_BIT] = 1,
+        [render.BUFFER_STENCIL_BIT] = 0,
+    })
+
+    -- 2) Switch to the scaled design-resolution viewport.
+    local vx, vy, vw, vh = update_viewport(self)
+    render.set_viewport(vx, vy, vw, vh)
+
+    render.set_view(self.view)
+    render.set_projection(vmath.matrix4_orthographic(0, self.design_width, 0, self.design_height, -1, 1))
+
+    -- 3) Draw the world.
+    render.set_depth_mask(false)
+    render.disable_state(render.STATE_DEPTH_TEST)
+    render.disable_state(render.STATE_STENCIL_TEST)
+    render.enable_state(render.STATE_BLEND)
+    render.set_blend_func(render.BLEND_SRC_ALPHA, render.BLEND_ONE_MINUS_SRC_ALPHA)
+    render.disable_state(render.STATE_CULL_FACE)
+
+    render.draw(self.tile_pred)
+    render.draw(self.particle_pred)
+    render.draw_debug3d()
+
+    -- 4) Draw GUI on top of the world, sharing the same projection.
+    render.set_view(vmath.matrix4())
+    render.set_projection(vmath.matrix4_orthographic(0, self.design_width, 0, self.design_height, -1, 1))
+
+    render.enable_state(render.STATE_STENCIL_TEST)
+    render.draw(self.gui_pred)
+    render.draw(self.text_pred)
+    render.disable_state(render.STATE_STENCIL_TEST)
+end
+
+function on_message(self, message_id, message)
+    if message_id == hash("clear_color") then
+        self.clear_color = message.color
+    elseif message_id == hash("set_view_projection") then
+        self.view = message.view
+    end
+end

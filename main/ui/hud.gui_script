@@ -1,0 +1,40 @@
+-- Match HUD. Picks taps on the test card and menu button, and renders the
+-- yards counter pushed up from lane.script. No game state lives here — this
+-- script translates input into messages and renders incoming state.
+
+local msgs = require "main.state.messages"
+
+function init(self)
+    msg.post(".", "acquire_input_focus")
+    self.test_card = gui.get_node("test_card")
+    self.menu_button = gui.get_node("menu_button")
+    self.yards_text = gui.get_node("yards_text")
+end
+
+function on_input(self, action_id, action)
+    if action_id == msgs.TOUCH and action.released then
+        print(string.format("[hud] action=%s released x=%.1f y=%.1f screen_x=%.1f screen_y=%.1f",
+        tostring(action_id), action.x, action.y, action.screen_x or -1, action.screen_y or -1))
+        local tc_pos = gui.get_position(self.test_card)
+        local mb_pos = gui.get_position(self.menu_button)
+        print(string.format("[hud] test_card@(%.0f,%.0f) menu_button@(%.0f,%.0f)",
+        tc_pos.x, tc_pos.y, mb_pos.x, mb_pos.y))
+        print(string.format("[hud] pick test=%s menu=%s",
+        tostring(gui.pick_node(self.test_card, action.x, action.y)),
+        tostring(gui.pick_node(self.menu_button, action.x, action.y))))
+    end
+    if action_id ~= msgs.TOUCH or not action.released then
+        return
+    end
+    if gui.pick_node(self.test_card, action.x, action.y) then
+        msg.post("/lane#script", msgs.MATCH_PLAY_TEST_CARD)
+    elseif gui.pick_node(self.menu_button, action.x, action.y) then
+        msg.post("main:/loader#script", msgs.SHOW_MENU)
+    end
+end
+
+function on_message(self, message_id, message, sender)
+    if message_id == msgs.HUD_YARDS_CHANGED then
+        gui.set_text(self.yards_text, "YARDS: " .. tostring(message.yards or 0))
+    end
+end

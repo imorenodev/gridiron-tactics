@@ -1,0 +1,20 @@
+-- Card prefab script. For the vertical slice the card has no visual — the
+-- player-facing "card" is the HUD's TEST CARD button. This script just owns
+-- the played flag and notifies the lane (the sender of card.play) when the
+-- card resolves.
+
+local msgs = require "main.state.messages"
+
+function init(self)
+    self.played = false
+end
+
+function on_message(self, message_id, message, sender)
+    if message_id == msgs.CARD_PLAY then
+        -- Snap to lane center. No-op visually in 0.4; placeholder for real
+        -- card movement in a later phase.
+        go.set_position(vmath.vector3(585, 1266, 0))
+        self.played = true
+        msg.post(sender, msgs.LANE_CARD_PLAYED)
+    end
+end

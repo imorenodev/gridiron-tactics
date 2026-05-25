@@ -1,0 +1,27 @@
+-- Menu GUI. Single PLAY button + a total-taps counter sourced from save data.
+-- Posts show_match to the loader on tap; the loader handles the actual proxy
+-- swap. No game state lives in this script.
+
+local msgs = require "main.state.messages"
+
+function init(self)
+    msg.post(".", "acquire_input_focus")
+    self.play_button = gui.get_node("play_button")
+    self.total_taps_node = gui.get_node("total_taps")
+end
+
+function on_input(self, action_id, action)
+    if action_id ~= msgs.TOUCH or not action.released then
+        return
+    end
+    if gui.pick_node(self.play_button, action.x, action.y) then
+        msg.post("main:/loader#script", msgs.SHOW_MATCH)
+    end
+end
+
+function on_message(self, message_id, message, sender)
+    if message_id == msgs.TOTAL_TAPS_CHANGED then
+        local n = message.total_taps or 0
+        gui.set_text(self.total_taps_node, "TOTAL TAPS: " .. tostring(n))
+    end
+end
