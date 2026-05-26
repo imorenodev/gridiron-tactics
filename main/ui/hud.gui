@@ -87,8 +87,8 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position { x: 0.0 y: 650.0 z: 0.0 }
-  scale { x: 1.5 y: 1.5 z: 1.0 }
+  position { x: 0.0 y: 110.0 z: 0.0 }
+  scale { x: 1.3 y: 1.3 z: 1.0 }
   size { x: 200.0 y: 60.0 z: 0.0 }
   color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
   type: TYPE_TEXT
@@ -99,66 +99,313 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position { x: 0.0 y: 570.0 z: 0.0 }
-  size { x: 340.0 y: 30.0 z: 0.0 }
-  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
+  position { x: 0.0 y: 260.0 z: 0.0 }
+  size { x: 180.0 y: 50.0 z: 0.0 }
+  color { x: 0.7 y: 0.25 z: 0.25 w: 1.0 }
   type: TYPE_BOX
-  id: "lane_0_yard_bg"
+  id: "lane_0_ai_pill"
   parent: "lane_0_root"
   inherit_alpha: true
 }
 nodes {
-  position { x: -170.0 y: 0.0 z: 0.0 }
-  size { x: 85.0 y: 30.0 z: 0.0 }
-  color { x: 0.35 y: 0.85 z: 0.35 w: 1.0 }
-  type: TYPE_BOX
-  id: "lane_0_yard_fill"
-  parent: "lane_0_yard_bg"
-  pivot: PIVOT_W
-  inherit_alpha: true
-}
-nodes {
-  position { x: 0.0 y: 510.0 z: 0.0 }
-  scale { x: 1.4 y: 1.4 z: 1.0 }
-  size { x: 240.0 y: 60.0 z: 0.0 }
+  scale { x: 1.6 y: 1.6 z: 1.0 }
+  size { x: 160.0 y: 40.0 z: 0.0 }
   color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
   type: TYPE_TEXT
-  text: "25"
+  text: "+0"
   font: "default"
-  id: "lane_0_pos_text"
-  parent: "lane_0_root"
+  id: "lane_0_ai_pill_text"
+  parent: "lane_0_ai_pill"
   inherit_alpha: true
 }
 nodes {
   position { x: 0.0 y: 200.0 z: 0.0 }
-  size { x: 200.0 y: 110.0 z: 0.0 }
-  color { x: 0.85 y: 0.68 z: 0.2 w: 1.0 }
+  size { x: 320.0 y: 25.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
   type: TYPE_BOX
-  id: "lane_0_pill"
+  id: "lane_0_ai_yard_bg"
   parent: "lane_0_root"
   inherit_alpha: true
 }
 nodes {
-  scale { x: 2.0 y: 2.0 z: 1.0 }
-  size { x: 180.0 y: 80.0 z: 0.0 }
+  position { x: -160.0 y: 0.0 z: 0.0 }
+  size { x: 80.0 y: 25.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.5 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_ai_yard_fill"
+  parent: "lane_0_ai_yard_bg"
+  pivot: PIVOT_W
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 165.0 z: 0.0 }
+  size { x: 200.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.85 z: 0.85 w: 1.0 }
+  type: TYPE_TEXT
+  text: "25"
+  font: "default"
+  id: "lane_0_ai_pos_text"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  size { x: 200.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.95 z: 0.95 w: 1.0 }
+  type: TYPE_TEXT
+  text: "25"
+  font: "default"
+  id: "lane_0_p_pos_text"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  size { x: 320.0 y: 25.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_p_yard_bg"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -160.0 y: 0.0 z: 0.0 }
+  size { x: 80.0 y: 25.0 z: 0.0 }
+  color { x: 0.35 y: 0.85 z: 0.35 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_p_yard_fill"
+  parent: "lane_0_p_yard_bg"
+  pivot: PIVOT_W
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -150.0 z: 0.0 }
+  size { x: 200.0 y: 70.0 z: 0.0 }
+  color { x: 0.85 y: 0.68 z: 0.2 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_p_pill"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 1.8 y: 1.8 z: 1.0 }
+  size { x: 180.0 y: 60.0 z: 0.0 }
   color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
   type: TYPE_TEXT
   text: "+0"
   font: "default"
-  id: "lane_0_pill_text"
-  parent: "lane_0_pill"
+  id: "lane_0_p_pill_text"
+  parent: "lane_0_p_pill"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 620.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_ai_slot_0"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_0_text"
+  parent: "lane_0_ai_slot_0"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 550.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_ai_slot_1"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_1_text"
+  parent: "lane_0_ai_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 480.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_ai_slot_2"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_2_text"
+  parent: "lane_0_ai_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 410.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_ai_slot_3"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_3_text"
+  parent: "lane_0_ai_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 340.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_ai_slot_4"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_4_text"
+  parent: "lane_0_ai_slot_4"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -620.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_p_slot_0"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_0_text"
+  parent: "lane_0_p_slot_0"
   inherit_alpha: true
 }
 nodes {
   position { x: 0.0 y: -550.0 z: 0.0 }
-  scale { x: 1.1 y: 1.1 z: 1.0 }
-  size { x: 240.0 y: 60.0 z: 0.0 }
-  color { x: 0.9 y: 0.9 z: 0.9 w: 1.0 }
-  type: TYPE_TEXT
-  text: "CARDS: 0/8"
-  font: "default"
-  id: "lane_0_cards_text"
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_p_slot_1"
   parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_1_text"
+  parent: "lane_0_p_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -480.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_p_slot_2"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_2_text"
+  parent: "lane_0_p_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -410.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_p_slot_3"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_3_text"
+  parent: "lane_0_p_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -340.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_p_slot_4"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_4_text"
+  parent: "lane_0_p_slot_4"
   inherit_alpha: true
 }
 nodes {
@@ -170,8 +417,8 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position { x: 0.0 y: 650.0 z: 0.0 }
-  scale { x: 1.5 y: 1.5 z: 1.0 }
+  position { x: 0.0 y: 110.0 z: 0.0 }
+  scale { x: 1.3 y: 1.3 z: 1.0 }
   size { x: 200.0 y: 60.0 z: 0.0 }
   color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
   type: TYPE_TEXT
@@ -182,66 +429,313 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position { x: 0.0 y: 570.0 z: 0.0 }
-  size { x: 340.0 y: 30.0 z: 0.0 }
-  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
+  position { x: 0.0 y: 260.0 z: 0.0 }
+  size { x: 180.0 y: 50.0 z: 0.0 }
+  color { x: 0.7 y: 0.25 z: 0.25 w: 1.0 }
   type: TYPE_BOX
-  id: "lane_1_yard_bg"
+  id: "lane_1_ai_pill"
   parent: "lane_1_root"
   inherit_alpha: true
 }
 nodes {
-  position { x: -170.0 y: 0.0 z: 0.0 }
-  size { x: 85.0 y: 30.0 z: 0.0 }
-  color { x: 0.35 y: 0.85 z: 0.35 w: 1.0 }
-  type: TYPE_BOX
-  id: "lane_1_yard_fill"
-  parent: "lane_1_yard_bg"
-  pivot: PIVOT_W
-  inherit_alpha: true
-}
-nodes {
-  position { x: 0.0 y: 510.0 z: 0.0 }
-  scale { x: 1.4 y: 1.4 z: 1.0 }
-  size { x: 240.0 y: 60.0 z: 0.0 }
+  scale { x: 1.6 y: 1.6 z: 1.0 }
+  size { x: 160.0 y: 40.0 z: 0.0 }
   color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
   type: TYPE_TEXT
-  text: "25"
+  text: "+0"
   font: "default"
-  id: "lane_1_pos_text"
-  parent: "lane_1_root"
+  id: "lane_1_ai_pill_text"
+  parent: "lane_1_ai_pill"
   inherit_alpha: true
 }
 nodes {
   position { x: 0.0 y: 200.0 z: 0.0 }
-  size { x: 200.0 y: 110.0 z: 0.0 }
-  color { x: 0.85 y: 0.68 z: 0.2 w: 1.0 }
+  size { x: 320.0 y: 25.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
   type: TYPE_BOX
-  id: "lane_1_pill"
+  id: "lane_1_ai_yard_bg"
   parent: "lane_1_root"
   inherit_alpha: true
 }
 nodes {
-  scale { x: 2.0 y: 2.0 z: 1.0 }
-  size { x: 180.0 y: 80.0 z: 0.0 }
+  position { x: -160.0 y: 0.0 z: 0.0 }
+  size { x: 80.0 y: 25.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.5 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_ai_yard_fill"
+  parent: "lane_1_ai_yard_bg"
+  pivot: PIVOT_W
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 165.0 z: 0.0 }
+  size { x: 200.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.85 z: 0.85 w: 1.0 }
+  type: TYPE_TEXT
+  text: "25"
+  font: "default"
+  id: "lane_1_ai_pos_text"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  size { x: 200.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.95 z: 0.95 w: 1.0 }
+  type: TYPE_TEXT
+  text: "25"
+  font: "default"
+  id: "lane_1_p_pos_text"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  size { x: 320.0 y: 25.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_p_yard_bg"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -160.0 y: 0.0 z: 0.0 }
+  size { x: 80.0 y: 25.0 z: 0.0 }
+  color { x: 0.35 y: 0.85 z: 0.35 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_p_yard_fill"
+  parent: "lane_1_p_yard_bg"
+  pivot: PIVOT_W
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -150.0 z: 0.0 }
+  size { x: 200.0 y: 70.0 z: 0.0 }
+  color { x: 0.85 y: 0.68 z: 0.2 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_p_pill"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 1.8 y: 1.8 z: 1.0 }
+  size { x: 180.0 y: 60.0 z: 0.0 }
   color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
   type: TYPE_TEXT
   text: "+0"
   font: "default"
-  id: "lane_1_pill_text"
-  parent: "lane_1_pill"
+  id: "lane_1_p_pill_text"
+  parent: "lane_1_p_pill"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 620.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_ai_slot_0"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_0_text"
+  parent: "lane_1_ai_slot_0"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 550.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_ai_slot_1"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_1_text"
+  parent: "lane_1_ai_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 480.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_ai_slot_2"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_2_text"
+  parent: "lane_1_ai_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 410.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_ai_slot_3"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_3_text"
+  parent: "lane_1_ai_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 340.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_ai_slot_4"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_4_text"
+  parent: "lane_1_ai_slot_4"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -620.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_p_slot_0"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_0_text"
+  parent: "lane_1_p_slot_0"
   inherit_alpha: true
 }
 nodes {
   position { x: 0.0 y: -550.0 z: 0.0 }
-  scale { x: 1.1 y: 1.1 z: 1.0 }
-  size { x: 240.0 y: 60.0 z: 0.0 }
-  color { x: 0.9 y: 0.9 z: 0.9 w: 1.0 }
-  type: TYPE_TEXT
-  text: "CARDS: 0/8"
-  font: "default"
-  id: "lane_1_cards_text"
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_p_slot_1"
   parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_1_text"
+  parent: "lane_1_p_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -480.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_p_slot_2"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_2_text"
+  parent: "lane_1_p_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -410.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_p_slot_3"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_3_text"
+  parent: "lane_1_p_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -340.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_p_slot_4"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_4_text"
+  parent: "lane_1_p_slot_4"
   inherit_alpha: true
 }
 nodes {
@@ -253,8 +747,8 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position { x: 0.0 y: 650.0 z: 0.0 }
-  scale { x: 1.5 y: 1.5 z: 1.0 }
+  position { x: 0.0 y: 110.0 z: 0.0 }
+  scale { x: 1.3 y: 1.3 z: 1.0 }
   size { x: 200.0 y: 60.0 z: 0.0 }
   color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
   type: TYPE_TEXT
@@ -265,66 +759,313 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position { x: 0.0 y: 570.0 z: 0.0 }
-  size { x: 340.0 y: 30.0 z: 0.0 }
-  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
+  position { x: 0.0 y: 260.0 z: 0.0 }
+  size { x: 180.0 y: 50.0 z: 0.0 }
+  color { x: 0.7 y: 0.25 z: 0.25 w: 1.0 }
   type: TYPE_BOX
-  id: "lane_2_yard_bg"
+  id: "lane_2_ai_pill"
   parent: "lane_2_root"
   inherit_alpha: true
 }
 nodes {
-  position { x: -170.0 y: 0.0 z: 0.0 }
-  size { x: 85.0 y: 30.0 z: 0.0 }
-  color { x: 0.35 y: 0.85 z: 0.35 w: 1.0 }
-  type: TYPE_BOX
-  id: "lane_2_yard_fill"
-  parent: "lane_2_yard_bg"
-  pivot: PIVOT_W
-  inherit_alpha: true
-}
-nodes {
-  position { x: 0.0 y: 510.0 z: 0.0 }
-  scale { x: 1.4 y: 1.4 z: 1.0 }
-  size { x: 240.0 y: 60.0 z: 0.0 }
+  scale { x: 1.6 y: 1.6 z: 1.0 }
+  size { x: 160.0 y: 40.0 z: 0.0 }
   color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
   type: TYPE_TEXT
-  text: "25"
+  text: "+0"
   font: "default"
-  id: "lane_2_pos_text"
-  parent: "lane_2_root"
+  id: "lane_2_ai_pill_text"
+  parent: "lane_2_ai_pill"
   inherit_alpha: true
 }
 nodes {
   position { x: 0.0 y: 200.0 z: 0.0 }
-  size { x: 200.0 y: 110.0 z: 0.0 }
-  color { x: 0.85 y: 0.68 z: 0.2 w: 1.0 }
+  size { x: 320.0 y: 25.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
   type: TYPE_BOX
-  id: "lane_2_pill"
+  id: "lane_2_ai_yard_bg"
   parent: "lane_2_root"
   inherit_alpha: true
 }
 nodes {
-  scale { x: 2.0 y: 2.0 z: 1.0 }
-  size { x: 180.0 y: 80.0 z: 0.0 }
+  position { x: -160.0 y: 0.0 z: 0.0 }
+  size { x: 80.0 y: 25.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.5 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_ai_yard_fill"
+  parent: "lane_2_ai_yard_bg"
+  pivot: PIVOT_W
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 165.0 z: 0.0 }
+  size { x: 200.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.85 z: 0.85 w: 1.0 }
+  type: TYPE_TEXT
+  text: "25"
+  font: "default"
+  id: "lane_2_ai_pos_text"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  size { x: 200.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.95 z: 0.95 w: 1.0 }
+  type: TYPE_TEXT
+  text: "25"
+  font: "default"
+  id: "lane_2_p_pos_text"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  size { x: 320.0 y: 25.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_p_yard_bg"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -160.0 y: 0.0 z: 0.0 }
+  size { x: 80.0 y: 25.0 z: 0.0 }
+  color { x: 0.35 y: 0.85 z: 0.35 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_p_yard_fill"
+  parent: "lane_2_p_yard_bg"
+  pivot: PIVOT_W
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -150.0 z: 0.0 }
+  size { x: 200.0 y: 70.0 z: 0.0 }
+  color { x: 0.85 y: 0.68 z: 0.2 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_p_pill"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 1.8 y: 1.8 z: 1.0 }
+  size { x: 180.0 y: 60.0 z: 0.0 }
   color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
   type: TYPE_TEXT
   text: "+0"
   font: "default"
-  id: "lane_2_pill_text"
-  parent: "lane_2_pill"
+  id: "lane_2_p_pill_text"
+  parent: "lane_2_p_pill"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 620.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_ai_slot_0"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_0_text"
+  parent: "lane_2_ai_slot_0"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 550.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_ai_slot_1"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_1_text"
+  parent: "lane_2_ai_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 480.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_ai_slot_2"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_2_text"
+  parent: "lane_2_ai_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 410.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_ai_slot_3"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_3_text"
+  parent: "lane_2_ai_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 340.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_ai_slot_4"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_4_text"
+  parent: "lane_2_ai_slot_4"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -620.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_p_slot_0"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_0_text"
+  parent: "lane_2_p_slot_0"
   inherit_alpha: true
 }
 nodes {
   position { x: 0.0 y: -550.0 z: 0.0 }
-  scale { x: 1.1 y: 1.1 z: 1.0 }
-  size { x: 240.0 y: 60.0 z: 0.0 }
-  color { x: 0.9 y: 0.9 z: 0.9 w: 1.0 }
-  type: TYPE_TEXT
-  text: "CARDS: 0/8"
-  font: "default"
-  id: "lane_2_cards_text"
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_p_slot_1"
   parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_1_text"
+  parent: "lane_2_p_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -480.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_p_slot_2"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_2_text"
+  parent: "lane_2_p_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -410.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_p_slot_3"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_3_text"
+  parent: "lane_2_p_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -340.0 z: 0.0 }
+  size { x: 320.0 y: 60.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_p_slot_4"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 300.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_4_text"
+  parent: "lane_2_p_slot_4"
   inherit_alpha: true
 }
 nodes {
@@ -707,11 +1448,11 @@ nodes {
 }
 nodes {
   position { x: 0.0 y: 50.0 z: 0.0 }
-  scale { x: 1.5 y: 1.5 z: 1.0 }
-  size { x: 880.0 y: 280.0 z: 0.0 }
+  scale { x: 1.2 y: 1.2 z: 1.0 }
+  size { x: 880.0 y: 360.0 z: 0.0 }
   color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
   type: TYPE_TEXT
-  text: "LANE 1: +0\nLANE 2: +0\nLANE 3: +0"
+  text: "..."
   font: "default"
   id: "summary_text"
   parent: "summary_panel"

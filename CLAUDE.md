@@ -17,6 +17,7 @@ Gridiron Tactics is a Marvel Snap-style card game with a football theme, being p
 - **Phase 0: complete (vertical slice).** Defold project skeleton, menu ↔ match collection-proxy flow, hardcoded test card driving a yards counter, and a save/load smoke test that persists `total_taps` across launches. See "Phase 0 — Vertical slice notes" at the bottom of this file for details and stubs left for later phases.
 - **Phase 0.6.5: complete (render script fix-up — reverted to default render).** The Phase 0 custom render script broke `gui.pick_node`; reverted to `/builtins/render/default.renderc` and deleted the custom files. Letterboxing is deferred to a post-TestFlight phase.
 - **Phase 1: complete (architecture slice).** Three lanes, hardcoded 5-card hand, drag-to-play, one drive, END DRIVE → resolution animation → summary panel → return-to-menu, with `total_drives_played` persisted across launches. No AI, no scoring, no modifiers/synergies/perks, no deck cycle, no real assets. See "Phase 1 — Architecture slice notes" at the bottom of this file.
+- **Phase 2: complete (AI side + reveal mechanic).** AI has its own 5-card hand and 12 energy; `cpu.lua` heuristic ported from the HTML picks AI plays at END DRIVE. Both sides play face-down; END DRIVE triggers a `revealing` phase that flips cards one-by-one with a 280 ms stagger and rolls each lane's pills as it reveals. Net yards formula now uses both sides: `floor(off_sum/2.5) − floor(opp_def_sum/2.5)`. Still no scoring, no abilities (no-op `try_apply_snap_ability` hook), no modifiers, no deck cycle, no real assets. See "Phase 2 — AI side notes" at the bottom of this file.
 
 ## Hard rules — non-negotiable
 
@@ -360,3 +361,54 @@ Phase 1 (`defold-phase-1-architecture-slice-prompt.md`) ported the architectural
 - **Game objects are at the same design-space x as their HUD nodes** (lanes at 195/585/975). When asset integration moves card visuals to the GO, the visual will line up with where the lane appears on screen without re-doing layout math.
 - **`factory.create` properties carry `card_uid` as a hash, not a string.** The string uid lives in `match_state.hand`; the GO's `self.card_uid` is `hash(uid_string)` because `factory.create` properties must be primitives that match the script's declared property types.
 - **Match → HUD is push, HUD → Match is post.** The HUD never reads `match_state` directly; `match.script` pushes via `HUD_*` messages whenever state changes. The HUD posts intent (`MATCH_PLAY_CARD`, `MATCH_END_DRIVE`, `MATCH_RETURN_TO_MENU`) and waits to be told what to render.
+
+## Phase 2 — AI side notes
+
+Phase 2 (`defold-phase-2-ai-prompt.md`) mirrored the player flow for the AI and added a reveal mechanic. After Phase 2, both sides play face-down during the drive; END DRIVE triggers a `revealing` phase that flips cards one at a time with a Marvel-Snap-style stagger, then the existing drive resolution + summary path runs.
+
+### What's in
+
+- **AI state** (`main/state/match_state.lua`): `ai_hand` (5 cards from the same pool as player), `ai_energy = 12`, `ai_played_uids`. Each lane now carries `ai_cards`, `ai_pos` (kickoff = 25), `ai_off_sum`, `ai_def_sum`, `ai_net_yards`, plus `you_def_sum` on the player side for symmetry. Net yards per side counts revealed cards only.
+- **`pending_plays`** (in `match_state.lua`): the source of truth between play phase and reveal phase. `play_card` / `ai_play_card` push entries `{ card_uid, lane_idx, side, slot_idx }`. `reveal_pending_plays()` returns this in winner-first order; `reveal_single_play(play)` flips one entry, recomputes that lane's sums, and returns them. `resolve_drive()` clears `pending_plays`.
+- **`main/ai/cpu.lua`**: heuristic ported verbatim from the HTML's `aiMakePlays()` — sort hand by `off+def` desc, score each affordable card across all three lanes (offensive cards weight on `ai_pos`/`you_def_sum`/kicker positioning; defensive cards weight on `you_pos` threat, near-own-endzone safety guard, and DB stacking), pick the highest score. Returns a 1-indexed `{ card, lane_idx }` array; `match.script` converts to 0-indexed at the boundary.
+- **Face-down play model** (`match_state.play_card`, `ai_play_card`): card moves into `you_cards` / `ai_cards` with `revealed = false`, lane sums stay at 0 (no revealed cards yet contribute), energy deducts, hand slot empties. The HUD's net-yards pill stays at `+0` for both sides during the play phase — this is the intended bluff/anticipation behavior, not a bug.
+- **Reveal sequence** (`match.script`): on `MATCH_END_DRIVE` we set `phase = "revealing"`, run the CPU heuristic, spawn AI cards face-down via the factory (now with a `side` property), `timer.delay(0.4)` to let AI cards settle visually, then walk `reveal_pending_plays()` one entry at a time with `timer.delay(0.28)` between steps. Each step posts `HUD_REVEAL_CARD` (flip animation) and `HUD_LANE_SUMS_UPDATED` (progressive pill update). After the list is drained, `resolve_drive()` runs and the existing `HUD_LANE_RESOLVED → HUD_MATCH_ENDED → MATCH_DRIVE_COMPLETED` chain takes over.
+- **HUD card slots** (`main/ui/hud.gui`): each lane now has 5 player slots stacking up from the bottom and 5 AI slots stacking down from the top. Each slot is two nodes (box + text); face-down = dark gray box with empty text, face-up = side-tinted box (khaki for player, red-tinted for AI) with `"POS cN STAT V"` compact text. Slots default to `enabled: false` and are turned on by the HUD when a card lands there.
+- **Two yardage bars + two net-yards pills per lane**: player bars/pill live in the bottom half of the lane region; AI bars/pill live above the AI cards in the top half. Lane label `"LANE N"` and the pos/yard meta sit in the central band.
+- **Card factory** (`main/match/card_factory.script`): now takes a `side` property in `CARD_SPAWN`. Player cards spawn at `y = 1200 + slot_idx*80` (stack up), AI cards at `y = 2100 - slot_idx*80` (stack down). Same `LANE_X = {195, 585, 975}` mirror of the HUD.
+
+### Key architectural choices to preserve
+
+- **Cards always play face-down.** Both player and AI. Reveal happens only at END DRIVE. Don't restore Phase 1's progressive net-yards behavior — the design relies on the bluff window.
+- **Lane sums count revealed cards only.** `recompute_lane_sums` walks `lane.you_cards` / `ai_cards` filtering by `c.revealed`. Cards in the lane with `revealed = false` don't appear in sums. This is what lets the reveal animation feel progressive — each flip is when its card contributes.
+- **Reveal order is "winner reveals first".** `reveal_pending_plays` computes `player_first = you_score >= ai_score`. Phase 2 keeps `you_score = ai_score = 0` as module-locals (scoring lands in Phase 3) so the tied case (player-first) always wins. When real scoring arrives, only the assignments to `you_score`/`ai_score` change — the reveal order code is already correct.
+- **Card-abilities hook is `try_apply_snap_ability(card)`** inside `reveal_single_play`. It's a no-op for Phase 2 with a TODO comment. When abilities ship, plug them in there without restructuring the reveal loop.
+- **`pending_plays` is the source of truth between play and reveal.** Lane card arrays carry full card data (so the HUD can render them face-down before reveal), but the reveal order is driven by `pending_plays` so each card's flip moment is exact. Don't reverse this — having the lane arrays drive reveal order would silently re-order things if cards are inserted out of strict play order later.
+- **HUD slot count is 5 per side.** State allows 8 (the HTML cap), but with 5-card hands neither side can play more than 5 to a single lane. If/when deck cycle lifts hand size in Phase 3+, expand the HUD slot count to match.
+- **`match.script` orchestrates everything during END DRIVE.** It owns the timer cadence, the spawn calls, the per-step HUD posts, and the eventual call to `resolve_drive`. The HUD doesn't initiate any of this — it only reacts to messages.
+- **AI cards spawn position on the GO is the AI slot's screen position** (top-down stacking). When asset integration moves visuals onto the GO, the GO is already in the right spot — the HUD slot at that screen position just stops being drawn.
+
+### Intentionally stubbed in Phase 2
+
+- **Card abilities (SNAP, on-reveal, on-played).** The reveal loop's `try_apply_snap_ability` is a no-op; `card.script` has a TODO for ability routing.
+- **Scoring.** No TD / safety / PAT / conversion / pick-6 / FG. Ball position can pass 100 or go below 0; we don't react. `you_score` and `ai_score` stay 0 in `match_state.lua` but are wired into the reveal-order comparison so Phase 3 only needs to make them actually change.
+- **Modifiers / synergies / perks.** `lane.script` and `card.script` are still stubs.
+- **Multi-drive cycle.** Match still ends after one drive.
+- **Deck / draw / discard.** Hand is hardcoded 5 cards at `new_match`, no refill.
+- **Real audio.** Web Audio synths from the HTML don't port; silent for Phase 2.
+- **Real card visuals.** Played cards still render as HUD GUI box+text (face-down dark gray or side-tinted face-up). The card.go game-object is invisible. Asset integration will move per-card visuals onto the GO.
+- **Reduced-motion flag.** Now genuinely needed — the reveal sequence, flip animations, and yard-fill tweens are all animation paths that should short-circuit when the player has reduced motion enabled. `meta_state.reduced_motion` still hasn't landed; add it before TestFlight.
+
+### Phase 3 follow-ups
+
+- **Scoring.** Drive across endzone → touchdown; lane safety; AI yard-line ≤ 0 from player offense → defensive touchdown / pick-6. Score changes drive the reveal order naturally.
+- **Multi-drive cycle.** A match becomes ~8 drives; drive number scales energy; the cycle stops on TD-difference or final-drive resolution.
+- **Deck / draw / discard.** `cards.lua` grows a deck-construction API; hand size becomes dynamic; drawn cards stream into `hand` between drives.
+- **Card abilities** plugged into `try_apply_snap_ability` and (eventually) `card.script`'s `on_message`.
+
+### Conventions established in Phase 2
+
+- **Per-side prefixes in node ids.** `lane_{idx}_p_*` for player nodes, `lane_{idx}_ai_*` for AI nodes. Slot ids follow `lane_{idx}_{side_prefix}_slot_{slot_idx}` and `..._text`. The HUD script's `self.slots[lane_idx][side][slot_idx]` table mirrors this — keep both naming schemes in sync.
+- **Card record fields added during play / reveal**: `revealed` (bool), `_base_off` / `_base_def` (set at reveal, hooks for modifier work that compares modified vs base), `cur_off` / `cur_def` (post-modifier values; equal to base in Phase 2). When mutating cards in the lane, treat `revealed`/`cur_*` as the read surface; modifiers will rewrite `cur_*` between reveal and `recompute_lane_sums`.
+- **`HUD_LANE_UPDATED` payload is the lane render snapshot.** `match_state.lane_render_copy(idx)` returns the full thing (positions, sums, pills, both card arrays) and the HUD re-renders the whole lane each time. This costs a few dozen node updates per message but keeps state-out-of-sync bugs impossible.
+- **CPU heuristic uses 1-indexed lane references; everything else uses 0-indexed.** `cpu.lua` returns `lane_idx = 1..3`; `match.script` converts to 0..2 at the boundary before calling `match_state.ai_play_card`. Keep this conversion at the single call site — don't push 1-indexed lanes further into state.

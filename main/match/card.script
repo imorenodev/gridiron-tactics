@@ -1,17 +1,18 @@
--- Per-played-card game-object script. Phase 1: this script's only job is to
--- exist so the architectural pattern (cards-as-game-objects) is in place.
--- Properties are set by factory.create when the card is played; in Phase 2+
--- this is where SNAP/on-reveal ability triggers will hang.
+-- Per-played-card game-object script. Phase 2: holds the spawn-time
+-- properties (uid, lane, slot, side) so future ability code on this object
+-- has the context it needs. Visuals still live in the HUD GUI for Phase 2;
+-- this GO is invisible until asset integration moves card visuals here.
 
 go.property("card_uid", hash(""))
 go.property("lane_idx", 0)
 go.property("slot_idx", 0)
+go.property("side", hash("you"))  -- hash("you") | hash("ai") — set by factory.create
 
 function init(self)
-    -- No-op. Visuals live in the HUD GUI in Phase 1; this GO is invisible
-    -- until asset integration replaces the HUD card visual with a real
-    -- sprite hung off this object.
+    -- No-op. State changes flow through match_state.lua and the HUD.
 end
 
--- TODO Phase 2: on_message handler for ability triggers (SNAP, on-reveal,
--- on-played, on-resolve). The lane will post per-card events here.
+-- TODO Phase TBD: on_message handler for ability triggers (SNAP, on-reveal,
+-- on-played, on-resolve). reveal_single_play() in match_state.lua already
+-- has a try_apply_snap_ability hook; routing it through this script is a
+-- future change once abilities are actually implemented.

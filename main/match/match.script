@@ -1,23 +1,30 @@
--- Match state machine. Owns the phase transitions ("play" -> "resolving" ->
--- "ended") and orchestrates the per-frame conversation between match_state,
--- the HUD GUI, and the card factory. No mutation of match_state lives in
--- the GUI; all of it flows through here.
+-- Match state machine. Phase 2 expanded: at END DRIVE, the CPU heuristic
+-- picks plays, AI cards spawn face-down, then a `revealing` phase walks
+-- every pending play in winner-first order, flipping cards face-up one at
+-- a time with a 0.28s stagger and pushing per-lane sum updates so the HUD
+-- pills animate progressively. Resolution + summary follow as in Phase 1.
+--
+-- Match phases:
+--   "play"      → accepting input. MATCH_PLAY_CARD allowed.
+--   "revealing" → AI plays + flip animation in progress. Input ignored.
+--   "ended"     → drive over, summary visible. RETURN_TO_MENU allowed.
 
 local msgs = require "main.state.messages"
 local match_state = require "main.state.match_state"
+local cpu = require "main.ai.cpu"
 
-local RESOLVE_DURATION = 1.0  -- seconds we hold "resolving" before showing summary
+local AI_SETTLE_DELAY = 0.4   -- AI cards visible face-down for this long before reveal starts
+local REVEAL_STAGGER = 0.28   -- gap between successive card flips
+local RESOLVE_DURATION = 1.0  -- gap between resolve animation and match-ended summary
+
+-- Forward declarations so step_reveal and finish_drive can call each other.
+local step_reveal
+local finish_drive
 
 local function push_lane_state(lane_idx)
-    local lane = match_state.get_lane(lane_idx)
-    if not lane then return end
-    msg.post("/hud#gui", msgs.HUD_LANE_UPDATED, {
-        lane_idx = lane_idx,
-        you_pos = lane.you_pos,
-        you_net_yards = lane.you_net_yards,
-        you_off_sum = lane.you_off_sum,
-        you_cards_count = #lane.you_cards,
-    })
+    local snapshot = match_state.lane_render_copy(lane_idx)
+    if not snapshot then return end
+    msg.post("/hud#gui", msgs.HUD_LANE_UPDATED, snapshot)
 end
 
 local function push_full_state()
@@ -28,8 +35,91 @@ local function push_full_state()
     end
 end
 
+local function start_ai_plays()
+    local ai_hand = match_state.get_ai_hand()
+    local ai_energy = match_state.get_ai_energy()
+    local lanes_view = match_state.get_lanes_for_cpu()
+
+    local intended = cpu.choose_plays(ai_hand, ai_energy, lanes_view)
+
+    local spawns = {}
+    for _, play in ipairs(intended) do
+        local zero_idx = play.lane_idx - 1  -- cpu returns 1..3; state uses 0..2
+        local result = match_state.ai_play_card(play.card, zero_idx)
+        if result.success then
+            msg.post("/card_factory#script", msgs.CARD_SPAWN, {
+                card_uid = result.card.uid,
+                lane_idx = zero_idx,
+                slot_idx = result.slot_idx,
+                side = "ai",
+            })
+            table.insert(spawns, {
+                lane_idx = zero_idx,
+                slot_idx = result.slot_idx,
+                card_data = {
+                    id = result.card.id,
+                    name = result.card.name,
+                    pos = result.card.pos,
+                    cost = result.card.cost,
+                    off = result.card.off,
+                    def = result.card.def,
+                    side = result.card.side,
+                    rarity = result.card.rarity,
+                    uid = result.card.uid,
+                },
+            })
+        end
+    end
+
+    msg.post("/hud#gui", msgs.HUD_AI_CARDS_SPAWNED, { plays = spawns })
+end
+
+step_reveal = function(self)
+    local list = self.reveal_list
+    local idx = self.reveal_index
+    if not list or idx > #list then
+        finish_drive(self)
+        return
+    end
+
+    local play = list[idx]
+    local sums = match_state.reveal_single_play(play)
+    if sums then
+        msg.post("/hud#gui", msgs.HUD_REVEAL_CARD, {
+            lane_idx = play.lane_idx,
+            side = play.side,
+            slot_idx = play.slot_idx,
+        })
+        msg.post("/hud#gui", msgs.HUD_LANE_SUMS_UPDATED, sums)
+    end
+
+    self.reveal_index = idx + 1
+    timer.delay(REVEAL_STAGGER, false, function(s) step_reveal(s) end)
+end
+
+finish_drive = function(self)
+    local summary = match_state.resolve_drive()
+    for _, lane in ipairs(summary.lanes) do
+        msg.post("/hud#gui", msgs.HUD_LANE_RESOLVED, {
+            lane_idx = lane.idx,
+            new_you_pos = lane.new_you_pos,
+            new_ai_pos = lane.new_ai_pos,
+            you_yards_gained = lane.you_yards_gained,
+            ai_yards_gained = lane.ai_yards_gained,
+        })
+    end
+
+    timer.delay(RESOLVE_DURATION, false, function(_s)
+        msg.post("/hud#gui", msgs.HUD_MATCH_ENDED, { summary = summary })
+        match_state.set_phase("ended")
+        msg.post("main:/loader#script", msgs.MATCH_DRIVE_COMPLETED)
+    end)
+end
+
 function init(self)
     match_state.new_match()
+    self.reveal_list = nil
+    self.reveal_index = 1
     push_full_state()
 end
 
@@ -38,16 +128,13 @@ function on_message(self, message_id, message, sender)
         if match_state.get_phase() ~= "play" then return end
 
         local result = match_state.play_card(message.card_uid, message.lane_idx)
-        if not result.success then
-            -- Phase 1: silently drop invalid plays. The HUD's affordability
-            -- check should keep us from getting here in practice.
-            return
-        end
+        if not result.success then return end
 
         msg.post("/card_factory#script", msgs.CARD_SPAWN, {
             card_uid = result.card.uid,
             lane_idx = message.lane_idx,
             slot_idx = result.slot_idx,
+            side = "you",
         })
 
         msg.post("/hud#gui", msgs.HUD_HAND_CHANGED, { hand = match_state.get_hand() })
@@ -56,21 +143,14 @@ function on_message(self, message_id, message, sender)
 
     elseif message_id == msgs.MATCH_END_DRIVE then
         if match_state.get_phase() ~= "play" then return end
-        match_state.set_phase("resolving")
+        match_state.set_phase("revealing")
 
-        local summary = match_state.resolve_drive()
-        for _, lane in ipairs(summary.lanes) do
-            msg.post("/hud#gui", msgs.HUD_LANE_RESOLVED, {
-                lane_idx = lane.idx,
-                new_pos = lane.new_pos,
-                yards_gained = lane.yards_gained,
-            })
-        end
+        start_ai_plays()
 
-        timer.delay(RESOLVE_DURATION, false, function(_self)
-            msg.post("/hud#gui", msgs.HUD_MATCH_ENDED, { summary = summary })
-            match_state.set_phase("ended")
-            msg.post("main:/loader#script", msgs.MATCH_DRIVE_COMPLETED)
+        timer.delay(AI_SETTLE_DELAY, false, function(s)
+            s.reveal_list = match_state.reveal_pending_plays()
+            s.reveal_index = 1
+            step_reveal(s)
         end)
 
     elseif message_id == msgs.MATCH_RETURN_TO_MENU then

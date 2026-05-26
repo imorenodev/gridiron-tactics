@@ -11,11 +11,15 @@ M.MATCH_DRIVE_COMPLETED = hash("match.drive_completed")
 M.MATCH_ENDED           = hash("match.ended")
 M.MATCH_RETURN_TO_MENU  = hash("match.return_to_menu")
 
--- Lane events (hooks for Phase 2 modifier/synergy work)
+-- Lane events (hooks for Phase 2+ modifier/synergy work)
 M.LANE_RESOLVE          = hash("lane.resolve")
 
 -- Card lifecycle
 M.CARD_SPAWN            = hash("card.spawn")
+
+-- Phase 2: internal match-state messages for the reveal sequence
+M.MATCH_PLAY_AI_CARDS   = hash("match.play_ai_cards")
+M.MATCH_REVEAL          = hash("match.reveal")
 
 -- HUD render updates (state → HUD)
 M.HUD_HAND_CHANGED      = hash("hud.hand_changed")
@@ -23,6 +27,9 @@ M.HUD_ENERGY_CHANGED    = hash("hud.energy_changed")
 M.HUD_LANE_UPDATED      = hash("hud.lane_updated")
 M.HUD_LANE_RESOLVED     = hash("hud.lane_resolved")
 M.HUD_MATCH_ENDED       = hash("hud.match_ended")
+M.HUD_AI_CARDS_SPAWNED  = hash("hud.ai_cards_spawned")
+M.HUD_REVEAL_CARD       = hash("hud.reveal_card")
+M.HUD_LANE_SUMS_UPDATED = hash("hud.lane_sums_updated")
 
 -- Loader / screen transitions
 M.SHOW_MENU             = hash("show_menu")

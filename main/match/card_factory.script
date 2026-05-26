@@ -1,31 +1,36 @@
 -- Sits alongside the factory component on card_factory.go. Listens for
--- card.spawn and translates (lane_idx, slot_idx) into a design-space
--- position before calling factory.create.
---
--- Lane and slot geometry is defined here on purpose: it's the one place
--- that knows where played cards live in the world. If the HUD's lane x
--- coordinates change, mirror them here.
+-- card.spawn and translates (lane_idx, slot_idx, side) into a design-space
+-- position before calling factory.create. Phase 2: player cards stack from
+-- the bottom of the lane upward; AI cards stack from the top downward.
 
 local msgs = require "main.state.messages"
 
--- Lane x-centers in design space. Must mirror hud.gui's lane regions.
 local LANE_X = { [0] = 195, [1] = 585, [2] = 975 }
-local SLOT_Y_BASE = 1200
-local SLOT_Y_STRIDE = 80
+local YOU_SLOT_Y_BASE = 1200
+local YOU_SLOT_Y_STRIDE = 80
+local AI_SLOT_Y_BASE = 2100
+local AI_SLOT_Y_STRIDE = 80
 
-local function slot_position(lane_idx, slot_idx)
+local function slot_position(lane_idx, slot_idx, side)
     local x = LANE_X[lane_idx] or 585
-    local y = SLOT_Y_BASE + slot_idx * SLOT_Y_STRIDE
+    local y
+    if side == "ai" then
+        y = AI_SLOT_Y_BASE - slot_idx * AI_SLOT_Y_STRIDE
+    else
+        y = YOU_SLOT_Y_BASE + slot_idx * YOU_SLOT_Y_STRIDE
+    end
     return vmath.vector3(x, y, 0)
 end
 
 function on_message(self, message_id, message, sender)
     if message_id == msgs.CARD_SPAWN then
-        local pos = slot_position(message.lane_idx, message.slot_idx)
+        local side = message.side or "you"
+        local pos = slot_position(message.lane_idx, message.slot_idx, side)
         factory.create("#factory", pos, nil, {
             card_uid = hash(tostring(message.card_uid)),
             lane_idx = message.lane_idx,
             slot_idx = message.slot_idx,
+            side = hash(side),
         })
     end
 end

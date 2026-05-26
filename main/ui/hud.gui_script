@@ -1,7 +1,11 @@
 -- Match HUD. Pure presentation + input-translation:
---   * Renders hand/energy/lane state in response to HUD_* messages from match.script
---   * Implements drag-from-hand-to-lane and posts MATCH_PLAY_CARD on a valid drop
---   * Posts MATCH_END_DRIVE / MATCH_RETURN_TO_MENU on button taps
+--   * Renders hand / energy / lane state (including per-side card slots) in
+--     response to HUD_* messages from match.script.
+--   * Implements drag-from-hand-to-lane and posts MATCH_PLAY_CARD on a
+--     valid drop.
+--   * Handles the reveal sequence: HUD_AI_CARDS_SPAWNED places face-down AI
+--     cards, HUD_REVEAL_CARD plays a flip animation that swaps each slot to
+--     its face-up visual, HUD_LANE_SUMS_UPDATED rolls the net-yards pills.
 -- All game state lives in match_state.lua; this script holds only the
 -- last-rendered values it needs to drive the drag affordability check.
 
@@ -9,14 +13,19 @@ local msgs = require "main.state.messages"
 
 local HAND_SIZE = 5
 local LANE_COUNT = 3
+local SLOTS_PER_SIDE = 5
 
 -- Visual constants
 local CARD_DIMMED       = vmath.vector4(0.4, 0.4, 0.4, 0.55)
 local CARD_FULL         = vmath.vector4(1.0, 1.0, 1.0, 1.0)
 local LANE_BASE_COLOR   = vmath.vector4(0.13, 0.32, 0.13, 1.0)
 local LANE_HOVER_COLOR  = vmath.vector4(0.25, 0.55, 0.25, 1.0)
-local YARD_BAR_WIDTH    = 340
-local LANE_REGION_RECT  = { -- design-space rects for lane drop detection, in HUD coords
+local YARD_BAR_WIDTH    = 320
+local SLOT_FACE_DOWN_COLOR = vmath.vector4(0.18, 0.18, 0.22, 1.0)
+local SLOT_PLAYER_UP_COLOR = vmath.vector4(0.78, 0.7, 0.4, 1.0)
+local SLOT_AI_UP_COLOR     = vmath.vector4(0.85, 0.4, 0.4, 1.0)
+
+local LANE_REGION_RECT  = {
     [0] = { x0 = 10,  x1 = 380,  y0 = 800, y1 = 2200 },
     [1] = { x0 = 400, x1 = 770,  y0 = 800, y1 = 2200 },
     [2] = { x0 = 790, x1 = 1160, y0 = 800, y1 = 2200 },
@@ -25,7 +34,7 @@ local HAND_X_BY_INDEX   = { [1] = 165, [2] = 360, [3] = 555, [4] = 750, [5] = 94
 local HAND_Y            = 550
 
 -- ---------------------------------------------------------------------------
--- Helpers
+-- Geometry / helpers
 -- ---------------------------------------------------------------------------
 
 local function point_in_lane(x, y, rect)
@@ -55,6 +64,17 @@ local function stat_text_for_card(card)
     return "OFF " .. tostring(card.off or 0)
 end
 
+local function compact_slot_text(card)
+    local stat_label = (card.side == "def") and "DEF" or "OFF"
+    local stat_value = (card.side == "def") and (card.def or 0) or (card.off or 0)
+    return string.format("%s c%d  %s %d",
+        tostring(card.pos or "?"), card.cost or 0, stat_label, stat_value)
+end
+
+-- ---------------------------------------------------------------------------
+-- Hand rendering
+-- ---------------------------------------------------------------------------
+
 local function render_hand_slot(self, idx, card)
     local nodes = self.hand_nodes[idx]
     if card == nil or card.empty then
@@ -73,16 +93,83 @@ local function render_hand_slot(self, idx, card)
     gui.set_color(nodes.stat, stat_color_for_side(card.side))
 end
 
-local function render_lane(self, lane_idx, you_pos, you_net_yards, you_cards_count)
+-- ---------------------------------------------------------------------------
+-- Lane card slots (per-side face-down / face-up rendering)
+-- ---------------------------------------------------------------------------
+
+local function render_slot(self, lane_idx, side, slot_idx, card_data, revealed)
+    local sides_map = self.slots[lane_idx]
+    if not sides_map then return end
+    local slot = sides_map[side] and sides_map[side][slot_idx]
+    if not slot then return end
+
+    if not card_data then
+        gui.set_enabled(slot.root, false)
+        gui.set_scale(slot.root, vmath.vector3(1, 1, 1))
+        slot.card_data = nil
+        slot.revealed = false
+        return
+    end
+
+    slot.card_data = card_data
+    slot.revealed = revealed and true or false
+    gui.set_enabled(slot.root, true)
+    gui.set_scale(slot.root, vmath.vector3(1, 1, 1))
+
+    if slot.revealed then
+        local up_color = (side == "ai") and SLOT_AI_UP_COLOR or SLOT_PLAYER_UP_COLOR
+        gui.set_color(slot.root, up_color)
+        gui.set_text(slot.text, compact_slot_text(card_data))
+    else
+        gui.set_color(slot.root, SLOT_FACE_DOWN_COLOR)
+        gui.set_text(slot.text, "")
+    end
+end
+
+local function render_lane_cards(self, lane_idx, you_cards, ai_cards)
+    for slot_idx = 0, SLOTS_PER_SIDE - 1 do
+        local you_card = (you_cards or {})[slot_idx + 1]
+        render_slot(self, lane_idx, "you", slot_idx, you_card, you_card and you_card.revealed)
+        local ai_card = (ai_cards or {})[slot_idx + 1]
+        render_slot(self, lane_idx, "ai", slot_idx, ai_card, ai_card and ai_card.revealed)
+    end
+end
+
+local function flip_slot(self, lane_idx, side, slot_idx)
+    local sides_map = self.slots[lane_idx]
+    if not sides_map then return end
+    local slot = sides_map[side] and sides_map[side][slot_idx]
+    if not slot or not slot.card_data then return end
+
+    local card_data = slot.card_data
+    local up_color = (side == "ai") and SLOT_AI_UP_COLOR or SLOT_PLAYER_UP_COLOR
+
+    -- Two-phase flip: scale.x 1→0, swap visual at midpoint, scale.x 0→1.
+    gui.animate(slot.root, "scale.x", 0, gui.EASING_INQUAD, 0.14, 0,
+        function(_s)
+            gui.set_color(slot.root, up_color)
+            gui.set_text(slot.text, compact_slot_text(card_data))
+            slot.revealed = true
+            gui.animate(slot.root, "scale.x", 1, gui.EASING_OUTQUAD, 0.14)
+        end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Pills, yardage bars, position text
+-- ---------------------------------------------------------------------------
+
+local function render_lane_meta(self, lane_idx, you_pos, ai_pos, you_net, ai_net)
     local nodes = self.lane_nodes[lane_idx]
     if not nodes then return end
-    local fill_width = (you_pos or 0) / 100 * YARD_BAR_WIDTH
-    if fill_width < 0 then fill_width = 0 end
-    if fill_width > YARD_BAR_WIDTH then fill_width = YARD_BAR_WIDTH end
-    gui.set_size(nodes.yard_fill, vmath.vector3(fill_width, 30, 0))
-    gui.set_text(nodes.pos_text, tostring(you_pos or 0))
-    gui.set_text(nodes.pill_text, "+" .. tostring(you_net_yards or 0))
-    gui.set_text(nodes.cards_text, "CARDS: " .. tostring(you_cards_count or 0) .. "/8")
+
+    local you_w = math.max(0, math.min(YARD_BAR_WIDTH, (you_pos or 0) / 100 * YARD_BAR_WIDTH))
+    local ai_w = math.max(0, math.min(YARD_BAR_WIDTH, (ai_pos or 0) / 100 * YARD_BAR_WIDTH))
+    gui.set_size(nodes.p_yard_fill, vmath.vector3(you_w, 25, 0))
+    gui.set_size(nodes.ai_yard_fill, vmath.vector3(ai_w, 25, 0))
+    gui.set_text(nodes.p_pos_text, tostring(you_pos or 0))
+    gui.set_text(nodes.ai_pos_text, tostring(ai_pos or 0))
+    gui.set_text(nodes.p_pill_text, "+" .. tostring(you_net or 0))
+    gui.set_text(nodes.ai_pill_text, "+" .. tostring(ai_net or 0))
 end
 
 local function update_lane_hover(self, hovered_idx)
@@ -99,6 +186,10 @@ end
 local function clear_lane_hover(self)
     update_lane_hover(self, -1)
 end
+
+-- ---------------------------------------------------------------------------
+-- Drag ghost
+-- ---------------------------------------------------------------------------
 
 local function show_drag_ghost(self, card, x, y)
     gui.set_enabled(self.drag_ghost, true)
@@ -137,16 +228,34 @@ function init(self)
     self.energy_text = gui.get_node("energy_text")
     self.end_drive_button = gui.get_node("end_drive_button")
 
-    -- Lanes
+    -- Lane meta nodes (per side: yard fill, pos text, pill text)
     self.lane_nodes = {}
+    self.slots = {}
     for i = 0, LANE_COUNT - 1 do
         self.lane_nodes[i] = {
-            root      = gui.get_node("lane_" .. i .. "_root"),
-            yard_fill = gui.get_node("lane_" .. i .. "_yard_fill"),
-            pos_text  = gui.get_node("lane_" .. i .. "_pos_text"),
-            pill_text = gui.get_node("lane_" .. i .. "_pill_text"),
-            cards_text= gui.get_node("lane_" .. i .. "_cards_text"),
+            root         = gui.get_node("lane_" .. i .. "_root"),
+            p_yard_fill  = gui.get_node("lane_" .. i .. "_p_yard_fill"),
+            p_pos_text   = gui.get_node("lane_" .. i .. "_p_pos_text"),
+            p_pill_text  = gui.get_node("lane_" .. i .. "_p_pill_text"),
+            ai_yard_fill = gui.get_node("lane_" .. i .. "_ai_yard_fill"),
+            ai_pos_text  = gui.get_node("lane_" .. i .. "_ai_pos_text"),
+            ai_pill_text = gui.get_node("lane_" .. i .. "_ai_pill_text"),
         }
+        self.slots[i] = { you = {}, ai = {} }
+        for s = 0, SLOTS_PER_SIDE - 1 do
+            self.slots[i].you[s] = {
+                root = gui.get_node("lane_" .. i .. "_p_slot_" .. s),
+                text = gui.get_node("lane_" .. i .. "_p_slot_" .. s .. "_text"),
+                card_data = nil,
+                revealed = false,
+            }
+            self.slots[i].ai[s] = {
+                root = gui.get_node("lane_" .. i .. "_ai_slot_" .. s),
+                text = gui.get_node("lane_" .. i .. "_ai_slot_" .. s .. "_text"),
+                card_data = nil,
+                revealed = false,
+            }
+        end
     end
 
     -- Hand
@@ -172,9 +281,7 @@ function init(self)
     self.summary_button = gui.get_node("summary_button")
     gui.set_enabled(self.summary_overlay, false)
 
-    -- Runtime state. We track the last-rendered hand and energy locally so
-    -- on_input can answer "can the player drag this card" without round-
-    -- tripping to match_state.
+    -- Runtime state
     self.current_hand = {}
     for i = 1, HAND_SIZE do self.current_hand[i] = { empty = true } end
     self.current_energy = 0
@@ -241,8 +348,6 @@ function on_input(self, action_id, action)
                     card_uid = drag.card_uid,
                     lane_idx = target_lane,
                 })
-                -- The hand slot will get re-rendered when HUD_HAND_CHANGED
-                -- arrives, which restores its color along the way.
             else
                 animate_ghost_back(self, drag.source_index, function(s)
                     gui.set_enabled(s.drag_ghost, false)
@@ -255,7 +360,6 @@ function on_input(self, action_id, action)
             return
         end
 
-        -- Drag in progress
         gui.set_position(self.drag_ghost, vmath.vector3(action.x, action.y, 0))
         update_lane_hover(self, pick_lane_at(action.x, action.y) or -1)
         return
@@ -282,19 +386,39 @@ function on_message(self, message_id, message, sender)
         gui.set_text(self.energy_text, tostring(self.current_energy))
 
     elseif message_id == msgs.HUD_LANE_UPDATED then
-        render_lane(self, message.lane_idx,
-            message.you_pos, message.you_net_yards, message.you_cards_count)
+        render_lane_meta(self, message.lane_idx,
+            message.you_pos, message.ai_pos,
+            message.you_net_yards, message.ai_net_yards)
+        render_lane_cards(self, message.lane_idx, message.you_cards, message.ai_cards)
 
-    elseif message_id == msgs.HUD_LANE_RESOLVED then
-        -- Animate the yard fill from current to new_pos. set_size has no
-        -- direct animator; we tween the x-component of size via gui.animate.
+    elseif message_id == msgs.HUD_AI_CARDS_SPAWNED then
+        for _, play in ipairs(message.plays or {}) do
+            render_slot(self, play.lane_idx, "ai", play.slot_idx, play.card_data, false)
+        end
+
+    elseif message_id == msgs.HUD_REVEAL_CARD then
+        flip_slot(self, message.lane_idx, message.side, message.slot_idx)
+
+    elseif message_id == msgs.HUD_LANE_SUMS_UPDATED then
         local nodes = self.lane_nodes[message.lane_idx]
         if nodes then
-            local target_w = (message.new_pos or 0) / 100 * YARD_BAR_WIDTH
-            local current = gui.get_size(nodes.yard_fill)
-            gui.animate(nodes.yard_fill, "size.x", target_w,
+            gui.set_text(nodes.p_pill_text, "+" .. tostring(message.you_net_yards or 0))
+            gui.set_text(nodes.ai_pill_text, "+" .. tostring(message.ai_net_yards or 0))
+        end
+
+    elseif message_id == msgs.HUD_LANE_RESOLVED then
+        local nodes = self.lane_nodes[message.lane_idx]
+        if nodes then
+            local target_you_w = math.max(0, math.min(YARD_BAR_WIDTH,
+                (message.new_you_pos or 0) / 100 * YARD_BAR_WIDTH))
+            local target_ai_w = math.max(0, math.min(YARD_BAR_WIDTH,
+                (message.new_ai_pos or 0) / 100 * YARD_BAR_WIDTH))
+            gui.animate(nodes.p_yard_fill, "size.x", target_you_w,
                 gui.EASING_OUTQUAD, 0.6)
-            gui.set_text(nodes.pos_text, tostring(message.new_pos or 0))
+            gui.animate(nodes.ai_yard_fill, "size.x", target_ai_w,
+                gui.EASING_OUTQUAD, 0.6)
+            gui.set_text(nodes.p_pos_text, tostring(message.new_you_pos or 0))
+            gui.set_text(nodes.ai_pos_text, tostring(message.new_ai_pos or 0))
         end
 
     elseif message_id == msgs.HUD_MATCH_ENDED then
@@ -302,8 +426,10 @@ function on_message(self, message_id, message, sender)
         local lines = {}
         for _, lane in ipairs(summary.lanes) do
             table.insert(lines,
-                string.format("LANE %d: +%d  (now %d)",
-                    lane.idx + 1, lane.yards_gained, lane.new_pos))
+                string.format("LANE %d: YOU +%d (%d) / AI +%d (%d)",
+                    lane.idx + 1,
+                    lane.you_yards_gained, lane.new_you_pos,
+                    lane.ai_yards_gained, lane.new_ai_pos))
         end
         gui.set_text(self.summary_text, table.concat(lines, "\n"))
         gui.set_enabled(self.summary_overlay, true)
