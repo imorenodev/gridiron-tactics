@@ -48,12 +48,17 @@ function init(self)
     self.lane_refs = {}
     self.lane_root_nodes = {}
     self.modifier_refs = {}
+    self.lock_refs = {}
     self.slots = {}
     for i = 0, LANE_COUNT - 1 do
         self.modifier_refs[i] = {
             root = gui.get_node("lane_" .. i .. "_medallion_root"),
             icon = gui.get_node("lane_" .. i .. "_medallion_icon"),
             name = gui.get_node("lane_" .. i .. "_medallion_name"),
+        }
+        self.lock_refs[i] = {
+            overlay = gui.get_node("lane_" .. i .. "_lock_overlay"),
+            badge   = gui.get_node("lane_" .. i .. "_lock_badge"),
         }
         self.lane_refs[i] = {
             root         = gui.get_node("lane_" .. i .. "_root"),
@@ -201,6 +206,9 @@ local function drag_refs_for(self)
             if reason == "insufficient_energy" then
                 hud_render.show_text_toast(self.modifier_toast_refs,
                     "NOT ENOUGH ENERGY")
+            elseif reason == "lane_locked" then
+                hud_render.show_text_toast(self.modifier_toast_refs,
+                    "LANE LOCKED")
             end
         end,
     }
@@ -433,7 +441,8 @@ function on_message(self, message_id, message, sender)
             message.new_you_pos, message.new_ai_pos)
 
     elseif message_id == msgs.HUD_SCORE_BURST then
-        hud_render.show_score_burst(self.score_burst, message.type, message.points or 0)
+        hud_render.show_score_burst(self.score_burst, message.type,
+            message.points or 0, message.side)
 
     elseif message_id == msgs.HUD_SCORE_UPDATED then
         gui.set_text(self.you_score_text, "YOU " .. tostring(message.you_score or 0))
@@ -521,6 +530,25 @@ function on_message(self, message_id, message, sender)
 
     elseif message_id == msgs.HUD_OPEN_DISCARD_MODAL then
         show_discard_modal(self)
+
+    elseif message_id == msgs.HUD_LANE_LOCKED then
+        -- Phase 6.5.4: render the sudden-death lock overlay + badge.
+        -- Side determines the overlay tint (green for you, red for ai).
+        hud_render.render_lane_lock_state(self.lock_refs[message.lane_idx],
+            message.side)
+
+    elseif message_id == msgs.HUD_TURNOVER_SWAP then
+        -- Phase 6.5.3: smoothly animate both yard fills to the new
+        -- positions. animate_lane_resolved already handles the size.x
+        -- tween + position text update.
+        hud_render.animate_lane_resolved(self.lane_refs[message.lane_idx],
+            message.new_you_pos, message.new_ai_pos)
+
+    elseif message_id == msgs.HUD_SHOW_MODIFIER_TOAST then
+        -- Phase 6.5: generic toast for Coin Flip / Turnover / etc.
+        hud_render.show_text_toast(self.modifier_toast_refs,
+            message.text or "",
+            { duration = message.duration, pulse = message.pulse })
 
     elseif message_id == msgs.HUD_MODIFIERS_REVEAL then
         -- Phase 6: cache modifiers, run the slot-machine reveal, then

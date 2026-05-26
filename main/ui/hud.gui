@@ -5516,5 +5516,74 @@ nodes {
   line_break: true
   inherit_alpha: true
 }
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 370.0 y: 1400.0 z: 0.0 }
+  color { x: 0.2 y: 0.8 z: 0.3 w: 0.45 }
+  type: TYPE_BOX
+  id: "lane_0_lock_overlay"
+  parent: "lane_0_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  scale { x: 2.0 y: 2.0 z: 1.0 }
+  size { x: 300.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "LOCKED"
+  font: "default"
+  id: "lane_0_lock_badge"
+  parent: "lane_0_lock_overlay"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 370.0 y: 1400.0 z: 0.0 }
+  color { x: 0.2 y: 0.8 z: 0.3 w: 0.45 }
+  type: TYPE_BOX
+  id: "lane_1_lock_overlay"
+  parent: "lane_1_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  scale { x: 2.0 y: 2.0 z: 1.0 }
+  size { x: 300.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "LOCKED"
+  font: "default"
+  id: "lane_1_lock_badge"
+  parent: "lane_1_lock_overlay"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 370.0 y: 1400.0 z: 0.0 }
+  color { x: 0.2 y: 0.8 z: 0.3 w: 0.45 }
+  type: TYPE_BOX
+  id: "lane_2_lock_overlay"
+  parent: "lane_2_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  scale { x: 2.0 y: 2.0 z: 1.0 }
+  size { x: 300.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "LOCKED"
+  font: "default"
+  id: "lane_2_lock_badge"
+  parent: "lane_2_lock_overlay"
+  enabled: false
+  inherit_alpha: true
+}
 material: "/builtins/materials/gui.material"
 adjust_reference: ADJUST_REFERENCE_PARENT

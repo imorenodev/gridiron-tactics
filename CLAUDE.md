@@ -24,6 +24,7 @@ Gridiron Tactics is a Marvel Snap-style card game with a football theme, being p
 - **Phase 5: complete (asset integration — atlases, card frames, portraits, coin upgrade).** Five atlases built from the 37 PNGs in `assets/images/ui/`: `field.atlas`, `ui_chrome.atlas`, `cards.atlas`, `icons.atlas`, `portraits.atlas`. Stadium photo behind the lanes, painted endzones (red top, green bottom) per lane, broadcast scoreboard frame with 9-slice on the top bar, button chrome with 9-slice on CONCEDE / END DRIVE, badge backgrounds on the energy orb + deck + discard, team rings behind the score numbers, power circles behind both pills per lane, football icon in the scoreboard center, real card frames (8 rarity × side variants) on hand cards via runtime `gui.play_flipbook`, per-card portrait + position icon + ability star sub-nodes on hand cards (QB portrait PNG; everything else falls back to a POSITION_COLOR box), and a real coin flip using two synchronized sprite nodes (`coin_heads` + `coin_tails`, rotation.y offset by 180°). The menu screen now uses the football-field photo background with a dark vignette overlay. Default font kept (real fonts ship in Phase 5.5). See "Phase 5 — Asset integration notes" at the bottom of this file.
 - **Phase 5.5: complete (fan layout + played-slot polish + hud.gui_script refactor).** All nine sub-phases shipped across two prompts. Refactor (5.5.1–5.5.3): `hud.gui_script` split into `main/ui/hud_conversion.lua` (2-pt modal), `main/ui/hud_drag.lua` (drag flow), `main/ui/hud_render.lua` (everything else). Fan layout (5.5.4–5.5.7): replaced 30 horizontal-bar slots with portrait-card hierarchies (140×200 each, 8 nodes per slot: root + frame + portrait + position icon + ability star + cost + name + stat). Marvel Snap-style stacking via `hud_render.compute_stack_position(lane_idx, side, slot_idx)` — 35px vertical offset, ±5px x-jitter, ±2° z-rotation, newer cards draw on top. AI face-down cards use `animate_card_slap_down` (drop from above with overshoot + settle pulse). Player drops use the ghost handoff: ghost travels from cursor to stack position over 300ms while shrinking from hand size to played size, cross-fading with the spawned card's `render_slot` fade-in (220ms delay + 80ms fade). Lane resets play a 500ms synchronized exit animation (fade + scale + position shift + rotation kick) before clearing. See "Phase 5.5 — Fan layout + refactor notes" at the bottom of this file.
 - **Phase 6: complete (16 lane modifiers — Tier 1 stat changes + Tier 2 cost/reveal).** Three random modifiers per match (one per lane) drawn at match start from `main/data/modifiers.lua` (16-card pool). Slot-machine reveal animation (~1.5s: 16-tick fast cycle + 4-tick deceleration + settle pulse) gates input until the medallions land. Tapping a medallion shows a 1.5s description toast. Tier 1 (12 stat modifiers — HOME TURF, MUDDY FIELD, WIND TUNNEL, BLINDING SUN, RED ZONE, SCRAMBLE, GROUND & POUND, AIR RAID, TRENCHES, SECONDARY, ST UNIT, PLAY OF GAME) mutates `cur_off`/`cur_def` on revealed cards in `recompute_lane_sums` (reset to base → `apply_lane_modifier` → sum). Tier 2: HURRY-UP / PREVENT D discount cost per-lane via `match_state.effective_cost(card, lane_idx)`; SCOUTED reveals the first card per side immediately at play time (bypasses pending_plays); BLITZ ZONE scaffolds doubled-trigger DEF abilities via `trigger_count` on `try_apply_snap_ability` (no visible effect in Phase 6 — Clutch Kicker is OFF). Drag affordability check moved to drop time: drag starts if ANY lane is affordable, drop validates the specific lane; failed drop shows a "NOT ENOUGH ENERGY" toast and snaps back. CPU heuristic uses `effective_cost` per-lane so it favors OFF cards in HURRY-UP lanes. The 4 Tier 3 mechanical modifiers (Frozen Tundra, Coin Flip, Turnover, Sudden Death) are deferred to Phase 6.5. See "Phase 6 — Lane modifiers notes" at the bottom of this file.
+- **Phase 6.5: complete (Tier 3 mechanical modifiers — Frozen Tundra, Coin Flip, Turnover, Sudden Death, + Wind Tunnel FG disable).** Pool expanded from 16 to 20 modifiers; `modifiers.draw_random(3)` now samples from the full HTML set. Frozen Tundra + Wind Tunnel FG disable: dispatcher checks at the top of `try_apply_snap_ability` short-circuit ability execution. Coin Flip: `apply_coin_flip_modifier` mutates lane net_yards (50/50 double or halve, negative-aware) called from `finish_drive` before `resolve_drive`; toast appears for 1.2s with scale pulse before the yard-fill animation. Turnover: per-lane `drives_since_score` counter (reset by `apply_score_event → note_score_in_lane`, incremented at drive end by `process_turnover_for_lane`); at 3 scoreless drives the ball positions swap, "TURNOVER ON DOWNS" toast plays, then `HUD_TURNOVER_SWAP` animates the yard fills via the existing `animate_lane_resolved` path. Sudden Death: per-lane `locked_for` flag (nil | "you" | "ai"); guards in `check_lane_for_scoring`, `resolve_drive`, `play_card`, `ai_play_card`, plus the CPU heuristic skip and the drag drop-time check; locked lanes render a full-lane tinted overlay (green for player, red for AI) with a "LOCKED" badge centered, applied after the score burst via `HUD_LANE_LOCKED`. The "LANE LOCKED" burst reuses `show_score_burst` with `type = "lane_locked"` and a side-tinted color. All 20 modifiers from the HTML game are now implemented. See "Phase 6.5 — Tier 3 modifier notes" at the bottom of this file.
 
 ## Hard rules — non-negotiable
 
@@ -788,4 +789,77 @@ Six sub-phases (6.1–6.6) shipped together. The 16 Tier 1+2 modifiers are live;
 - **Real fonts** (Bebas Neue / Oswald / JetBrains Mono).
 - **More portrait PNGs** for the other 11 positions.
 - **Audio** (SFX for slap-down, ghost handoff, lane reset, score bursts, modifier reveal).
+- **Game-over splash and leveling/summary screen.**
+
+## Phase 6.5 — Tier 3 modifier notes
+
+Five sub-phases (6.5.1–6.5.5). Phase 6.5 ships the 4 mechanical modifiers Phase 6 deferred plus the Wind Tunnel FG-disable rule. The modifier pool grows from 16 to 20 records, matching the full HTML set.
+
+### Sub-phase 6.5.1 — Frozen Tundra + Wind Tunnel FG disable
+
+- `main/data/modifiers.lua` — 4 new Tier 3 records appended: `frozenTundra`, `coinFlip`, `turnover`, `suddenDeath`. Their atlas sprites (`mod_frozenTundra`, `mod_coinFlip`, `mod_turnover`, `mod_suddenDeath`) already shipped in Phase 5's `icons.atlas`, so no new art was needed.
+- `match_state.try_apply_snap_ability` now short-circuits at the top:
+  - `frozenTundra` returns nil for ANY ability.
+  - `windTunnel` returns nil for `snapFieldGoal` specifically (the stat penalty from Phase 6 still applies via `apply_lane_modifier`).
+- No new UI, no new state, no new messages. Single dispatcher chokepoint.
+
+### Sub-phase 6.5.2 — Coin Flip modifier + toast
+
+- `match_state.apply_coin_flip_modifier(lane_idx)` returns `{ lane_idx, doubled }` or nil. Mutates `lane.you_net_yards` / `lane.ai_net_yards` in place. Halving is negative-aware via `floor` for non-negative values and `ceil` for negatives, so -10 halved becomes -5 (toward zero), not -6.
+- `match.script.finish_drive` walks all 3 lanes and applies coin flip BEFORE `resolve_drive`. At most one lane can have Coin Flip (modifiers are unique per match), so we only ever wait for one toast.
+- Sequencing: if a coin flip lands, post `HUD_SHOW_MODIFIER_TOAST` with `duration = 1.2`, `pulse = true`; `timer.delay(1.2)` then run the existing `resolve_drive` → `HUD_LANE_RESOLVED` chain. No coin flip → resolve immediately.
+- `hud_render.show_text_toast` extended to accept `options = { duration, pulse }`. Pulse is a scale 1.0 → 1.15 → 1.0 sequence via `gui.PROP_SCALE` while the toast is held. The HUD's `HUD_SHOW_MODIFIER_TOAST` handler delegates to `show_text_toast` and is also used by Turnover and the lock-toast invalid-drop feedback.
+
+### Sub-phase 6.5.3 — Turnover modifier + ball-swap animation
+
+- Per-lane `drives_since_score = 0` field added in `make_lane`. Any `apply_score_event` automatically resets it via the new `note_score_in_lane` hook (no manual call sites needed — apply_score_event is the chokepoint for all score types).
+- `match_state.process_turnover_for_lane(lane_idx, scored_this_drive)` is called once per lane at drive end. For Turnover lanes that didn't score, increments the counter; at 3, swaps `you_pos` and `ai_pos`, resets counter, returns the swap event.
+- `match.script.scored_this_drive_by_lane` (transient table on `self`) — set to true in `process_scoring_event`, `handle_reveal_score`, `start_ai_plays` (Scouted-Kicker AI FG), and `MATCH_PLAY_CARD` (Scouted-Kicker player FG). Reset by `reset_scored_flags(self)` before `start_drive_transition`.
+- New helper `process_turnovers_then(self, after)` runs in `finalize_drive` between scoring pipeline completion and drive transition. If a swap fires, posts `HUD_SHOW_MODIFIER_TOAST` ("TURNOVER ON DOWNS", duration 1.5, pulse) + `HUD_TURNOVER_SWAP`, then `timer.delay(2.3)` before invoking `after(self)`.
+- HUD handler for `HUD_TURNOVER_SWAP` reuses `hud_render.animate_lane_resolved` (the same yard-fill tween from Phase 4 drive resolution) so the swap visual is consistent with regular yard advances.
+
+### Sub-phase 6.5.4 — Sudden Death modifier + lane lock
+
+- Per-lane `locked_for = nil` field added in `make_lane`. `M.is_lane_locked`, `M.get_locked_side`, `M.maybe_lock_lane_for_sudden_death(lane_idx, scoring_side)` are the public surface.
+- Guards added to:
+  - `M.check_lane_for_scoring` — locked lanes return `{}` (no scoring events).
+  - `M.resolve_drive` — locked lanes' ball positions freeze; summary reports 0 yards gained.
+  - `M.play_card` / `M.ai_play_card` — return `{ success = false, reason = "lane_locked" }`.
+  - `cpu.choose_plays` — skips lanes with `lane.locked_for ~= nil`. `lane_render_copy` was extended to surface `locked_for` so the CPU's lanes-view sees it.
+  - `hud_drag.end_drag` — rejects drops on locked lanes via the existing `on_invalid_drop` callback (reason = "lane_locked"); HUD shows "LANE LOCKED" toast and snaps the ghost back.
+- Lock trigger lives in `reset_lane_and_continue` (the chokepoint reached by every drive-end scoring path — TD, safety, pick-6, FG, 2pt). After the standard reset (`reset_lane_after_score` + `HUD_LANE_RESET`), it calls `maybe_lock_lane_for_sudden_death(lane_idx, scoring_side)` and on true posts a `HUD_SCORE_BURST { type = "lane_locked", side = scoring_side }` plus `HUD_LANE_LOCKED { lane_idx, side }`. An extra `LANE_LOCKED_BURST_DURATION = 1.5s` is added to the next-step delay so the burst plays out before the scoring pipeline continues. Mid-reveal FG (`handle_reveal_score`) also runs the lock check independently.
+- `self.last_scoring_side_by_lane` (transient on match.script) stashes the scoring side per lane so `reset_lane_and_continue` can read it without threading event parameters through every call site.
+- `hud.gui` gained 6 new nodes: `lane_X_lock_overlay` (370×1400 box covering the entire lane, color set at runtime, enabled=false) + `lane_X_lock_badge` (centered text "LOCKED", parented to the overlay so it inherits visibility).
+- `hud_render.render_lane_lock_state(refs, locked_for)` enables/disables both nodes and sets the overlay tint (green vec4(0.2,0.8,0.3,0.45) for "you", red vec4(0.85,0.2,0.2,0.45) for "ai"). The overlay sits above played cards because nodes appended later draw on top.
+- `hud_render.show_score_burst` extended with a 4th `side` parameter; for `event_type == "lane_locked"` the base color is set from the side (green / red).
+
+### Sub-phase 6.5.5 — notes (this section)
+
+### Key architectural choices to preserve
+
+- **All Tier 3 modifiers integrate into the existing chokepoints** (dispatcher, `recompute_lane_sums`, scoring detection, scoring pipeline reset). No new state machines, no new helper modules — every effect plugs into a function the codebase already had.
+- **`apply_score_event` is the universal score-event hook.** Every score type (TD, safety, pick-6, FG, PAT, 2pt) flows through it, so adding `note_score_in_lane` there guarantees the Turnover counter resets on every score without per-event-type wiring. Future score-driven mechanics should plug in here too.
+- **Lock state is permanent for the match.** `reset_lane_after_score` clears cards and re-kickoffs the balls, but `locked_for` is not part of that reset — it persists across lane resets. Future drives see the lane as locked.
+- **`scored_this_drive_by_lane` is transient.** Owned by match.script (not match_state) because it's a per-drive sequencing concern, not durable game state. Reset at drive transition; rebuilt every drive.
+- **`hud_drag` reads `match_state.is_lane_locked` directly** — same architectural compromise as Phase 6's `effective_cost` check. The alternative (threading `lane_locks_by_idx` through every drag refs payload) was rejected as more churn than the read-only direct call.
+- **No new helper modules.** Phase 6's `hud_drag` / `hud_render` / `hud_conversion` split is preserved; everything in Phase 6.5 fits into the existing files.
+
+### Phase 6.5 known limitations / deviations
+
+- **No drag-over locked-lane visual.** The prompt suggests showing a "locked" feedback during hover (separate from drag-over green and drag-full red). I left this out — drop-time rejection + LANE LOCKED toast is the entire affordance. Adding a hover variant requires `update_drag` to also know about lock state and would change the function signature; skipped for simplicity.
+- **Scouted + Sudden Death is impossible by design** (one modifier per lane), so the Scouted-Kicker FG path doesn't need a Sudden Death hook.
+- **Frozen Tundra also disables future DEF SNAP abilities under Blitz Zone (impossible combo, but listed for completeness)** — same constraint: one modifier per lane.
+- **Lock overlay sits on top of played cards** (because the overlay nodes are appended to `hud.gui` AFTER the slot nodes). The cards remain enabled and parented to lane_X_root underneath; they show through the 45%-alpha tint. This matches the prompt's "played cards visible through the tint" goal.
+- **`apply_coin_flip_modifier` mutates lane.net_yards** rather than computing on the fly. This is intentional: it keeps `resolve_drive` simple (it just reads net_yards) and the mutation happens once per drive in a known sequence. The trade-off is that net_yards is no longer purely derived from `cur_off`/`cur_def` — any future code that recomputes net_yards mid-drive would clobber the coin flip. For now nothing does that.
+
+### Phase 7 candidates (refreshed)
+
+All 20 modifiers shipped — the modifier system is complete. Next focuses:
+
+- **Card synergies** (the 13 HTML combos: two QBs, four DBs, full backfield, etc.).
+- **More SNAP / FIELD card abilities** so Blitz Zone and Frozen Tundra have something to actually double or disable.
+- **Perks system** (Phase A of the leveling roadmap).
+- **Real fonts** (Bebas Neue / Oswald / JetBrains Mono).
+- **More portrait PNGs** for the other 11 positions.
+- **Audio** (SFX for slap-down, ghost handoff, lane reset, score bursts, modifier reveal, lane lock).
 - **Game-over splash and leveling/summary screen.**

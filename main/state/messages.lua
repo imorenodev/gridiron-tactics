@@ -59,6 +59,10 @@ M.HUD_MODIFIERS_REVEAL            = hash("hud.modifiers_reveal")
 M.MATCH_MODIFIERS_REVEAL_COMPLETE = hash("match.modifiers_reveal_complete")
 M.HUD_SHOW_MODIFIER_TOAST         = hash("hud.show_modifier_toast")
 
+-- Phase 6.5: Tier 3 mechanical modifiers
+M.HUD_TURNOVER_SWAP               = hash("hud.turnover_swap")
+M.HUD_LANE_LOCKED                 = hash("hud.lane_locked")
+
 -- Loader / screen transitions
 M.SHOW_MENU             = hash("show_menu")
 M.SHOW_MATCH            = hash("show_match")

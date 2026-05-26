@@ -100,6 +100,13 @@ local function make_lane(idx)
         -- independently for player vs AI.
         scouted_first_played_you = false,
         scouted_first_played_ai = false,
+        -- Phase 6.5.3: Turnover counter — increments per scoreless
+        -- drive; at 3, swaps ball positions and resets.
+        drives_since_score = 0,
+        -- Phase 6.5.4: Sudden Death lock state. nil | "you" | "ai".
+        -- Once set, the lane is permanently locked for that side; the
+        -- ball positions, played cards, and scoring all freeze out.
+        locked_for = nil,
     }
 end
 
@@ -315,8 +322,23 @@ end
 function M.try_apply_snap_ability(card, lane_idx, side, trigger_count)
     if not card or not card.desc then return nil end
 
+    -- Phase 6.5.1: Tier 3 ability-disable modifiers. Checked first so
+    -- the rest of the dispatcher doesn't run when an ability is blocked.
+    local modifier = lane_modifiers[lane_idx + 1]
+    if modifier then
+        -- Frozen Tundra disables every ability in the lane.
+        if modifier.id == "frozenTundra" then
+            return nil
+        end
+        -- Wind Tunnel disables Clutch Kicker FGs specifically (deferred
+        -- from Phase 6 — the stat penalty already applies via
+        -- apply_lane_modifier; this is the ability half of the rule).
+        if modifier.id == "windTunnel" and card.desc == "snapFieldGoal" then
+            return nil
+        end
+    end
+
     if trigger_count == nil then
-        local modifier = lane_modifiers[lane_idx + 1]
         if modifier and modifier.id == "blitzZone" and card.side == "def" then
             trigger_count = 2
         else
@@ -621,6 +643,88 @@ function M.mark_scouted_first_played(lane_idx, side)
     end
 end
 
+-- Phase 6.5.3: Turnover counter. Any scoring event in the lane resets
+-- it; a scoreless drive increments. `process_turnover_for_lane` is
+-- called once per lane at drive end with the per-lane scored flag.
+function M.note_score_in_lane(lane_idx)
+    local lane = lanes[lane_idx + 1]
+    if lane then lane.drives_since_score = 0 end
+end
+
+-- Phase 6.5.4: Sudden Death helpers.
+function M.is_lane_locked(lane_idx)
+    local lane = lanes[lane_idx + 1]
+    return lane ~= nil and lane.locked_for ~= nil
+end
+
+function M.get_locked_side(lane_idx)
+    local lane = lanes[lane_idx + 1]
+    return lane and lane.locked_for or nil
+end
+
+function M.maybe_lock_lane_for_sudden_death(lane_idx, scoring_side)
+    local modifier = lane_modifiers[lane_idx + 1]
+    if not modifier or modifier.id ~= "suddenDeath" then return false end
+    local lane = lanes[lane_idx + 1]
+    if not lane or lane.locked_for ~= nil then return false end
+    lane.locked_for = scoring_side
+    return true
+end
+
+function M.process_turnover_for_lane(lane_idx, scored_this_drive)
+    local modifier = lane_modifiers[lane_idx + 1]
+    if not modifier or modifier.id ~= "turnover" then return nil end
+    local lane = lanes[lane_idx + 1]
+    if not lane then return nil end
+    if scored_this_drive then
+        lane.drives_since_score = 0
+        return nil
+    end
+    lane.drives_since_score = (lane.drives_since_score or 0) + 1
+    if lane.drives_since_score >= 3 then
+        local old_you = lane.you_pos
+        local old_ai = lane.ai_pos
+        lane.you_pos = old_ai
+        lane.ai_pos = old_you
+        lane.drives_since_score = 0
+        return {
+            swapped = true,
+            lane_idx = lane_idx,
+            new_you_pos = lane.you_pos,
+            new_ai_pos = lane.ai_pos,
+        }
+    end
+    return nil
+end
+
+-- Phase 6.5.2: Coin Flip post-reveal modifier. Mutates the lane's
+-- net_yards in place (50/50 double or halve, rounded toward zero for
+-- negatives). Returns { lane_idx, doubled } if the lane has the Coin
+-- Flip modifier, nil otherwise. Match.script calls this for each lane
+-- after the reveal loop completes but before the yard-fill animation
+-- runs, so the fill shows the modified yards.
+function M.apply_coin_flip_modifier(lane_idx)
+    local modifier = lane_modifiers[lane_idx + 1]
+    if not modifier or modifier.id ~= "coinFlip" then return nil end
+    local lane = lanes[lane_idx + 1]
+    if not lane then return nil end
+
+    local function halve(n)
+        if n >= 0 then return math.floor(n / 2) end
+        return math.ceil(n / 2)
+    end
+
+    local doubled = math.random() < 0.5
+    if doubled then
+        lane.you_net_yards = lane.you_net_yards * 2
+        lane.ai_net_yards = lane.ai_net_yards * 2
+    else
+        lane.you_net_yards = halve(lane.you_net_yards)
+        lane.ai_net_yards = halve(lane.ai_net_yards)
+    end
+    return { lane_idx = lane_idx, doubled = doubled }
+end
+
 -- Returns the lane-adjusted cost for `card` in `lane_idx` after
 -- Hurry-Up / Prevent D discounts. Floor of 1 — discounts never grant
 -- free plays.
@@ -720,6 +824,7 @@ local function lane_render_copy(lane_idx)
         ai_def_sum = lane.ai_def_sum,
         you_cards = copy_cards(lane.you_cards),
         ai_cards = copy_cards(lane.ai_cards),
+        locked_for = lane.locked_for,
     }
 end
 
@@ -734,6 +839,10 @@ end
 -- ---------------------------------------------------------------------------
 
 function M.play_card(card_uid, lane_idx)
+    -- Phase 6.5.4: Sudden Death lock blocks new plays entirely.
+    if M.is_lane_locked(lane_idx) then
+        return { success = false, reason = "lane_locked" }
+    end
     local slot_idx = find_in_hand(hand, card_uid)
     if slot_idx == nil then
         return { success = false, reason = "card_not_in_hand" }
@@ -802,6 +911,10 @@ function M.play_card(card_uid, lane_idx)
 end
 
 function M.ai_play_card(card, lane_idx)
+    -- Phase 6.5.4: Sudden Death lock blocks AI plays too.
+    if M.is_lane_locked(lane_idx) then
+        return { success = false, reason = "lane_locked" }
+    end
     local cost = M.effective_cost(card, lane_idx)
     if ai_energy < cost then
         return { success = false, reason = "insufficient_energy" }
@@ -936,26 +1049,39 @@ function M.resolve_drive()
     local summary = { lanes = {} }
     for i = 0, LANE_COUNT - 1 do
         local lane = lanes[i + 1]
-        local you_gained = lane.you_net_yards
-        local ai_gained = lane.ai_net_yards
+        -- Phase 6.5.4: locked lanes freeze — ball positions stay put,
+        -- net yards report as 0 so the HUD's yard-fill animation is a
+        -- no-op for that lane.
+        if lane.locked_for ~= nil then
+            table.insert(summary.lanes, {
+                idx = i,
+                you_yards_gained = 0,
+                ai_yards_gained = 0,
+                new_you_pos = lane.you_pos,
+                new_ai_pos = lane.ai_pos,
+            })
+        else
+            local you_gained = lane.you_net_yards
+            local ai_gained = lane.ai_net_yards
 
-        local new_you = lane.you_pos + you_gained
-        if new_you > 100 then new_you = 100 end
-        if new_you < 0 then new_you = 0 end
-        lane.you_pos = new_you
+            local new_you = lane.you_pos + you_gained
+            if new_you > 100 then new_you = 100 end
+            if new_you < 0 then new_you = 0 end
+            lane.you_pos = new_you
 
-        local new_ai = lane.ai_pos + ai_gained
-        if new_ai > 100 then new_ai = 100 end
-        if new_ai < 0 then new_ai = 0 end
-        lane.ai_pos = new_ai
+            local new_ai = lane.ai_pos + ai_gained
+            if new_ai > 100 then new_ai = 100 end
+            if new_ai < 0 then new_ai = 0 end
+            lane.ai_pos = new_ai
 
-        table.insert(summary.lanes, {
-            idx = i,
-            you_yards_gained = you_gained,
-            ai_yards_gained = ai_gained,
-            new_you_pos = new_you,
-            new_ai_pos = new_ai,
-        })
+            table.insert(summary.lanes, {
+                idx = i,
+                you_yards_gained = you_gained,
+                ai_yards_gained = ai_gained,
+                new_you_pos = new_you,
+                new_ai_pos = new_ai,
+            })
+        end
     end
     drive_summary = summary
     pending_plays = {}
@@ -982,11 +1108,18 @@ function M.apply_score_event(event)
         ai_score = ai_score + (event.points or 0)
     end
     table.insert(score_events, event)
+    -- Phase 6.5.3: any score event resets the Turnover counter for the
+    -- lane. Lanes without the Turnover modifier just no-op.
+    if event.lane_idx ~= nil then
+        M.note_score_in_lane(event.lane_idx)
+    end
 end
 
 function M.check_lane_for_scoring(lane_idx)
     local lane = lanes[lane_idx + 1]
     if not lane then return {} end
+    -- Phase 6.5.4: locked lanes neither score nor produce events.
+    if lane.locked_for ~= nil then return {} end
 
     local you_events = {}
     local ai_events = {}

@@ -47,9 +47,12 @@ function M.choose_plays(ai_hand, ai_energy, lanes)
             for i = 1, 3 do
                 local lane = lanes[i]
                 -- Phase 6: cost is per-lane (Hurry-Up / Prevent D).
+                -- Phase 6.5.4: skip lanes locked by Sudden Death.
                 local zero_idx = i - 1
                 local lane_cost = match_state.effective_cost(card, zero_idx)
-                if lane and lane_fill[i] < MAX_SLOTS and lane_cost <= energy_left then
+                if lane and lane.locked_for == nil
+                        and lane_fill[i] < MAX_SLOTS
+                        and lane_cost <= energy_left then
                     local score = 0
                     if card.side == "off" then
                         score = card.off or 0

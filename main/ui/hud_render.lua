@@ -114,12 +114,13 @@ M.POSITION_COLOR = {
 }
 
 local BURST_TEXT_BY_TYPE = {
-    td      = "TOUCHDOWN",
-    safety  = "SAFETY +2",
-    pick6   = "PICK SIX +6",
-    fg      = "FIELD GOAL +3",
-    pat     = "PAT GOOD +1",
-    ["2pt"] = "2-PT CONVERSION!",
+    td          = "TOUCHDOWN",
+    safety      = "SAFETY +2",
+    pick6       = "PICK SIX +6",
+    fg          = "FIELD GOAL +3",
+    pat         = "PAT GOOD +1",
+    ["2pt"]     = "2-PT CONVERSION!",
+    lane_locked = "LANE LOCKED",
 }
 local BURST_COLOR_BY_TYPE = {
     td      = vmath.vector4(0.29, 1.0,  0.54, 1.0),
@@ -596,9 +597,17 @@ end
 -- Score burst
 -- ---------------------------------------------------------------------------
 
-function M.show_score_burst(burst_node, event_type, _points)
+function M.show_score_burst(burst_node, event_type, _points, side)
     local text = BURST_TEXT_BY_TYPE[event_type] or "SCORE!"
     local base_color = BURST_COLOR_BY_TYPE[event_type] or vmath.vector4(1, 1, 1, 1)
+    -- Phase 6.5.4: LANE LOCKED uses the locker's color (green / red).
+    if event_type == "lane_locked" then
+        if side == "you" then
+            base_color = vmath.vector4(0.3, 0.85, 0.4, 1)
+        else
+            base_color = vmath.vector4(0.95, 0.3, 0.3, 1)
+        end
+    end
 
     gui.set_enabled(burst_node, true)
     gui.set_text(burst_node, text)
@@ -652,22 +661,38 @@ local MODIFIER_TOAST_FADE_IN  = 0.2
 local MODIFIER_TOAST_HOLD     = 1.5
 local MODIFIER_TOAST_FADE_OUT = 0.3
 
--- Generic text toast reusing the modifier_toast nodes. Used both for
--- the medallion description popup and for the "Not enough energy"
--- invalid-drop feedback added in Phase 6.5.
-function M.show_text_toast(refs, text)
+-- Generic text toast reusing the modifier_toast nodes. Used for medallion
+-- description popups, the "Not enough energy" invalid-drop feedback, and
+-- (Phase 6.5) Coin Flip / Turnover / Sudden Death event messages.
+-- `options` (optional): { duration = N, pulse = bool }.
+function M.show_text_toast(refs, text, options)
     if not refs or not text then return end
+    options = options or {}
+    local hold_duration = options.duration or MODIFIER_TOAST_HOLD
+    local do_pulse = options.pulse == true
+
     gui.set_text(refs.text, text)
     gui.set_enabled(refs.root, true)
     gui.set_color(refs.root, vmath.vector4(0.08, 0.08, 0.12, 0))
     gui.set_color(refs.text, vmath.vector4(1.0, 0.85, 0.2, 0))
+    gui.set_scale(refs.root, vmath.vector3(1, 1, 1))
 
     animate_helper.animate_gui(refs.root, "color.w", 0.95,
         gui.EASING_OUTQUAD, MODIFIER_TOAST_FADE_IN)
     animate_helper.animate_gui(refs.text, "color.w", 1,
         gui.EASING_OUTQUAD, MODIFIER_TOAST_FADE_IN, 0,
         function(_s)
-            timer.delay(MODIFIER_TOAST_HOLD, false, function(_s2)
+            if do_pulse then
+                animate_helper.animate_gui(refs.root, gui.PROP_SCALE,
+                    vmath.vector3(1.15, 1.15, 1),
+                    gui.EASING_OUTBACK, 0.15, 0,
+                    function(_s2)
+                        animate_helper.animate_gui(refs.root, gui.PROP_SCALE,
+                            vmath.vector3(1, 1, 1),
+                            gui.EASING_INQUAD, 0.15)
+                    end)
+            end
+            timer.delay(hold_duration, false, function(_s2)
                 animate_helper.animate_gui(refs.root, "color.w", 0,
                     gui.EASING_INQUAD, MODIFIER_TOAST_FADE_OUT)
                 animate_helper.animate_gui(refs.text, "color.w", 0,
@@ -702,6 +727,30 @@ function M.show_modifier_toast(refs, modifier)
                     end)
             end)
         end)
+end
+
+-- Phase 6.5.4: Sudden Death lane lock overlay + badge. `refs` is the
+-- cached { overlay, badge } pair for one lane. Passing locked_for=nil
+-- hides both; passing "you" / "ai" enables both with the appropriate
+-- winner tint on the overlay box.
+function M.render_lane_lock_state(refs, locked_for)
+    if not refs then return end
+    if locked_for == nil then
+        if refs.overlay then gui.set_enabled(refs.overlay, false) end
+        if refs.badge then gui.set_enabled(refs.badge, false) end
+        return
+    end
+    if refs.overlay then
+        gui.set_enabled(refs.overlay, true)
+        if locked_for == "you" then
+            gui.set_color(refs.overlay, vmath.vector4(0.2, 0.8, 0.3, 0.45))
+        else
+            gui.set_color(refs.overlay, vmath.vector4(0.85, 0.2, 0.2, 0.45))
+        end
+    end
+    if refs.badge then
+        gui.set_enabled(refs.badge, true)
+    end
 end
 
 -- Phase 6.3 slot-machine reveal. `medallion_refs_by_lane` is a 0-indexed

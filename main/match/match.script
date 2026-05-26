@@ -26,6 +26,16 @@ local SCORE_BURST_DURATION = 1.8
 local PAT_BURST_DURATION = 1.0
 local LANE_RESET_DURATION = 0.5
 local POST_SUMMARY_DURATION = 1.0
+-- Phase 6.5.4: extra wait after a Sudden Death lock so the LANE LOCKED
+-- burst plays out before the next pipeline step starts.
+local LANE_LOCKED_BURST_DURATION = 1.5
+
+-- Phase 6.5.3: per-lane "scored this drive" flag for Turnover counting.
+-- Declared here (above the forward-declared functions) so finalize_drive's
+-- closure captures it as a local, not a global.
+local function reset_scored_flags(self)
+    self.scored_this_drive_by_lane = { [0] = false, [1] = false, [2] = false }
+end
 -- Phase 4: drive-transition animation timings
 local DISCARD_ANIM_DURATION = 0.8
 local DRAW_ANIM_DURATION = 0.75
@@ -123,7 +133,7 @@ end
 -- AI plays at END DRIVE
 -- ---------------------------------------------------------------------------
 
-local function start_ai_plays()
+local function start_ai_plays(self)
     local ai_hand = match_state.get_ai_hand()
     local ai_energy = match_state.get_ai_energy()
     local lanes_view = match_state.get_lanes_for_cpu()
@@ -182,6 +192,9 @@ local function start_ai_plays()
     for _, ev in ipairs(ability_events) do
         post_burst(ev.type, ev.points)
         post_score_update(ev.side)
+        if ev.lane_idx ~= nil then
+            self.scored_this_drive_by_lane[ev.lane_idx] = true
+        end
     end
 end
 
@@ -243,6 +256,7 @@ end
 handle_reveal_score = function(self, event, lane_idx)
     post_burst(event.type, event.points)
     post_score_update(event.side)
+    self.scored_this_drive_by_lane[lane_idx] = true
 
     timer.delay(SCORE_BURST_DURATION, false, function(s)
         match_state.cancel_pending_plays_for_lane(lane_idx)
@@ -254,7 +268,20 @@ handle_reveal_score = function(self, event, lane_idx)
             new_ai_pos = new_positions.ai_pos,
         })
         remove_future_plays_for_lane(s, lane_idx)
-        timer.delay(LANE_RESET_DURATION, false, function(s2)
+
+        -- Phase 6.5.4: mid-reveal FG can still trigger Sudden Death.
+        local locked_just_now = match_state.maybe_lock_lane_for_sudden_death(
+            lane_idx, event.side)
+        local follow_up_delay = LANE_RESET_DURATION
+        if locked_just_now then
+            msg.post("/hud#gui", msgs.HUD_SCORE_BURST,
+                { type = "lane_locked", side = event.side, points = 0 })
+            msg.post("/hud#gui", msgs.HUD_LANE_LOCKED,
+                { lane_idx = lane_idx, side = event.side })
+            follow_up_delay = LANE_RESET_DURATION + LANE_LOCKED_BURST_DURATION
+        end
+
+        timer.delay(follow_up_delay, false, function(s2)
             s2.reveal_index = s2.reveal_index + 1
             step_reveal(s2)
         end)
@@ -265,8 +292,9 @@ end
 -- Post-reveal: yard fill + scoring pipeline
 -- ---------------------------------------------------------------------------
 
-finish_drive = function(self)
-    transition_phase("resolving")
+local COIN_FLIP_TOAST_DURATION = 1.2
+
+local function run_resolve_and_fills(self)
     local summary = match_state.resolve_drive()
     self.drive_summary = summary
 
@@ -283,6 +311,32 @@ finish_drive = function(self)
     timer.delay(YARD_FILL_DURATION, false, function(s)
         start_scoring_pipeline(s)
     end)
+end
+
+finish_drive = function(self)
+    transition_phase("resolving")
+
+    -- Phase 6.5.2: apply Coin Flip to net_yards in any lane that has the
+    -- modifier. At most one lane (modifiers are unique per match) so we
+    -- only ever wait once for the toast.
+    local coin_flip_event = nil
+    for lane_idx = 0, LANE_COUNT - 1 do
+        local ev = match_state.apply_coin_flip_modifier(lane_idx)
+        if ev then coin_flip_event = ev end
+    end
+
+    if coin_flip_event then
+        local text = coin_flip_event.doubled
+            and "COIN FLIP: DOUBLED!"
+            or "COIN FLIP: HALVED!"
+        msg.post("/hud#gui", msgs.HUD_SHOW_MODIFIER_TOAST,
+            { text = text, duration = COIN_FLIP_TOAST_DURATION, pulse = true })
+        timer.delay(COIN_FLIP_TOAST_DURATION, false, function(s)
+            run_resolve_and_fills(s)
+        end)
+    else
+        run_resolve_and_fills(self)
+    end
 end
 
 start_scoring_pipeline = function(self)
@@ -309,6 +363,11 @@ process_scoring_event = function(self, event, lane_idx)
     match_state.apply_score_event(event)
     post_burst(event.type, event.points)
     post_score_update(event.side)
+    self.scored_this_drive_by_lane[lane_idx] = true
+    -- Phase 6.5.4: stash the scoring side so the post-reset lock check
+    -- knows who to lock the lane to.
+    self.last_scoring_side_by_lane = self.last_scoring_side_by_lane or {}
+    self.last_scoring_side_by_lane[lane_idx] = event.side
 
     timer.delay(SCORE_BURST_DURATION, false, function(s)
         after_score_burst(s, event, lane_idx)
@@ -377,6 +436,27 @@ reset_lane_and_continue = function(self, lane_idx)
         new_you_pos = new_positions.you_pos,
         new_ai_pos = new_positions.ai_pos,
     })
+
+    -- Phase 6.5.4: after the score burst + lane reset, lock the lane if
+    -- it's a Sudden Death modifier and this is the first scoring side.
+    -- The lock persists across resets — the lane visually clears but
+    -- stays locked for the rest of the match.
+    local scoring_side = self.last_scoring_side_by_lane
+        and self.last_scoring_side_by_lane[lane_idx]
+    if scoring_side then
+        local locked_just_now = match_state.maybe_lock_lane_for_sudden_death(
+            lane_idx, scoring_side)
+        if locked_just_now then
+            msg.post("/hud#gui", msgs.HUD_SCORE_BURST,
+                { type = "lane_locked", side = scoring_side, points = 0 })
+            msg.post("/hud#gui", msgs.HUD_LANE_LOCKED,
+                { lane_idx = lane_idx, side = scoring_side })
+            timer.delay(LANE_RESET_DURATION + LANE_LOCKED_BURST_DURATION,
+                false, function(s) process_next_score(s) end)
+            return
+        end
+    end
+
     timer.delay(LANE_RESET_DURATION, false, function(s)
         process_next_score(s)
     end)
@@ -386,11 +466,46 @@ end
 -- Drive finalization: either end the match or start a drive transition
 -- ---------------------------------------------------------------------------
 
+local TURNOVER_TOAST_DURATION = 1.5
+local TURNOVER_HOLD_BEFORE_TRANSITION = 0.8
+
+local function process_turnovers_then(self, after)
+    -- Phase 6.5.3: walk the 3 lanes; any Turnover lane that hasn't
+    -- scored this drive ticks its counter. If a lane crosses 3 scoreless
+    -- drives the swap is applied here; we post a toast + a SWAP message
+    -- and hold briefly so the player sees the animation before drive
+    -- transition.
+    local swap_event = nil
+    for lane_idx = 0, LANE_COUNT - 1 do
+        local scored = self.scored_this_drive_by_lane[lane_idx] and true or false
+        local ev = match_state.process_turnover_for_lane(lane_idx, scored)
+        if ev then swap_event = ev end
+    end
+
+    if swap_event then
+        msg.post("/hud#gui", msgs.HUD_SHOW_MODIFIER_TOAST,
+            { text = "TURNOVER ON DOWNS",
+              duration = TURNOVER_TOAST_DURATION, pulse = true })
+        msg.post("/hud#gui", msgs.HUD_TURNOVER_SWAP, {
+            lane_idx = swap_event.lane_idx,
+            new_you_pos = swap_event.new_you_pos,
+            new_ai_pos = swap_event.new_ai_pos,
+        })
+        timer.delay(TURNOVER_TOAST_DURATION + TURNOVER_HOLD_BEFORE_TRANSITION,
+            false, function(s) after(s) end)
+    else
+        after(self)
+    end
+end
+
 finalize_drive = function(self)
     if match_state.is_match_over() then
         end_match(self)
     else
-        start_drive_transition(self)
+        process_turnovers_then(self, function(s)
+            reset_scored_flags(s)
+            start_drive_transition(s)
+        end)
     end
 end
 
@@ -503,6 +618,8 @@ function init(self)
     self.spawned_cards_by_lane = { [0] = {}, [1] = {}, [2] = {} }
     self.drive_summary = nil
     self.draw_result = nil
+    -- Phase 6.5.3: per-lane "scored this drive" flag for Turnover check.
+    self.scored_this_drive_by_lane = { [0] = false, [1] = false, [2] = false }
     -- Phase 6: gate input behind the slot-machine reveal. HUD posts
     -- MATCH_MODIFIERS_REVEAL_COMPLETE when the animation finishes, at
     -- which point we transition to "play".
@@ -562,6 +679,7 @@ function on_message(self, message_id, message, sender)
             if result.ability_event then
                 post_burst(result.ability_event.type, result.ability_event.points)
                 post_score_update(result.ability_event.side)
+                self.scored_this_drive_by_lane[message.lane_idx] = true
             end
         else
             push_lane_state(message.lane_idx)
@@ -571,7 +689,7 @@ function on_message(self, message_id, message, sender)
         if match_state.get_phase() ~= "play" then return end
         transition_phase("revealing")
 
-        start_ai_plays()
+        start_ai_plays(self)
 
         timer.delay(AI_SETTLE_DELAY, false, function(s)
             s.reveal_list = match_state.reveal_pending_plays()

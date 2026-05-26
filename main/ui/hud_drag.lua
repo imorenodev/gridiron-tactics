@@ -159,6 +159,15 @@ function M.end_drag(drag_state, refs, action, target_stack_pos, on_drop)
     local target_lane = pick_lane_at(action.x, action.y)
     clear_lane_hover(refs.lane_root_nodes)
 
+    -- Phase 6.5.4: a Sudden-Death-locked lane rejects all drops.
+    -- Checked first so the energy-toast doesn't fire on a locked lane.
+    if target_lane ~= nil and match_state.is_lane_locked(target_lane) then
+        if refs.on_invalid_drop then
+            refs.on_invalid_drop("lane_locked")
+        end
+        target_lane = nil
+    end
+
     -- Phase 6: validate against the specific lane's effective_cost.
     -- A drag may start on a card that's affordable in some lane but not
     -- in this one (cost discounts vary per lane).

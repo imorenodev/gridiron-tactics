@@ -64,6 +64,19 @@ M.POOL = {
     { id = "blitzZone",   icon = "BLZ",  name = "BLITZ ZONE",
       desc = "DEF SNAP abilities trigger twice",
       category = "tactical" },
+    -- Tier 3 (mechanical — Phase 6.5)
+    { id = "frozenTundra", icon = "ICE", name = "FROZEN TUNDRA",
+      desc = "All card abilities disabled in this lane",
+      category = "mechanical" },
+    { id = "coinFlip",     icon = "FLIP", name = "COIN FLIP",
+      desc = "Each drive, 50/50 doubles or halves the net yards",
+      category = "mechanical" },
+    { id = "turnover",     icon = "TOV",  name = "TURNOVER",
+      desc = "After 3 scoreless drives, ball positions swap",
+      category = "mechanical" },
+    { id = "suddenDeath",  icon = "SD",   name = "SUDDEN DEATH",
+      desc = "First side to score locks this lane permanently",
+      category = "mechanical" },
 }
 
 function M.get_by_id(id)
