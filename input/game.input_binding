@@ -10,3 +10,7 @@ key_trigger {
   input: KEY_ESC
   action: "back"
 }
+key_trigger {
+  input: KEY_R
+  action: "toggle_reduced_motion"
+}

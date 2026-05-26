@@ -1,0 +1,207 @@
+animations {
+  id: "football_icon"
+  images {
+    image: "/assets/images/ui/10_football_icon.png"
+    sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 30
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "football_scoreboard"
+  images {
+    image: "/assets/images/ui/11_football_scoreboard.png"
+    sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 30
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "coin_heads"
+  images {
+    image: "/assets/images/ui/30_coin_heads.png"
+    sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 30
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "coin_tails"
+  images {
+    image: "/assets/images/ui/31_coin_tails.png"
+    sprite_trim_mode: SPRITE_TRIM_MODE_OFF
+  }
+  playback: PLAYBACK_ONCE_FORWARD
+  fps: 30
+  flip_horizontal: 0
+  flip_vertical: 0
+}
+animations {
+  id: "pos_qb"
+  images { image: "/assets/images/ui/icons/pos_qb.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_rb"
+  images { image: "/assets/images/ui/icons/pos_rb.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_wr"
+  images { image: "/assets/images/ui/icons/pos_wr.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_te"
+  images { image: "/assets/images/ui/icons/pos_te.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_ol"
+  images { image: "/assets/images/ui/icons/pos_ol.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_k"
+  images { image: "/assets/images/ui/icons/pos_k.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_cb"
+  images { image: "/assets/images/ui/icons/pos_cb.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_s"
+  images { image: "/assets/images/ui/icons/pos_s.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_lb"
+  images { image: "/assets/images/ui/icons/pos_lb.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_de"
+  images { image: "/assets/images/ui/icons/pos_de.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_dt"
+  images { image: "/assets/images/ui/icons/pos_dt.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "pos_st"
+  images { image: "/assets/images/ui/icons/pos_st.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_homeTurf"
+  images { image: "/assets/images/ui/icons/mod_homeTurf.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_muddyField"
+  images { image: "/assets/images/ui/icons/mod_muddyField.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_windTunnel"
+  images { image: "/assets/images/ui/icons/mod_windTunnel.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_frozenTundra"
+  images { image: "/assets/images/ui/icons/mod_frozenTundra.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_blindingSun"
+  images { image: "/assets/images/ui/icons/mod_blindingSun.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_redZone"
+  images { image: "/assets/images/ui/icons/mod_redZone.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_hurryUp"
+  images { image: "/assets/images/ui/icons/mod_hurryUp.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_preventD"
+  images { image: "/assets/images/ui/icons/mod_preventD.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_scouted"
+  images { image: "/assets/images/ui/icons/mod_scouted.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_blitzZone"
+  images { image: "/assets/images/ui/icons/mod_blitzZone.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_scramble"
+  images { image: "/assets/images/ui/icons/mod_scramble.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_groundPound"
+  images { image: "/assets/images/ui/icons/mod_groundPound.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_airRaid"
+  images { image: "/assets/images/ui/icons/mod_airRaid.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_trenches"
+  images { image: "/assets/images/ui/icons/mod_trenches.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_secondary"
+  images { image: "/assets/images/ui/icons/mod_secondary.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_specialUnit"
+  images { image: "/assets/images/ui/icons/mod_specialUnit.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_coinFlip"
+  images { image: "/assets/images/ui/icons/mod_coinFlip.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_turnover"
+  images { image: "/assets/images/ui/icons/mod_turnover.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_suddenDeath"
+  images { image: "/assets/images/ui/icons/mod_suddenDeath.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+animations {
+  id: "mod_playOfGame"
+  images { image: "/assets/images/ui/icons/mod_playOfGame.png" sprite_trim_mode: SPRITE_TRIM_MODE_OFF }
+  playback: PLAYBACK_ONCE_FORWARD fps: 30 flip_horizontal: 0 flip_vertical: 0
+}
+margin: 0
+extrude_borders: 2
+inner_padding: 0

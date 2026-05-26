@@ -1,6 +1,7 @@
 # Defold
 build/
 .internal/
+.deps/
 *.zip
 
 # OS

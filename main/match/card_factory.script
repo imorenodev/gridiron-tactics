@@ -1,9 +1,12 @@
 -- Sits alongside the factory component on card_factory.go. Listens for
--- card.spawn and translates (lane_idx, slot_idx, side) into a design-space
--- position before calling factory.create. Phase 2: player cards stack from
--- the bottom of the lane upward; AI cards stack from the top downward.
+-- card.spawn and translates (lane_idx, slot_idx, side) into a design-
+-- space position before calling factory.create.
+--
+-- Phase 3: after spawning, posts MATCH_CARD_SPAWNED back to match.script
+-- with the new GO id so match.script can track per-lane spawned cards
+-- and delete them on lane reset (after a TD/safety/pick-6/FG).
 
-local msgs = require "main.state.messages"
+local msgs = require("main.state.messages")
 
 local LANE_X = { [0] = 195, [1] = 585, [2] = 975 }
 local YOU_SLOT_Y_BASE = 1200
@@ -26,11 +29,17 @@ function on_message(self, message_id, message, sender)
     if message_id == msgs.CARD_SPAWN then
         local side = message.side or "you"
         local pos = slot_position(message.lane_idx, message.slot_idx, side)
-        factory.create("#factory", pos, nil, {
+        local spawned_id = factory.create("#factory", pos, nil, {
             card_uid = hash(tostring(message.card_uid)),
             lane_idx = message.lane_idx,
             slot_idx = message.slot_idx,
             side = hash(side),
+        })
+        msg.post("/match#script", msgs.MATCH_CARD_SPAWNED, {
+            game_object_id = spawned_id,
+            lane_idx = message.lane_idx,
+            slot_idx = message.slot_idx,
+            side = side,
         })
     end
 end

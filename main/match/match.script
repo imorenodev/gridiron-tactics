@@ -1,25 +1,68 @@
--- Match state machine. Phase 2 expanded: at END DRIVE, the CPU heuristic
--- picks plays, AI cards spawn face-down, then a `revealing` phase walks
--- every pending play in winner-first order, flipping cards face-up one at
--- a time with a 0.28s stagger and pushing per-lane sum updates so the HUD
--- pills animate progressively. Resolution + summary follow as in Phase 1.
+-- Match state machine. Phase 4 adds multi-drive + deck cycle: when a
+-- drive ends but the match isn't over, we run a drive-transition chain
+-- (discard animation → state mutation → optional reshuffle visual →
+-- draw animation → consume previous drive's cards → advance drive →
+-- HUD score/drive/energy/toast updates → phase = "play"). The match
+-- ends after drive 8 (MAX_DRIVES in match_state).
 --
--- Match phases:
---   "play"      → accepting input. MATCH_PLAY_CARD allowed.
---   "revealing" → AI plays + flip animation in progress. Input ignored.
---   "ended"     → drive over, summary visible. RETURN_TO_MENU allowed.
+-- Match phases (unchanged):
+--   "play"      → accepting input
+--   "revealing" → AI plays + flip animation in progress
+--   "resolving" → yard fills + scoring + drive transition in progress
+--   "ended"     → drive over, summary visible
+--
+-- Drive transition lives ENTIRELY within `"resolving"`; phase only
+-- flips back to `"play"` after the new hand draw animation completes
+-- and the energy/drive HUD updates have posted.
 
-local msgs = require "main.state.messages"
-local match_state = require "main.state.match_state"
-local cpu = require "main.ai.cpu"
+local msgs = require("main.state.messages")
+local match_state = require("main.state.match_state")
+local cpu = require("main.ai.cpu")
 
-local AI_SETTLE_DELAY = 0.4   -- AI cards visible face-down for this long before reveal starts
-local REVEAL_STAGGER = 0.28   -- gap between successive card flips
-local RESOLVE_DURATION = 1.0  -- gap between resolve animation and match-ended summary
+local AI_SETTLE_DELAY = 0.4
+local REVEAL_STAGGER = 0.28
+local YARD_FILL_DURATION = 0.6
+local SCORE_BURST_DURATION = 1.8
+local PAT_BURST_DURATION = 1.0
+local LANE_RESET_DURATION = 0.5
+local POST_SUMMARY_DURATION = 1.0
+-- Phase 4: drive-transition animation timings
+local DISCARD_ANIM_DURATION = 0.8
+local DRAW_ANIM_DURATION = 0.75
+local RESHUFFLE_VISUAL_DURATION = 1.0
+local MAX_ENERGY_BANK = 10
 
--- Forward declarations so step_reveal and finish_drive can call each other.
+local LANE_COUNT = 3
+
 local step_reveal
+local handle_reveal_score
 local finish_drive
+local start_scoring_pipeline
+local process_next_score
+local process_scoring_event
+local after_score_burst
+local after_pat
+local reset_lane_and_continue
+local ai_decide_two_pt
+local finalize_drive
+local end_match
+local start_drive_transition
+local after_discard_anim
+local after_optional_reshuffle
+local after_draw_anim
+
+-- ---------------------------------------------------------------------------
+-- Phase transitions
+-- ---------------------------------------------------------------------------
+
+local function transition_phase(p)
+    match_state.set_phase(p)
+    msg.post("/hud#gui", msgs.HUD_PHASE_CHANGED, { phase = p })
+end
+
+-- ---------------------------------------------------------------------------
+-- HUD push helpers
+-- ---------------------------------------------------------------------------
 
 local function push_lane_state(lane_idx)
     local snapshot = match_state.lane_render_copy(lane_idx)
@@ -27,13 +70,58 @@ local function push_lane_state(lane_idx)
     msg.post("/hud#gui", msgs.HUD_LANE_UPDATED, snapshot)
 end
 
+local function post_deck_counts()
+    msg.post("/hud#gui", msgs.HUD_DECK_COUNT_CHANGED,
+        { count = match_state.get_deck_count("you") })
+    msg.post("/hud#gui", msgs.HUD_DISCARD_COUNT_CHANGED,
+        { count = match_state.get_discard_count("you") })
+end
+
+local function post_at_cap()
+    msg.post("/hud#gui", msgs.HUD_ENERGY_AT_CAP,
+        { at_cap = match_state.get_energy() >= MAX_ENERGY_BANK })
+end
+
 local function push_full_state()
     msg.post("/hud#gui", msgs.HUD_HAND_CHANGED, { hand = match_state.get_hand() })
     msg.post("/hud#gui", msgs.HUD_ENERGY_CHANGED, { energy = match_state.get_energy() })
-    for i = 0, match_state.get_lane_count() - 1 do
+    msg.post("/hud#gui", msgs.HUD_DRIVE_CHANGED,
+        { drive = match_state.get_drive(), max_drives = match_state.get_max_drives() })
+    for i = 0, LANE_COUNT - 1 do
         push_lane_state(i)
     end
+    post_deck_counts()
+    post_at_cap()
 end
+
+local function post_score_update(side)
+    msg.post("/hud#gui", msgs.HUD_SCORE_UPDATED, {
+        you_score = match_state.get_you_score(),
+        ai_score = match_state.get_ai_score(),
+        changed_side = side,
+    })
+end
+
+local function post_burst(event_type, points)
+    msg.post("/hud#gui", msgs.HUD_SCORE_BURST, { type = event_type, points = points })
+end
+
+-- ---------------------------------------------------------------------------
+-- Spawned-card tracking (Phase 3)
+-- ---------------------------------------------------------------------------
+
+local function delete_spawned_cards_in_lane(self, lane_idx)
+    local list = self.spawned_cards_by_lane[lane_idx]
+    if not list then return end
+    for _, gid in ipairs(list) do
+        go.delete(gid)
+    end
+    self.spawned_cards_by_lane[lane_idx] = {}
+end
+
+-- ---------------------------------------------------------------------------
+-- AI plays at END DRIVE
+-- ---------------------------------------------------------------------------
 
 local function start_ai_plays()
     local ai_hand = match_state.get_ai_hand()
@@ -44,7 +132,7 @@ local function start_ai_plays()
 
     local spawns = {}
     for _, play in ipairs(intended) do
-        local zero_idx = play.lane_idx - 1  -- cpu returns 1..3; state uses 0..2
+        local zero_idx = play.lane_idx - 1
         local result = match_state.ai_play_card(play.card, zero_idx)
         if result.success then
             msg.post("/card_factory#script", msgs.CARD_SPAWN, {
@@ -74,6 +162,25 @@ local function start_ai_plays()
     msg.post("/hud#gui", msgs.HUD_AI_CARDS_SPAWNED, { plays = spawns })
 end
 
+-- ---------------------------------------------------------------------------
+-- Reveal pipeline
+-- ---------------------------------------------------------------------------
+
+local function remove_future_plays_for_lane(self, lane_idx)
+    local idx = self.reveal_index
+    local filtered = {}
+    for i = 1, idx do
+        filtered[i] = self.reveal_list[i]
+    end
+    for i = idx + 1, #self.reveal_list do
+        local p = self.reveal_list[i]
+        if p.lane_idx ~= lane_idx then
+            table.insert(filtered, p)
+        end
+    end
+    self.reveal_list = filtered
+end
+
 step_reveal = function(self)
     local list = self.reveal_list
     local idx = self.reveal_index
@@ -93,12 +200,53 @@ step_reveal = function(self)
         msg.post("/hud#gui", msgs.HUD_LANE_SUMS_UPDATED, sums)
     end
 
+    local lane = match_state.get_lane(play.lane_idx)
+    if lane then
+        local cards_arr = (play.side == "ai") and lane.ai_cards or lane.you_cards
+        local card = cards_arr[play.slot_idx + 1]
+        if card then
+            local ability_event = match_state.try_apply_snap_ability(card, play.lane_idx, play.side)
+            if ability_event then
+                handle_reveal_score(self, ability_event, play.lane_idx)
+                return
+            end
+        end
+    end
+
     self.reveal_index = idx + 1
     timer.delay(REVEAL_STAGGER, false, function(s) step_reveal(s) end)
 end
 
+handle_reveal_score = function(self, event, lane_idx)
+    post_burst(event.type, event.points)
+    post_score_update(event.side)
+
+    timer.delay(SCORE_BURST_DURATION, false, function(s)
+        match_state.cancel_pending_plays_for_lane(lane_idx)
+        local new_positions = match_state.reset_lane_after_score(lane_idx)
+        delete_spawned_cards_in_lane(s, lane_idx)
+        msg.post("/hud#gui", msgs.HUD_LANE_RESET, {
+            lane_idx = lane_idx,
+            new_you_pos = new_positions.you_pos,
+            new_ai_pos = new_positions.ai_pos,
+        })
+        remove_future_plays_for_lane(s, lane_idx)
+        timer.delay(LANE_RESET_DURATION, false, function(s2)
+            s2.reveal_index = s2.reveal_index + 1
+            step_reveal(s2)
+        end)
+    end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Post-reveal: yard fill + scoring pipeline
+-- ---------------------------------------------------------------------------
+
 finish_drive = function(self)
+    transition_phase("resolving")
     local summary = match_state.resolve_drive()
+    self.drive_summary = summary
+
     for _, lane in ipairs(summary.lanes) do
         msg.post("/hud#gui", msgs.HUD_LANE_RESOLVED, {
             lane_idx = lane.idx,
@@ -109,17 +257,230 @@ finish_drive = function(self)
         })
     end
 
-    timer.delay(RESOLVE_DURATION, false, function(_s)
-        msg.post("/hud#gui", msgs.HUD_MATCH_ENDED, { summary = summary })
-        match_state.set_phase("ended")
+    timer.delay(YARD_FILL_DURATION, false, function(s)
+        start_scoring_pipeline(s)
+    end)
+end
+
+start_scoring_pipeline = function(self)
+    self.scoring_queue = {}
+    for lane_idx = 0, LANE_COUNT - 1 do
+        local events = match_state.check_lane_for_scoring(lane_idx)
+        for _, event in ipairs(events) do
+            table.insert(self.scoring_queue, { event = event, lane_idx = lane_idx })
+        end
+    end
+    process_next_score(self)
+end
+
+process_next_score = function(self)
+    if not self.scoring_queue or #self.scoring_queue == 0 then
+        finalize_drive(self)
+        return
+    end
+    local entry = table.remove(self.scoring_queue, 1)
+    process_scoring_event(self, entry.event, entry.lane_idx)
+end
+
+process_scoring_event = function(self, event, lane_idx)
+    match_state.apply_score_event(event)
+    post_burst(event.type, event.points)
+    post_score_update(event.side)
+
+    timer.delay(SCORE_BURST_DURATION, false, function(s)
+        after_score_burst(s, event, lane_idx)
+    end)
+end
+
+after_score_burst = function(self, event, lane_idx)
+    if event.type ~= "td" then
+        reset_lane_and_continue(self, lane_idx)
+        return
+    end
+
+    local pat_event = match_state.check_pat(event.side, lane_idx)
+    if pat_event then
+        post_burst("pat", pat_event.points)
+        post_score_update(event.side)
+        timer.delay(PAT_BURST_DURATION, false, function(s)
+            after_pat(s, event, lane_idx)
+        end)
+    else
+        after_pat(self, event, lane_idx)
+    end
+end
+
+after_pat = function(self, td_event, lane_idx)
+    if not match_state.check_two_pt_eligibility(td_event.side, lane_idx) then
+        reset_lane_and_continue(self, lane_idx)
+        return
+    end
+
+    if td_event.side == "you" then
+        self.waiting_for_two_pt = { lane_idx = lane_idx, side = td_event.side }
+        msg.post("/hud#gui", msgs.HUD_TWO_PT_PROMPT, {
+            side = td_event.side, lane_idx = lane_idx,
+        })
+    else
+        ai_decide_two_pt(self, td_event, lane_idx)
+    end
+end
+
+ai_decide_two_pt = function(self, td_event, lane_idx)
+    if math.random() < 0.5 then
+        local call = (math.random() < 0.5) and "heads" or "tails"
+        local coin = (math.random() < 0.5) and "heads" or "tails"
+        local event = match_state.apply_two_pt_conversion(td_event.side, lane_idx, call, coin)
+        if event then
+            post_burst(event.type, event.points)
+            post_score_update(td_event.side)
+            timer.delay(SCORE_BURST_DURATION, false, function(s)
+                reset_lane_and_continue(s, lane_idx)
+            end)
+            return
+        end
+    else
+        print("[2pt ai] AI chose to kick / skip")
+    end
+    reset_lane_and_continue(self, lane_idx)
+end
+
+reset_lane_and_continue = function(self, lane_idx)
+    match_state.cancel_pending_plays_for_lane(lane_idx)
+    local new_positions = match_state.reset_lane_after_score(lane_idx)
+    delete_spawned_cards_in_lane(self, lane_idx)
+    msg.post("/hud#gui", msgs.HUD_LANE_RESET, {
+        lane_idx = lane_idx,
+        new_you_pos = new_positions.you_pos,
+        new_ai_pos = new_positions.ai_pos,
+    })
+    timer.delay(LANE_RESET_DURATION, false, function(s)
+        process_next_score(s)
+    end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Drive finalization: either end the match or start a drive transition
+-- ---------------------------------------------------------------------------
+
+finalize_drive = function(self)
+    if match_state.is_match_over() then
+        end_match(self)
+    else
+        start_drive_transition(self)
+    end
+end
+
+end_match = function(self)
+    timer.delay(POST_SUMMARY_DURATION, false, function(_s)
+        transition_phase("ended")
+        msg.post("/hud#gui", msgs.HUD_MATCH_ENDED, { summary = self.drive_summary })
         msg.post("main:/loader#script", msgs.MATCH_DRIVE_COMPLETED)
     end)
 end
+
+-- ---------------------------------------------------------------------------
+-- Phase 4: drive transition chain
+-- ---------------------------------------------------------------------------
+
+start_drive_transition = function(self)
+    -- Capture current hand uids for the discard arc. The animation runs
+    -- on the live hand_N_root nodes, so the HUD reads card positions
+    -- directly — we pass the uids for the (optional) match.discard_animation_complete
+    -- callback path that the prompt mentions.
+    local hand_snapshot = match_state.get_hand()
+    local hand_uids = {}
+    for i = 1, #hand_snapshot do
+        local c = hand_snapshot[i]
+        if c and not c.empty then
+            table.insert(hand_uids, c.uid)
+        end
+    end
+    msg.post("/hud#gui", msgs.HUD_START_DISCARD_ANIM, { card_uids = hand_uids })
+
+    timer.delay(DISCARD_ANIM_DURATION, false, function(s)
+        after_discard_anim(s)
+    end)
+end
+
+after_discard_anim = function(self)
+    -- 1. Move both sides' unplayed hand cards to discard.
+    match_state.discard_hand("you")
+    match_state.discard_hand("ai")
+    msg.post("/hud#gui", msgs.HUD_DISCARD_COUNT_CHANGED,
+        { count = match_state.get_discard_count("you") })
+
+    -- 2. Draw fresh hands. AI is silent; player draw may reshuffle.
+    match_state.draw_cards_to_hand("ai", 5)
+    self.draw_result = match_state.draw_cards_to_hand("you", 5)
+
+    if self.draw_result.reshuffled then
+        msg.post("/hud#gui", msgs.HUD_RESHUFFLE)
+        timer.delay(RESHUFFLE_VISUAL_DURATION, false, function(s)
+            after_optional_reshuffle(s)
+        end)
+    else
+        after_optional_reshuffle(self)
+    end
+end
+
+after_optional_reshuffle = function(self)
+    -- Counts after (potential) reshuffle + draw.
+    post_deck_counts()
+
+    -- Trigger the draw arc with the actual card data.
+    msg.post("/hud#gui", msgs.HUD_START_DRAW_ANIM,
+        { drawn_cards = self.draw_result.drawn })
+
+    timer.delay(DRAW_ANIM_DURATION, false, function(s)
+        after_draw_anim(s)
+    end)
+end
+
+after_draw_anim = function(self)
+    -- Previous drive's cards still in lanes: zero their contribution so
+    -- the next drive's reveals don't double-count. Lane positions are
+    -- preserved (they're cumulative); only sums/net_yards reset.
+    match_state.consume_drive_cards()
+
+    -- Refresh HUD against the post-consume state.
+    msg.post("/hud#gui", msgs.HUD_HAND_CHANGED, { hand = match_state.get_hand() })
+    for i = 0, LANE_COUNT - 1 do
+        push_lane_state(i)
+    end
+
+    -- Advance the drive number + grant energy. The carryover-toast and
+    -- at-cap pulse fire from this drive_info.
+    local drive_info = match_state.advance_drive()
+
+    msg.post("/hud#gui", msgs.HUD_DRIVE_CHANGED,
+        { drive = drive_info.new_drive, max_drives = drive_info.max_drives })
+    msg.post("/hud#gui", msgs.HUD_ENERGY_CHANGED,
+        { energy = drive_info.you_new_energy })
+
+    if drive_info.you_carried and drive_info.you_carried > 0 then
+        msg.post("/hud#gui", msgs.HUD_CARRIED_TOAST,
+            { amount = drive_info.you_carried })
+    end
+    post_at_cap()
+
+    transition_phase("play")
+end
+
+-- ---------------------------------------------------------------------------
+-- Lifecycle
+-- ---------------------------------------------------------------------------
 
 function init(self)
     match_state.new_match()
     self.reveal_list = nil
     self.reveal_index = 1
+    self.scoring_queue = {}
+    self.waiting_for_two_pt = nil
+    self.spawned_cards_by_lane = { [0] = {}, [1] = {}, [2] = {} }
+    self.drive_summary = nil
+    self.draw_result = nil
+    transition_phase("play")
     push_full_state()
 end
 
@@ -139,11 +500,13 @@ function on_message(self, message_id, message, sender)
 
         msg.post("/hud#gui", msgs.HUD_HAND_CHANGED, { hand = match_state.get_hand() })
         msg.post("/hud#gui", msgs.HUD_ENERGY_CHANGED, { energy = result.new_energy })
+        -- Spending energy may have dropped us below cap; refresh the pulse.
+        post_at_cap()
         push_lane_state(message.lane_idx)
 
     elseif message_id == msgs.MATCH_END_DRIVE then
         if match_state.get_phase() ~= "play" then return end
-        match_state.set_phase("revealing")
+        transition_phase("revealing")
 
         start_ai_plays()
 
@@ -152,6 +515,36 @@ function on_message(self, message_id, message, sender)
             s.reveal_index = 1
             step_reveal(s)
         end)
+
+    elseif message_id == msgs.MATCH_CARD_SPAWNED then
+        local lane_idx = message.lane_idx
+        self.spawned_cards_by_lane[lane_idx] = self.spawned_cards_by_lane[lane_idx] or {}
+        table.insert(self.spawned_cards_by_lane[lane_idx], message.game_object_id)
+
+    elseif message_id == msgs.MATCH_TWO_PT_CHOICE then
+        if not self.waiting_for_two_pt then return end
+        local waiting = self.waiting_for_two_pt
+        self.waiting_for_two_pt = nil
+        local lane_idx = waiting.lane_idx
+        local side = waiting.side
+
+        if message.result == "converted" then
+            local event = match_state.apply_two_pt_conversion(side, lane_idx, message.call, message.outcome)
+            if event then
+                post_burst(event.type, event.points)
+                post_score_update(side)
+                timer.delay(SCORE_BURST_DURATION, false, function(s)
+                    reset_lane_and_continue(s, lane_idx)
+                end)
+                return
+            end
+        elseif message.result == "failed" then
+            print(string.format("[2pt player] failed conversion: called %s got %s",
+                tostring(message.call), tostring(message.outcome)))
+        elseif message.result == "skip" then
+            print("[2pt player] chose KICK PAT")
+        end
+        reset_lane_and_continue(self, lane_idx)
 
     elseif message_id == msgs.MATCH_RETURN_TO_MENU then
         match_state.reset()

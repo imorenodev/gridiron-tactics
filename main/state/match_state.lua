@@ -2,14 +2,20 @@
 -- exported functions only. `shared_state = 1` in game.project means every
 -- script that requires this module sees the same instance.
 --
--- Phase 2 scope: one drive, AI plays at END DRIVE, cards play face-down,
--- reveal at END DRIVE flips revealed = true and recomputes lane sums.
--- Net yards formula (per side) only counts revealed cards:
---   you_net_yards = floor(you_off_sum / 2.5) - floor(ai_def_sum / 2.5)
---   ai_net_yards  = floor(ai_off_sum  / 2.5) - floor(you_def_sum / 2.5)
--- Scoring is deferred to Phase 3; you_score / ai_score stay 0 here, but
--- are used by reveal_pending_plays() to compute the reveal order so the
--- comparison works once real scores land.
+-- Phase 4 expanded: full deck cycle (30-card decks per side, discard,
+-- reshuffle on empty) and 8-drive match. Drive 1 starts with 1 energy;
+-- subsequent drives grant drive-number energy on top of carryover,
+-- capped at MAX_ENERGY_BANK = 10. Cards played to the field are
+-- consumed — they don't return to deck or discard; lane reset deletes
+-- them. Cards in the unplayed hand at drive end go to discard.
+--
+-- consume_drive_cards() zeroes out cur_off/cur_def on cards remaining
+-- in lanes between drives so they don't keep contributing to net yards
+-- after their drive completes. Cards stay visible (for the lane cap and
+-- visual continuity) but their offensive/defensive contribution is
+-- spent.
+--
+-- Phase machine still owned by match.script.
 
 local cards = require "main.data.cards"
 
@@ -21,31 +27,46 @@ local HAND_SIZE = 5
 local LANE_COUNT = 3
 local LANE_CARD_CAP = 8
 local KICKOFF_POS = 25
-local STARTING_ENERGY = 12
 
--- Module-local state (initialized by reset()/new_match()).
+-- Phase 4: per-drive energy escalation. Drive N grants N energy on top
+-- of any unspent carryover from the previous drive. Capped at the bank.
+local DRIVE1_ENERGY = 1
+local MAX_ENERGY_BANK = 10
+local DECK_SIZE = 30
+local MAX_DRIVES = 8
+
+local KICKOFF_BIG_RETURN_CHANCE = 0.05
+local PICK6_DB_THRESHOLD = 4
+
+-- Module-local state.
 local drive = 1
+local max_drives = MAX_DRIVES
 local phase = "play"
+
 local energy = 0
 local hand = {}
+local you_deck = {}
+local you_discard = {}
+local you_energy_carried = 0
 local played_uids = {}
 
-local ai_hand = {}
 local ai_energy = 0
+local ai_hand = {}
+local ai_deck = {}
+local ai_discard = {}
+local ai_energy_carried = 0
 local ai_played_uids = {}
 
--- pending_plays: array of { card_uid, lane_idx, side = "you" | "ai", slot_idx }
--- Populated as cards are played face-down; consumed in reveal order at END DRIVE.
 local pending_plays = {}
 
 local lanes = {}
 local drive_summary = nil
 local uid_counter = 0
 
--- Score isn't tracked in Phase 2 (scoring lands in Phase 3) but the reveal-
--- order comparison uses these so the code path is right when they go live.
 local you_score = 0
 local ai_score = 0
+local score_events = {}
+local pending_two_pt = nil
 
 -- ---------------------------------------------------------------------------
 -- Helpers (module-local)
@@ -89,15 +110,16 @@ local function find_in_hand(h, uid)
     return nil
 end
 
--- Phase 2 stub: invoked at reveal time for each card. Card abilities (SNAP /
--- on-reveal / on-played) plug in here in a later phase. Intentionally a no-op
--- so the reveal path is in place and exercised, but no behavior runs.
-local function try_apply_snap_ability(_card)
-    -- TODO Phase TBD: implement card snap abilities here.
+local function count_dbs_revealed(cards_arr)
+    local n = 0
+    for _, c in ipairs(cards_arr) do
+        if c.revealed and (c.pos == "CB" or c.pos == "S") then
+            n = n + 1
+        end
+    end
+    return n
 end
 
--- Recompute revealed-only sums for one lane, then derive net yards per side.
--- Called after each reveal so progressive pill updates work.
 local function recompute_lane_sums(lane_idx)
     local lane = lanes[lane_idx + 1]
     if not lane then return nil end
@@ -136,48 +158,254 @@ local function recompute_lane_sums(lane_idx)
 end
 
 -- ---------------------------------------------------------------------------
+-- Ability dispatcher
+-- ---------------------------------------------------------------------------
+
+local function try_field_goal(card, lane_idx, side)
+    if card.pos ~= "K" then return nil end
+    local lane = lanes[lane_idx + 1]
+    if not lane then return nil end
+    local my_pos = (side == "you") and lane.you_pos or lane.ai_pos
+    if my_pos < 50 then return nil end
+    local event = { side = side, type = "fg", points = 3, lane_idx = lane_idx }
+    M.apply_score_event(event)
+    return event
+end
+
+function M.try_apply_snap_ability(card, lane_idx, side)
+    if not card or not card.desc then return nil end
+
+    if card.desc == "snapFieldGoal" then
+        return try_field_goal(card, lane_idx, side)
+    end
+
+    return nil
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 
 function M.reset()
     drive = 1
+    max_drives = MAX_DRIVES
     phase = "play"
+
     energy = 0
     hand = {}
+    you_deck = {}
+    you_discard = {}
+    you_energy_carried = 0
     played_uids = {}
-    ai_hand = {}
+
     ai_energy = 0
+    ai_hand = {}
+    ai_deck = {}
+    ai_discard = {}
+    ai_energy_carried = 0
     ai_played_uids = {}
+
     pending_plays = {}
     lanes = {}
     drive_summary = nil
     you_score = 0
     ai_score = 0
+    score_events = {}
+    pending_two_pt = nil
+end
+
+-- Build a 30-card deck for `side` and seed `count` cards into its hand.
+-- Used at match start. Subsequent draws use draw_cards_to_hand directly.
+local function seed_side(side, hand_count)
+    if side == "you" then
+        you_deck = cards.build_deck(DECK_SIZE)
+        you_discard = {}
+        hand = {}
+        for i = 1, HAND_SIZE do hand[i] = { empty = true } end
+    else
+        ai_deck = cards.build_deck(DECK_SIZE)
+        ai_discard = {}
+        ai_hand = {}
+        for i = 1, HAND_SIZE do ai_hand[i] = { empty = true } end
+    end
+    M.draw_cards_to_hand(side, hand_count)
 end
 
 function M.new_match()
     M.reset()
-    energy = STARTING_ENERGY
-    ai_energy = STARTING_ENERGY
     drive = 1
     phase = "play"
+    energy = DRIVE1_ENERGY
+    ai_energy = DRIVE1_ENERGY
+    you_energy_carried = 0
+    ai_energy_carried = 0
 
-    local dealt = cards.random_hand(HAND_SIZE)
-    for i = 1, HAND_SIZE do
-        local c = dealt[i]
-        c.uid = make_uid()
-        hand[i] = c
-    end
-
-    local ai_dealt = cards.random_hand(HAND_SIZE)
-    for i = 1, HAND_SIZE do
-        local c = ai_dealt[i]
-        c.uid = make_uid()
-        ai_hand[i] = c
-    end
+    seed_side("you", HAND_SIZE)
+    seed_side("ai", HAND_SIZE)
 
     for i = 0, LANE_COUNT - 1 do
         lanes[i + 1] = make_lane(i)
+    end
+end
+
+-- ---------------------------------------------------------------------------
+-- Deck / discard / draw / reshuffle (Phase 4)
+-- ---------------------------------------------------------------------------
+
+-- Returns the active deck + discard + hand tables for the given side.
+local function refs_for(side)
+    if side == "you" then
+        return you_deck, you_discard, hand
+    end
+    return ai_deck, ai_discard, ai_hand
+end
+
+-- Moves all cards from the side's discard into the deck (tagging each
+-- with discarded_on_drive = nil), then Fisher-Yates shuffles.
+function M.reshuffle_discard_into_deck(side)
+    local deck, discard, _ = refs_for(side)
+    while #discard > 0 do
+        local card = table.remove(discard)
+        card.discarded_on_drive = nil
+        table.insert(deck, card)
+    end
+    for i = #deck, 2, -1 do
+        local j = math.random(i)
+        deck[i], deck[j] = deck[j], deck[i]
+    end
+end
+
+-- Draws up to `count` cards from the side's deck into its hand. If the
+-- deck runs out mid-draw, reshuffles the discard back into the deck
+-- and continues. Returns { drawn = { card_records... }, reshuffled = bool }.
+-- If both deck AND discard run dry, stops early.
+function M.draw_cards_to_hand(side, count)
+    local deck, discard, target_hand = refs_for(side)
+    local drawn = {}
+    local reshuffled = false
+
+    for _ = 1, count do
+        if #deck == 0 then
+            if #discard == 0 then break end
+            M.reshuffle_discard_into_deck(side)
+            reshuffled = true
+        end
+        local card = table.remove(deck)
+        card.uid = make_uid()
+        card.revealed = false
+        table.insert(drawn, card)
+
+        for i = 1, HAND_SIZE do
+            if not slot_is_filled(target_hand[i]) then
+                target_hand[i] = card
+                break
+            end
+        end
+    end
+
+    return { drawn = drawn, reshuffled = reshuffled }
+end
+
+-- Moves all of the side's remaining hand cards into discard, tagging each
+-- with the current drive number, then leaves the hand fully empty.
+function M.discard_hand(side)
+    local _, discard, target_hand = refs_for(side)
+    for i = 1, HAND_SIZE do
+        if slot_is_filled(target_hand[i]) then
+            local card = target_hand[i]
+            card.discarded_on_drive = drive
+            table.insert(discard, card)
+            target_hand[i] = { empty = true }
+        end
+    end
+end
+
+-- Advances to the next drive: increments `drive`, grants drive-number
+-- energy on top of any carryover (capped at MAX_ENERGY_BANK), records
+-- the carried amount on both sides for the toast trigger. Returns the
+-- per-side energy info so match.script can drive HUD updates.
+function M.advance_drive()
+    drive = drive + 1
+
+    local you_carried = energy
+    local you_gain = drive
+    local you_new = math.min(MAX_ENERGY_BANK, energy + you_gain)
+    energy = you_new
+    you_energy_carried = you_carried
+
+    local ai_carried = ai_energy
+    local ai_gain = drive
+    local ai_new = math.min(MAX_ENERGY_BANK, ai_energy + ai_gain)
+    ai_energy = ai_new
+    ai_energy_carried = ai_carried
+
+    return {
+        new_drive = drive,
+        max_drives = max_drives,
+        you_gain = you_gain,
+        you_carried = you_carried,
+        you_new_energy = you_new,
+        ai_gain = ai_gain,
+        ai_carried = ai_carried,
+        ai_new_energy = ai_new,
+    }
+end
+
+function M.is_match_over()
+    return drive >= max_drives
+end
+
+function M.get_max_drives() return max_drives end
+function M.get_deck_count(side)
+    local deck, _, _ = refs_for(side)
+    return #deck
+end
+function M.get_discard_count(side)
+    local _, discard, _ = refs_for(side)
+    return #discard
+end
+function M.get_you_energy_carried() return you_energy_carried end
+function M.get_ai_energy_carried() return ai_energy_carried end
+
+-- Per-drive count summary for the discard text modal. Returns
+-- { total = N, per_drive = { [drive_num] = count, ... } }.
+function M.get_discard_summary(side)
+    local _, discard, _ = refs_for(side)
+    local per_drive = {}
+    for _, c in ipairs(discard) do
+        local d = c.discarded_on_drive or 0
+        per_drive[d] = (per_drive[d] or 0) + 1
+    end
+    return { total = #discard, per_drive = per_drive }
+end
+
+-- Zero out cur_off/cur_def on previously-revealed cards left in lanes
+-- so they don't keep contributing yards in subsequent drives. Resets
+-- per-side lane sums too so the HUD pills snap back to +0 for the next
+-- drive. Ball positions (you_pos / ai_pos) stay — they're cumulative.
+function M.consume_drive_cards()
+    for i = 1, LANE_COUNT do
+        local lane = lanes[i]
+        if lane then
+            for _, c in ipairs(lane.you_cards) do
+                if c.revealed then
+                    c.cur_off = 0
+                    c.cur_def = 0
+                end
+            end
+            for _, c in ipairs(lane.ai_cards) do
+                if c.revealed then
+                    c.cur_off = 0
+                    c.cur_def = 0
+                end
+            end
+            lane.you_off_sum = 0
+            lane.you_def_sum = 0
+            lane.ai_off_sum = 0
+            lane.ai_def_sum = 0
+            lane.you_net_yards = 0
+            lane.ai_net_yards = 0
+        end
     end
 end
 
@@ -192,6 +420,9 @@ function M.set_phase(p) phase = p end
 function M.get_energy() return energy end
 function M.get_ai_energy() return ai_energy end
 
+function M.get_you_score() return you_score end
+function M.get_ai_score() return ai_score end
+
 function M.spend_energy(amount)
     if amount > energy then return false end
     energy = energy - amount
@@ -199,11 +430,14 @@ function M.spend_energy(amount)
 end
 
 local function shallow_copy_card(c)
-    return {
+    local copy = {
         id = c.id, name = c.name, pos = c.pos,
         cost = c.cost, off = c.off, def = c.def,
         side = c.side, rarity = c.rarity, uid = c.uid,
     }
+    if c.ability then copy.ability = c.ability end
+    if c.desc then copy.desc = c.desc end
+    return copy
 end
 
 function M.get_hand()
@@ -219,7 +453,6 @@ function M.get_hand()
     return copy
 end
 
--- AI hand copy. The HUD never renders this, but cpu.lua reads it.
 function M.get_ai_hand()
     local copy = {}
     for i = 1, HAND_SIZE do
@@ -237,8 +470,6 @@ function M.get_lane(idx) return lanes[idx + 1] end
 function M.get_lane_count() return LANE_COUNT end
 function M.get_hand_size() return HAND_SIZE end
 
--- Shallow-copy the lane state the HUD needs to render a lane.  Cards are
--- copies (with revealed flag intact) so the HUD never sees the live tables.
 local function lane_render_copy(lane_idx)
     local lane = lanes[lane_idx + 1]
     if not lane then return nil end
@@ -274,8 +505,6 @@ end
 
 M.lane_render_copy = lane_render_copy
 
--- cpu.lua wants 1-indexed lane access with the public lane shape. Return the
--- internal lanes array reference; cpu reads only.
 function M.get_lanes_for_cpu()
     return lanes
 end
@@ -284,9 +513,6 @@ end
 -- Plays
 -- ---------------------------------------------------------------------------
 
--- Player plays a card. Phase 2 behavior: card goes face-down into the lane,
--- energy deducts, hand slot empties, sums STAY AT 0 (revealed only). The
--- HUD's net-yards pill stays at +0 until END DRIVE reveal.
 function M.play_card(card_uid, lane_idx)
     local slot_idx = find_in_hand(hand, card_uid)
     if slot_idx == nil then
@@ -324,15 +550,11 @@ function M.play_card(card_uid, lane_idx)
         card = card,
         slot_idx = placed_slot_idx,
         new_energy = energy,
-        -- Sums intentionally still 0 here — cards are face-down.
         new_off_sum = 0,
         new_net_yards = 0,
     }
 end
 
--- AI plays a card directly (skips the hand-find step since cpu.lua hands the
--- card object straight in). Mirrors play_card behavior — face-down, sums
--- unchanged, energy deducted.
 function M.ai_play_card(card, lane_idx)
     if ai_energy < (card.cost or 0) then
         return { success = false, reason = "insufficient_energy" }
@@ -345,7 +567,6 @@ function M.ai_play_card(card, lane_idx)
         return { success = false, reason = "lane_full" }
     end
 
-    -- Mirror find_in_hand: locate this card by uid in ai_hand and empty its slot.
     local slot_in_hand = find_in_hand(ai_hand, card.uid)
     if slot_in_hand then
         ai_hand[slot_in_hand] = { empty = true }
@@ -376,8 +597,6 @@ end
 -- Reveal
 -- ---------------------------------------------------------------------------
 
--- Determine reveal order. "Winner reveals first" — if scores are tied
--- (Phase 2 always: 0-0), defaults to player-first.
 function M.reveal_pending_plays()
     local player_first = (you_score >= ai_score)
 
@@ -398,15 +617,9 @@ function M.reveal_pending_plays()
         add_side("you")
     end
 
-    -- Caller walks `ordered` and calls reveal_single_play per entry; we keep
-    -- pending_plays around in case the caller wants to re-query. It's
-    -- cleared by resolve_drive() so a fresh new_match() starts empty.
     return ordered
 end
 
--- Flip one specific play face-up, run its (no-op for now) ability hook,
--- recompute its lane's sums, and return the updated lane sums so the caller
--- can push the new numbers to the HUD.
 function M.reveal_single_play(play)
     local lane = lanes[play.lane_idx + 1]
     if not lane then return nil end
@@ -421,15 +634,10 @@ function M.reveal_single_play(play)
     card.cur_off = card.off
     card.cur_def = card.def
 
-    try_apply_snap_ability(card)
-
     local sums = recompute_lane_sums(play.lane_idx)
     return sums
 end
 
--- Convenience: used by sub-phase 2.2 (and any caller that wants an immediate
--- full reveal without animation). Walks reveal_pending_plays in order and
--- flips them all. Returns the per-lane sums after the full reveal.
 function M.reveal_all_now()
     local ordered = M.reveal_pending_plays()
     local last_sums = {}
@@ -440,12 +648,20 @@ function M.reveal_all_now()
     return ordered, last_sums
 end
 
+function M.cancel_pending_plays_for_lane(lane_idx)
+    local filtered = {}
+    for _, p in ipairs(pending_plays) do
+        if p.lane_idx ~= lane_idx then
+            table.insert(filtered, p)
+        end
+    end
+    pending_plays = filtered
+end
+
 -- ---------------------------------------------------------------------------
 -- Resolve drive
 -- ---------------------------------------------------------------------------
 
--- Advance each lane's two ball positions by their (already-computed) net
--- yards, clamp 0..100, mark the drive ended, and return a summary.
 function M.resolve_drive()
     local summary = { lanes = {} }
     for i = 0, LANE_COUNT - 1 do
@@ -471,12 +687,146 @@ function M.resolve_drive()
             new_ai_pos = new_ai,
         })
     end
-    phase = "ended"
     drive_summary = summary
     pending_plays = {}
     return summary
 end
 
 function M.get_drive_summary() return drive_summary end
+
+-- ---------------------------------------------------------------------------
+-- Scoring (Phase 3)
+-- ---------------------------------------------------------------------------
+
+function M.kickoff_return()
+    if math.random() < KICKOFF_BIG_RETURN_CHANCE then
+        return math.random(40, 60)
+    end
+    return math.random(15, 35)
+end
+
+function M.apply_score_event(event)
+    if event.side == "you" then
+        you_score = you_score + (event.points or 0)
+    else
+        ai_score = ai_score + (event.points or 0)
+    end
+    table.insert(score_events, event)
+end
+
+function M.check_lane_for_scoring(lane_idx)
+    local lane = lanes[lane_idx + 1]
+    if not lane then return {} end
+
+    local you_events = {}
+    local ai_events = {}
+
+    if lane.you_pos >= 100 then
+        lane.you_pos = 100
+        table.insert(you_events, { side = "you", type = "td", points = 6, lane_idx = lane_idx })
+    end
+
+    if lane.ai_pos <= 0 then
+        lane.ai_pos = 0
+        local db_count = count_dbs_revealed(lane.you_cards)
+        if db_count >= 3 then
+            print(string.format("[pick6 setup] lane=%d side=you db_count=%d safety_triggered=%s",
+                lane_idx, db_count, tostring(true)))
+        end
+        if db_count >= PICK6_DB_THRESHOLD then
+            table.insert(you_events, { side = "you", type = "pick6", points = 6, lane_idx = lane_idx })
+        else
+            table.insert(you_events, { side = "you", type = "safety", points = 2, lane_idx = lane_idx })
+        end
+    end
+
+    if lane.ai_pos >= 100 then
+        lane.ai_pos = 100
+        table.insert(ai_events, { side = "ai", type = "td", points = 6, lane_idx = lane_idx })
+    end
+
+    if lane.you_pos <= 0 then
+        lane.you_pos = 0
+        local db_count = count_dbs_revealed(lane.ai_cards)
+        if db_count >= 3 then
+            print(string.format("[pick6 setup] lane=%d side=ai db_count=%d safety_triggered=%s",
+                lane_idx, db_count, tostring(true)))
+        end
+        if db_count >= PICK6_DB_THRESHOLD then
+            table.insert(ai_events, { side = "ai", type = "pick6", points = 6, lane_idx = lane_idx })
+        else
+            table.insert(ai_events, { side = "ai", type = "safety", points = 2, lane_idx = lane_idx })
+        end
+    end
+
+    local events = {}
+    for _, e in ipairs(you_events) do table.insert(events, e) end
+    for _, e in ipairs(ai_events) do table.insert(events, e) end
+    return events
+end
+
+function M.check_pat(side, lane_idx)
+    local lane = lanes[lane_idx + 1]
+    if not lane then return nil end
+    local cards_arr = (side == "you") and lane.you_cards or lane.ai_cards
+    for _, card in ipairs(cards_arr) do
+        if card.pos == "K" and card.revealed then
+            local event = { side = side, type = "pat", points = 1, lane_idx = lane_idx }
+            M.apply_score_event(event)
+            return event
+        end
+    end
+    return nil
+end
+
+function M.check_two_pt_eligibility(side, lane_idx)
+    local lane = lanes[lane_idx + 1]
+    if not lane then return false end
+    local scoring_cards = (side == "you") and lane.you_cards or lane.ai_cards
+    local defender_cards = (side == "you") and lane.ai_cards or lane.you_cards
+
+    local off_count = 0
+    for _, c in ipairs(scoring_cards) do
+        if c.revealed and c.side == "off" then
+            off_count = off_count + 1
+        end
+    end
+    local def_count = 0
+    for _, c in ipairs(defender_cards) do
+        if c.revealed and c.side == "def" then
+            def_count = def_count + 1
+        end
+    end
+
+    return off_count > def_count
+end
+
+function M.apply_two_pt_conversion(side, lane_idx, player_call, coin_result)
+    local matched = (player_call == coin_result)
+    print(string.format("[2pt attempt] side=%s lane=%d call=%s coin=%s matched=%s",
+        tostring(side), lane_idx, tostring(player_call), tostring(coin_result), tostring(matched)))
+    if matched then
+        local event = { side = side, type = "2pt", points = 2, lane_idx = lane_idx }
+        M.apply_score_event(event)
+        return event
+    end
+    return nil
+end
+
+function M.reset_lane_after_score(lane_idx)
+    local lane = lanes[lane_idx + 1]
+    if not lane then return nil end
+    lane.you_cards = {}
+    lane.ai_cards = {}
+    lane.you_off_sum = 0
+    lane.you_def_sum = 0
+    lane.you_net_yards = 0
+    lane.ai_off_sum = 0
+    lane.ai_def_sum = 0
+    lane.ai_net_yards = 0
+    lane.you_pos = M.kickoff_return()
+    lane.ai_pos = M.kickoff_return()
+    return { you_pos = lane.you_pos, ai_pos = lane.ai_pos }
+end
 
 return M

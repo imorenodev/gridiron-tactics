@@ -1,13 +1,23 @@
--- Static card pool. Phase 1 picks 5 random cards from POOL at match start;
--- there's no deck, no draw, no discard. Card records are plain data tables;
--- runtime per-card state (uid, "played" flag) is attached when a hand is
--- dealt or when a card is played, never to the pool entries themselves.
+-- Static card pool. Phase 3: expanded to 18 cards (still well under any
+-- "real deck" threshold). Mandatory shape per CLAUDE.md hard rule #4:
+-- 5 DBs (CB/S) across the pool so the pick-6 detection path can actually
+-- fire during playtest. One card carries an ability (Clutch Kicker /
+-- snapFieldGoal) — first card with a `desc` field; future abilities use
+-- the same dispatcher in match_state.try_apply_snap_ability.
 
 local M = {}
 
--- Stable string ids ("qb_01", "rb_03") so save/load is forward-compatible
--- once we have a deck. side="off" cards have off>0 and def=0; side="def"
--- cards are the inverse. cost is 1..5 in Phase 1 (no 6-cost yet).
+-- Card record schema:
+--   id      : stable string id, used in save/load when deck cycle lands
+--   name    : display
+--   pos     : QB / RB / WR / TE / OL / K (offense), CB / S / LB / DE / DT (defense)
+--   cost    : 1..5 in Phase 3
+--   off     : offensive power (0 for defenders + kickers)
+--   def     : defensive power (0 for offensive cards)
+--   side    : "off" | "def"
+--   rarity  : "common" | "uncommon" | "rare" | "legendary"
+--   ability : optional, display string for the SNAP/on-reveal ability
+--   desc    : optional, machine id consumed by try_apply_snap_ability
 M.POOL = {
     { id = "qb_01", name = "Pocket Passer",  pos = "QB", cost = 3, off = 20, def = 0,  side = "off", rarity = "common" },
     { id = "qb_02", name = "Mobile QB",      pos = "QB", cost = 4, off = 26, def = 0,  side = "off", rarity = "uncommon" },
@@ -18,9 +28,24 @@ M.POOL = {
     { id = "wr_02", name = "Burner",         pos = "WR", cost = 4, off = 24, def = 0,  side = "off", rarity = "uncommon" },
     { id = "te_01", name = "Blocking TE",    pos = "TE", cost = 1, off = 8,  def = 0,  side = "off", rarity = "common" },
     { id = "ol_01", name = "Anchor Tackle",  pos = "OL", cost = 2, off = 10, def = 0,  side = "off", rarity = "common" },
-    { id = "k_01",  name = "Kicker",         pos = "K",  cost = 1, off = 6,  def = 0,  side = "off", rarity = "common" },
+
+    -- Phase 3: Clutch Kicker carries the project's first SNAP ability.
+    -- The ability fires inside match_state.try_apply_snap_ability when
+    -- the kicker's side is past midfield at reveal time. off = 0 because
+    -- kickers don't contribute to the lane's offense sum; their value is
+    -- the PAT after a TD plus this FG ability.
+    { id = "k_01",  name = "Clutch Kicker",  pos = "K",  cost = 3, off = 0,  def = 0,  side = "off", rarity = "uncommon",
+      ability = "SNAP: 3-pt FG if past midfield", desc = "snapFieldGoal" },
+
+    -- Defensive backs (CB + S): the pick-6 pool. Five total so a 4+ DB
+    -- stack in one lane is reachable in playtest.
     { id = "cb_01", name = "Lockdown CB",    pos = "CB", cost = 3, off = 0,  def = 18, side = "def", rarity = "common" },
+    { id = "cb_02", name = "Press CB",       pos = "CB", cost = 2, off = 0,  def = 13, side = "def", rarity = "common" },
+    { id = "cb_03", name = "Ball Hawk",      pos = "CB", cost = 4, off = 0,  def = 20, side = "def", rarity = "uncommon" },
     { id = "s_01",  name = "Free Safety",    pos = "S",  cost = 2, off = 0,  def = 12, side = "def", rarity = "common" },
+    { id = "s_02",  name = "Strong Safety",  pos = "S",  cost = 3, off = 0,  def = 16, side = "def", rarity = "common" },
+
+    -- Front seven
     { id = "lb_01", name = "Run Stuffer",    pos = "LB", cost = 3, off = 0,  def = 16, side = "def", rarity = "common" },
     { id = "de_01", name = "Edge Rusher",    pos = "DE", cost = 4, off = 0,  def = 22, side = "def", rarity = "uncommon" },
     { id = "dt_01", name = "Nose Tackle",    pos = "DT", cost = 2, off = 0,  def = 11, side = "def", rarity = "common" },
@@ -35,10 +60,8 @@ function M.get_by_id(id)
     return nil
 end
 
--- Clone so the caller can attach a uid and (later) mutate without touching
--- the canonical pool entry.
 local function clone_card(src)
-    return {
+    local copy = {
         id = src.id,
         name = src.name,
         pos = src.pos,
@@ -48,10 +71,11 @@ local function clone_card(src)
         side = src.side,
         rarity = src.rarity,
     }
+    if src.ability then copy.ability = src.ability end
+    if src.desc then copy.desc = src.desc end
+    return copy
 end
 
--- Returns `size` shuffled clones from POOL. Uses Fisher-Yates on an index
--- array so we never pick the same pool entry twice.
 function M.random_hand(size)
     local n = #M.POOL
     if size > n then size = n end
@@ -68,6 +92,24 @@ function M.random_hand(size)
         hand[i] = clone_card(M.POOL[indices[i]])
     end
     return hand
+end
+
+-- Phase 4: build a deck of `size` cards by sampling from POOL with
+-- replacement (duplicates allowed), then shuffle Fisher-Yates. Each
+-- card is a fresh clone so callers can attach uids and mutate freely
+-- without touching the canonical pool entries.
+function M.build_deck(size)
+    local n = #M.POOL
+    local deck = {}
+    for i = 1, size do
+        local idx = math.random(n)
+        deck[i] = clone_card(M.POOL[idx])
+    end
+    for i = size, 2, -1 do
+        local j = math.random(i)
+        deck[i], deck[j] = deck[j], deck[i]
+    end
+    return deck
 end
 
 return M

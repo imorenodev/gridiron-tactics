@@ -3,6 +3,10 @@ fonts {
   name: "default"
   font: "/builtins/fonts/default.font"
 }
+textures {
+  name: "field"
+  texture: "/assets/field.atlas"
+}
 nodes {
   position {
     x: 585.0
@@ -13,12 +17,32 @@ nodes {
     y: 2532.0
   }
   color {
-    x: 0.0392
-    y: 0.0784
-    z: 0.0627
+    x: 1.0
+    y: 1.0
+    z: 1.0
+    w: 1.0
   }
   type: TYPE_BOX
+  texture: "field/football_field_bg"
   id: "background"
+}
+nodes {
+  position {
+    x: 585.0
+    y: 1266.0
+  }
+  size {
+    x: 1170.0
+    y: 2532.0
+  }
+  color {
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    w: 0.55
+  }
+  type: TYPE_BOX
+  id: "background_vignette"
 }
 nodes {
   position {

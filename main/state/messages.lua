@@ -21,6 +21,12 @@ M.CARD_SPAWN            = hash("card.spawn")
 M.MATCH_PLAY_AI_CARDS   = hash("match.play_ai_cards")
 M.MATCH_REVEAL          = hash("match.reveal")
 
+-- Phase 3: scoring + 2-pt conversion + spawned-card tracking
+M.MATCH_SCORE_LANE      = hash("match.score_lane")
+M.MATCH_PAT_RESULT      = hash("match.pat_result")
+M.MATCH_TWO_PT_CHOICE   = hash("match.two_pt_choice")
+M.MATCH_CARD_SPAWNED    = hash("match.card_spawned")
+
 -- HUD render updates (state → HUD)
 M.HUD_HAND_CHANGED      = hash("hud.hand_changed")
 M.HUD_ENERGY_CHANGED    = hash("hud.energy_changed")
@@ -30,6 +36,23 @@ M.HUD_MATCH_ENDED       = hash("hud.match_ended")
 M.HUD_AI_CARDS_SPAWNED  = hash("hud.ai_cards_spawned")
 M.HUD_REVEAL_CARD       = hash("hud.reveal_card")
 M.HUD_LANE_SUMS_UPDATED = hash("hud.lane_sums_updated")
+M.HUD_PHASE_CHANGED     = hash("hud.phase_changed")
+-- Phase 3
+M.HUD_SCORE_BURST       = hash("hud.score_burst")
+M.HUD_SCORE_UPDATED     = hash("hud.score_updated")
+M.HUD_LANE_RESET        = hash("hud.lane_reset")
+M.HUD_TWO_PT_PROMPT     = hash("hud.two_pt_prompt")
+M.HUD_TWO_PT_RESULT     = hash("hud.two_pt_result")
+-- Phase 4: multi-drive + deck cycle
+M.HUD_DECK_COUNT_CHANGED    = hash("hud.deck_count_changed")
+M.HUD_DISCARD_COUNT_CHANGED = hash("hud.discard_count_changed")
+M.HUD_START_DISCARD_ANIM    = hash("hud.start_discard_anim")
+M.HUD_START_DRAW_ANIM       = hash("hud.start_draw_anim")
+M.HUD_RESHUFFLE             = hash("hud.reshuffle")
+M.HUD_CARRIED_TOAST         = hash("hud.carried_toast")
+M.HUD_DRIVE_CHANGED         = hash("hud.drive_changed")
+M.HUD_ENERGY_AT_CAP         = hash("hud.energy_at_cap")
+M.HUD_OPEN_DISCARD_MODAL    = hash("hud.open_discard_modal")
 
 -- Loader / screen transitions
 M.SHOW_MENU             = hash("show_menu")
@@ -37,8 +60,9 @@ M.SHOW_MATCH            = hash("show_match")
 M.DRIVES_PLAYED_CHANGED = hash("drives_played_changed")
 
 -- Input
-M.TOUCH                 = hash("touch")
-M.BACK                  = hash("back")
+M.TOUCH                  = hash("touch")
+M.BACK                   = hash("back")
+M.TOGGLE_REDUCED_MOTION  = hash("toggle_reduced_motion")
 
 -- Collection proxy (built-in Defold messages, cached here for convenience)
 M.PROXY_LOADED          = hash("proxy_loaded")

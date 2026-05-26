@@ -1,9 +1,13 @@
 -- Top-level screen router. Owns the menu/match collection proxies and the
 -- save_data table. Listens for MATCH_DRIVE_COMPLETED to credit and persist
 -- the cross-launch drive counter. No gameplay logic lives here.
+--
+-- Phase 2.5: also hosts the hidden dev toggle (KEY_R) for reduced motion.
+-- TODO Phase TBD: replace the KEY_R toggle with a real Settings screen.
 
-local msgs = require "main.state.messages"
-local save = require "main.state.save"
+local msgs = require("main.state.messages")
+local save = require("main.state.save")
+local meta_state = require("main.state.meta_state")
 
 local SCREEN_NONE = 0
 local SCREEN_MENU = 1
@@ -35,10 +39,20 @@ end
 
 function init(self)
     msg.post(".", "acquire_input_focus")
+    -- save.load() also seeds meta_state from the loaded data, so by the
+    -- time any animation helper checks is_reduced_motion(), it's accurate.
     self.save_data = save.load()
     self.current_screen = SCREEN_NONE
     print("[loader] save path: " .. save.get_save_path())
     load_screen(self, SCREEN_MENU)
+end
+
+function on_input(self, action_id, action)
+    if action_id == msgs.TOGGLE_REDUCED_MOTION and action.pressed then
+        local new_value = meta_state.toggle_reduced_motion()
+        save.save(self.save_data)
+        print("[loader] Reduced motion: " .. (new_value and "ON" or "OFF"))
+    end
 end
 
 function on_message(self, message_id, message, sender)
