@@ -16,6 +16,7 @@ Gridiron Tactics is a Marvel Snap-style card game with a football theme, being p
 
 - **Phase 0: complete (vertical slice).** Defold project skeleton, menu ↔ match collection-proxy flow, hardcoded test card driving a yards counter, and a save/load smoke test that persists `total_taps` across launches. See "Phase 0 — Vertical slice notes" at the bottom of this file for details and stubs left for later phases.
 - **Phase 0.6.5: complete (render script fix-up — reverted to default render).** The Phase 0 custom render script broke `gui.pick_node`; reverted to `/builtins/render/default.renderc` and deleted the custom files. Letterboxing is deferred to a post-TestFlight phase.
+- **Phase 1: complete (architecture slice).** Three lanes, hardcoded 5-card hand, drag-to-play, one drive, END DRIVE → resolution animation → summary panel → return-to-menu, with `total_drives_played` persisted across launches. No AI, no scoring, no modifiers/synergies/perks, no deck cycle, no real assets. See "Phase 1 — Architecture slice notes" at the bottom of this file.
 
 ## Hard rules — non-negotiable
 
@@ -294,3 +295,68 @@ After Phase 0 was first committed, testing revealed that `gui.pick_node` was ret
 - **Fix:** Reverted `[bootstrap] render` in `game.project` to `/builtins/render/default.renderc`. Deleted `render/gridiron.render_script` and `render/gridiron.render`. The `render/` folder stays as a reserved `.gitkeep`-only directory; CLAUDE.md's file layout note was updated to reflect that.
 - **Trade-off accepted:** The default render auto-stretches the viewport to the window. iPhone 11+ are all within ~5% of the 1170×2532 design aspect ratio, so the visible distortion is minimal and acceptable for v1. The right time to revisit letterboxing is post-TestFlight, when we have real-device data and can do a controlled re-introduction with a verified `gui.pick_node` test.
 - **Codified as hard rule #11** in the "Hard rules" section above: any future custom render script must demonstrate that `gui.pick_node` still works for taps on visible GUI nodes before merge.
+
+## Phase 1 — Architecture slice notes
+
+Phase 1 (`defold-phase-1-architecture-slice-prompt.md`) ported the architectural pattern for cards, lanes, and a single match drive. No real gameplay depth — the point was to lock in the shape that Phase 2+ (AI, scoring, multiple drives, modifiers, synergies, deck/draw, assets) extends without restructuring.
+
+### What's in (by sub-phase)
+
+- **1.1 Data / state foundation.**
+    - `main/data/cards.lua` — 15-card static pool (10 off, 5 def), `M.POOL` plus `M.get_by_id(id)` and `M.random_hand(size)` (Fisher-Yates on indices, clones returned so callers can attach `uid` and mutate freely).
+    - `main/state/match_state.lua` — module-local state for the current match (`drive`, `phase`, `energy`, `hand` array of 5 with empty-sentinel slots, `lanes` array of 3, `drive_summary`). Exports: `new_match`, `reset`, `get_drive`, `get_phase`, `set_phase`, `get_energy`, `spend_energy`, `get_hand` (shallow copy), `get_lane(idx)` (0/1/2), `get_lane_count`, `get_hand_size`, `play_card`, `resolve_drive`, `get_drive_summary`. Net yards = `floor(you_off_sum / 2.5)` (theirLaneDEF=0 in Phase 1). Lane cap = 8 cards (unreachable from a 5-card hand; kept as a forward-compat guard).
+    - `main/state/messages.lua` — Phase 0 vocabulary replaced with the Phase 1 set (`MATCH_PLAY_CARD`, `MATCH_END_DRIVE`, `MATCH_DRIVE_RESOLVED`, `MATCH_DRIVE_COMPLETED`, `MATCH_ENDED`, `MATCH_RETURN_TO_MENU`, `LANE_RESOLVE`, `CARD_SPAWN`, `HUD_HAND_CHANGED`, `HUD_ENERGY_CHANGED`, `HUD_LANE_UPDATED`, `HUD_LANE_RESOLVED`, `HUD_MATCH_ENDED`, `DRIVES_PLAYED_CHANGED`). All hashed at module load.
+    - `main/state/save.lua` — default save now `{ version = 1, total_drives_played = 0 }`. `M.load()` merges defaults over loaded data so older saves get missing fields filled in without a migration.
+
+- **1.2 Three-lane layout (visual + scaffold).**
+    - `main/match/match.collection` rebuilt: `match` GO holding `match.script`, three lane GOs (`lane_left` / `lane_middle` / `lane_right` at x=195/585/975, y=1400, each with an `idx` script-property override), `card_factory` GO, and the embedded `hud` GO with the GUI component.
+    - `main/match/match.go` + `main/match/match.script` — match state machine. `init` calls `match_state.new_match()` then pushes a full HUD render via `HUD_HAND_CHANGED`, `HUD_ENERGY_CHANGED`, and `HUD_LANE_UPDATED × LANE_COUNT`.
+    - `main/match/lane.script` — stub holding the `idx` property; Phase 2's modifier/synergy hooks land here.
+    - `main/ui/hud.gui` rebuilt: top bar (YOU/DRIVE/CPU/MENU), three lane visual regions (root box + label + yardage bar bg + left-pivoted fill + position text + gold pill + cards counter), 5 hand-card visuals (root + cost + pos + name + stat), action bar (CONCEDE + energy orb + END DRIVE), drag ghost (disabled at start), match-end summary overlay (disabled at start). Lane-region rectangles for drop detection are duplicated in `hud.gui_script`'s `LANE_REGION_RECT` constant.
+    - `main/ui/hud.gui_script` rebuilt: pure presentation. Caches node references in `init`, renders state from `HUD_*` messages, no game-state mutation.
+
+- **1.3 Drag-to-play + card spawning.**
+    - `main/match/card.go` + `main/match/card.script` — game-object prefab with `card.script` and **no visual components**. Properties: `card_uid`, `lane_idx`, `slot_idx`, all set by `factory.create`. The script is a stub for Phase 2 ability triggers.
+    - `main/match/card_factory.go` — factory component (`#factory`, prototype `/main/match/card.go`) plus `card_factory.script`.
+    - `main/match/card_factory.script` — handles `CARD_SPAWN`: maps `(lane_idx, slot_idx)` to a design-space position (lane x mirrors HUD: 195/585/975; slot stacking starts at y=1200, +80 per slot) and calls `factory.create`.
+    - `match.script.on_message(MATCH_PLAY_CARD)` — calls `match_state.play_card(card_uid, lane_idx)`. On success: posts `CARD_SPAWN` to the factory, then re-pushes hand/energy/lane state to the HUD.
+    - `hud.gui_script.on_input` — drag implementation. `action.pressed` over a hand slot starts a drag (only if affordable). Drag in progress moves the ghost node and highlights the hovered lane. `action.released` over a lane posts `MATCH_PLAY_CARD`; off-lane animates the ghost back to the source slot via `gui.animate`. Non-drag releases route through `handle_button_taps` (MENU/CONCEDE/END DRIVE, or the summary panel's RETURN TO MENU when visible).
+
+- **1.4 Drive resolution + persistence.**
+    - `match.script.on_message(MATCH_END_DRIVE)` — phase check prevents double-tap; sets phase `"resolving"`, calls `match_state.resolve_drive()`, posts `HUD_LANE_RESOLVED × LANE_COUNT`, then `timer.delay(1.0, false, ...)` posts `HUD_MATCH_ENDED`, sets phase `"ended"`, and posts `MATCH_DRIVE_COMPLETED` to the loader.
+    - `hud.gui_script` — `HUD_LANE_RESOLVED` animates the yard-fill's `size.x` via `gui.animate` (0.6s easing). `HUD_MATCH_ENDED` enables the summary overlay and writes the per-lane lines into `summary_text`.
+    - `loader.script` — drops the Phase 0 yards tracking, gains `MATCH_DRIVE_COMPLETED` (increments `total_drives_played` and saves). The menu-load handshake now pushes `DRIVES_PLAYED_CHANGED { drives_played }` instead of `total_taps`.
+    - `menu.gui` / `menu.gui_script` — renamed `total_taps` node to `drives_played`, renders "DRIVES PLAYED: N".
+
+### Key architectural choices to preserve in later phases
+
+- **Hand cards are GUI nodes, played cards are game objects.** They run in parallel — the GO has no visual in Phase 1; the HUD's "lane region" shows played-card *aggregate* state (count + net-yards pill), not per-card visuals. Asset integration will move per-card visuals onto the GO and tear out the HUD's per-card representation. Until then, every played card creates *both* a GO and (eventually) a HUD entry.
+- **Single match state machine, single source of truth.** `match.script` is the only thing that calls `match_state` mutators. GUI scripts read via push messages only — they never `require` `match_state` directly. Lane and card scripts are stubs whose job is to grow into ability/modifier hooks.
+- **Three match phases.** `"play"` (accepting input), `"resolving"` (animations running, no input accepted), `"ended"` (summary visible). Phase checks at the top of `MATCH_PLAY_CARD` and `MATCH_END_DRIVE` are how we prevent races.
+- **Lane x-coordinates are duplicated in two places intentionally.** `hud.gui_script` knows where lanes are for drop detection; `card_factory.script` knows where to spawn cards. They must stay in sync (currently `{195, 585, 975}` design x). If you move the lanes, update both.
+- **Net yards = `floor(off_sum / 2.5)`.** Phase 1's `theirLaneDEF = 0`, so `floor((off - 0) / 2.5)` collapses to division. The full formula has the same shape, so the function signature doesn't change when Phase 2 adds AI defense.
+- **Empty hand slots use a sentinel `{ empty = true }`, not `nil`.** Lua arrays with embedded nils break `ipairs` and confuse msg.post serialization. The hand stays positional (slot 1..5) for the entire match.
+
+### Intentionally stubbed in Phase 1
+
+- **AI plays nothing.** `theirLaneDEF` doesn't even exist as a field — lane records carry only `you_*` state. The CPU score in the top bar is hardcoded "0 CPU".
+- **No scoring.** Ball positions can pass 100 yards (clamped, but no touchdown / PAT / safety / pick-six logic fires).
+- **No modifiers, synergies, perks.** `lane.script` and `card.script` are stubs with TODO comments noting where Phase 2 hooks land.
+- **No deck cycle.** Hand is hardcoded 5 cards drawn once at `new_match`; nothing redraws. `cards.lua` exposes the pool but has no deck construction.
+- **No real assets.** Everything is colored box nodes + the built-in default font. Played card game-objects are intentionally invisible — their HUD-level representation is the lane's CARDS counter and net-yards pill.
+- **No reduced-motion flag.** Two animations exist now (`HUD_LANE_RESOLVED` yard-fill tween and the ghost snap-back). When we add `meta_state.reduced_motion`, both should short-circuit to instant.
+
+### Phase 2 follow-ups
+
+- AI plays cards. Mirror the player flow: AI side of each lane gets a `their_cards` array, `their_def_sum`, and the net-yards formula changes to `floor((off - def) / 2.5)`. Decision logic lives in `main/ai/cpu.lua` (greedy heuristic per CLAUDE.md).
+- Multi-drive loop. A match becomes ~8 drives; `match.script` advances `drive` and resets per-drive state without resetting `you_pos` or scores.
+- Deck / draw / discard cycle. Hand size becomes dynamic; `cards.lua` grows a deck-construction API.
+- Scoring system. Touchdowns at 100 yards, PATs, safeties, pick-sixes. Adds `you_score` / `cpu_score` to `match_state` and a real `HUD_MATCH_ENDED` summary.
+- Reduced motion flag. `meta_state.lua` gets the boolean, all animation paths gate on it.
+- Asset integration. Pack `src/assets/` into Defold atlases under `assets/`, swap colored boxes for sprites, move per-card visuals onto the GO and remove the parallel HUD representation.
+
+### Conventions established in Phase 1
+
+- **Game objects are at the same design-space x as their HUD nodes** (lanes at 195/585/975). When asset integration moves card visuals to the GO, the visual will line up with where the lane appears on screen without re-doing layout math.
+- **`factory.create` properties carry `card_uid` as a hash, not a string.** The string uid lives in `match_state.hand`; the GO's `self.card_uid` is `hash(uid_string)` because `factory.create` properties must be primitives that match the script's declared property types.
+- **Match → HUD is push, HUD → Match is post.** The HUD never reads `match_state` directly; `match.script` pushes via `HUD_*` messages whenever state changes. The HUD posts intent (`MATCH_PLAY_CARD`, `MATCH_END_DRIVE`, `MATCH_RETURN_TO_MENU`) and waits to be told what to render.

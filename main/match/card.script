@@ -1,20 +1,17 @@
--- Card prefab script. For the vertical slice the card has no visual — the
--- player-facing "card" is the HUD's TEST CARD button. This script just owns
--- the played flag and notifies the lane (the sender of card.play) when the
--- card resolves.
+-- Per-played-card game-object script. Phase 1: this script's only job is to
+-- exist so the architectural pattern (cards-as-game-objects) is in place.
+-- Properties are set by factory.create when the card is played; in Phase 2+
+-- this is where SNAP/on-reveal ability triggers will hang.
 
-local msgs = require "main.state.messages"
+go.property("card_uid", hash(""))
+go.property("lane_idx", 0)
+go.property("slot_idx", 0)
 
 function init(self)
-    self.played = false
+    -- No-op. Visuals live in the HUD GUI in Phase 1; this GO is invisible
+    -- until asset integration replaces the HUD card visual with a real
+    -- sprite hung off this object.
 end
 
-function on_message(self, message_id, message, sender)
-    if message_id == msgs.CARD_PLAY then
-        -- Snap to lane center. No-op visually in 0.4; placeholder for real
-        -- card movement in a later phase.
-        go.set_position(vmath.vector3(585, 1266, 0))
-        self.played = true
-        msg.post(sender, msgs.LANE_CARD_PLAYED)
-    end
-end
+-- TODO Phase 2: on_message handler for ability triggers (SNAP, on-reveal,
+-- on-played, on-resolve). The lane will post per-card events here.

@@ -1,6 +1,6 @@
 -- Top-level screen router. Owns the menu/match collection proxies and the
--- save_data table. Holds match yards-gained so it can credit total_taps on
--- match end. No gameplay logic lives here.
+-- save_data table. Listens for MATCH_DRIVE_COMPLETED to credit and persist
+-- the cross-launch drive counter. No gameplay logic lives here.
 
 local msgs = require "main.state.messages"
 local save = require "main.state.save"
@@ -14,7 +14,6 @@ local function load_screen(self, screen)
     if screen == SCREEN_MENU then
         msg.post("#proxy_menu", msgs.LOAD)
     elseif screen == SCREEN_MATCH then
-        self.match_yards = 0
         msg.post("#proxy_match", msgs.LOAD)
     end
 end
@@ -26,14 +25,10 @@ local function unload_current(self, next_screen)
         msg.post("#proxy_menu", msgs.FINAL)
         msg.post("#proxy_menu", msgs.UNLOAD)
     elseif self.current_screen == SCREEN_MATCH then
-        -- Credit yards earned this match before tearing down.
-        self.save_data.total_taps = (self.save_data.total_taps or 0) + (self.match_yards or 0)
-        save.save(self.save_data)
         msg.post("#proxy_match", msgs.DISABLE)
         msg.post("#proxy_match", msgs.FINAL)
         msg.post("#proxy_match", msgs.UNLOAD)
     else
-        -- No current screen; transition immediately.
         load_screen(self, next_screen)
     end
 end
@@ -42,21 +37,19 @@ function init(self)
     msg.post(".", "acquire_input_focus")
     self.save_data = save.load()
     self.current_screen = SCREEN_NONE
-    self.match_yards = 0
     print("[loader] save path: " .. save.get_save_path())
     load_screen(self, SCREEN_MENU)
 end
 
 function on_message(self, message_id, message, sender)
     if message_id == msgs.PROXY_LOADED then
-        -- Initialize and enable whichever proxy just finished loading.
         msg.post(sender, msgs.INIT)
         msg.post(sender, msgs.ENABLE)
         if self.pending_screen == SCREEN_MENU then
             self.current_screen = SCREEN_MENU
             self.pending_screen = nil
-            -- Push the latest total_taps to the menu so it can render the counter.
-            msg.post("menu:/gui#gui", msgs.TOTAL_TAPS_CHANGED, { total_taps = self.save_data.total_taps })
+            msg.post("menu:/gui#gui", msgs.DRIVES_PLAYED_CHANGED,
+                { drives_played = self.save_data.total_drives_played or 0 })
         elseif self.pending_screen == SCREEN_MATCH then
             self.current_screen = SCREEN_MATCH
             self.pending_screen = nil
@@ -76,7 +69,8 @@ function on_message(self, message_id, message, sender)
         if self.current_screen ~= SCREEN_MENU then
             unload_current(self, SCREEN_MENU)
         end
-    elseif message_id == msgs.YARDS_GAINED then
-        self.match_yards = (self.match_yards or 0) + (message.amount or 0)
+    elseif message_id == msgs.MATCH_DRIVE_COMPLETED then
+        self.save_data.total_drives_played = (self.save_data.total_drives_played or 0) + 1
+        save.save(self.save_data)
     end
 end

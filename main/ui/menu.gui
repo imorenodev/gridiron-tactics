@@ -82,9 +82,9 @@ nodes {
     z: 0.85
   }
   type: TYPE_TEXT
-  text: "TOTAL TAPS: 0"
+  text: "DRIVES PLAYED: 0"
   font: "default"
-  id: "total_taps"
+  id: "drives_played"
   inherit_alpha: true
 }
 nodes {

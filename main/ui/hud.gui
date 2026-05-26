@@ -3,88 +3,74 @@ fonts {
   name: "default"
   font: "/builtins/fonts/default.font"
 }
+background_color {
+  x: 0.0
+  y: 0.0
+  z: 0.0
+  w: 0.0
+}
 nodes {
-  position {
-    x: 585.0
-    y: 1266.0
-  }
-  size {
-    x: 1170.0
-    y: 2532.0
-  }
-  color {
-    x: 0.227
-    y: 0.502
-    z: 0.227
-  }
+  position { x: 585.0 y: 1266.0 z: 0.0 }
+  size { x: 1170.0 y: 2532.0 z: 0.0 }
+  color { x: 0.227 y: 0.502 z: 0.227 w: 1.0 }
   type: TYPE_BOX
-  id: "field"
-}
-nodes {
-  position {
-    x: 585.0
-    y: 2400.0
-  }
-  scale {
-    x: 2.5
-    y: 2.5
-  }
-  size {
-    x: 600.0
-    y: 100.0
-  }
-  type: TYPE_TEXT
-  text: "YOU 0 - 0 CPU"
-  font: "default"
-  id: "scoreboard"
+  id: "field_bg"
+  adjust_mode: ADJUST_MODE_FIT
   inherit_alpha: true
 }
 nodes {
-  position {
-    x: 585.0
-    y: 1500.0
-  }
-  scale {
-    x: 3.0
-    y: 3.0
-  }
-  size {
-    x: 600.0
-    y: 100.0
-  }
-  type: TYPE_TEXT
-  text: "YARDS: 0"
-  font: "default"
-  id: "yards_text"
+  position { x: 585.0 y: 2332.0 z: 0.0 }
+  size { x: 1170.0 y: 200.0 z: 0.0 }
+  color { x: 0.05 y: 0.1 z: 0.07 w: 1.0 }
+  type: TYPE_BOX
+  id: "top_bar"
   inherit_alpha: true
 }
 nodes {
-  position {
-    x: 990.0
-    y: 2400.0
-  }
-  size {
-    x: 280.0
-    y: 100.0
-  }
-  color {
-    x: 0.15
-    y: 0.15
-    z: 0.15
-  }
+  position { x: 165.0 y: 2332.0 z: 0.0 }
+  scale { x: 2.2 y: 2.2 z: 1.0 }
+  size { x: 240.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "YOU 0"
+  font: "default"
+  id: "you_score_text"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 585.0 y: 2332.0 z: 0.0 }
+  scale { x: 1.8 y: 1.8 z: 1.0 }
+  size { x: 240.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "DRIVE 1"
+  font: "default"
+  id: "drive_text"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 850.0 y: 2332.0 z: 0.0 }
+  scale { x: 2.2 y: 2.2 z: 1.0 }
+  size { x: 240.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "0 CPU"
+  font: "default"
+  id: "cpu_score_text"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 1060.0 y: 2410.0 z: 0.0 }
+  size { x: 200.0 y: 90.0 z: 0.0 }
+  color { x: 0.15 y: 0.15 z: 0.15 w: 1.0 }
   type: TYPE_BOX
   id: "menu_button"
   inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 1.8
-    y: 1.8
-  }
-  size {
-    x: 200.0
-    y: 80.0
-  }
+  scale { x: 1.4 y: 1.4 z: 1.0 }
+  size { x: 200.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
   type: TYPE_TEXT
   text: "MENU"
   font: "default"
@@ -93,48 +79,687 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position {
-    x: 585.0
-    y: 400.0
-  }
-  size {
-    x: 700.0
-    y: 280.0
-  }
-  color {
-    x: 0.85
-    y: 0.75
-    z: 0.35
-  }
+  position { x: 195.0 y: 1500.0 z: 0.0 }
+  size { x: 370.0 y: 1400.0 z: 0.0 }
+  color { x: 0.13 y: 0.32 z: 0.13 w: 1.0 }
   type: TYPE_BOX
-  id: "test_card"
+  id: "lane_0_root"
   inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 3.0
-    y: 3.0
-  }
-  size {
-    x: 500.0
-    y: 100.0
-  }
-  color {
-    x: 0.1
-    y: 0.1
-    z: 0.1
-  }
+  position { x: 0.0 y: 650.0 z: 0.0 }
+  scale { x: 1.5 y: 1.5 z: 1.0 }
+  size { x: 200.0 y: 60.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
   type: TYPE_TEXT
-  text: "TEST CARD"
+  text: "LANE 1"
   font: "default"
-  id: "test_card_text"
-  outline {
-    x: 1.0
-    y: 1.0
-    z: 1.0
-  }
-  parent: "test_card"
+  id: "lane_0_label"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 570.0 z: 0.0 }
+  size { x: 340.0 y: 30.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_yard_bg"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -170.0 y: 0.0 z: 0.0 }
+  size { x: 85.0 y: 30.0 z: 0.0 }
+  color { x: 0.35 y: 0.85 z: 0.35 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_yard_fill"
+  parent: "lane_0_yard_bg"
+  pivot: PIVOT_W
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 510.0 z: 0.0 }
+  scale { x: 1.4 y: 1.4 z: 1.0 }
+  size { x: 240.0 y: 60.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "25"
+  font: "default"
+  id: "lane_0_pos_text"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 200.0 z: 0.0 }
+  size { x: 200.0 y: 110.0 z: 0.0 }
+  color { x: 0.85 y: 0.68 z: 0.2 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_0_pill"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 2.0 y: 2.0 z: 1.0 }
+  size { x: 180.0 y: 80.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "+0"
+  font: "default"
+  id: "lane_0_pill_text"
+  parent: "lane_0_pill"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -550.0 z: 0.0 }
+  scale { x: 1.1 y: 1.1 z: 1.0 }
+  size { x: 240.0 y: 60.0 z: 0.0 }
+  color { x: 0.9 y: 0.9 z: 0.9 w: 1.0 }
+  type: TYPE_TEXT
+  text: "CARDS: 0/8"
+  font: "default"
+  id: "lane_0_cards_text"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 585.0 y: 1500.0 z: 0.0 }
+  size { x: 370.0 y: 1400.0 z: 0.0 }
+  color { x: 0.13 y: 0.32 z: 0.13 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 650.0 z: 0.0 }
+  scale { x: 1.5 y: 1.5 z: 1.0 }
+  size { x: 200.0 y: 60.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "LANE 2"
+  font: "default"
+  id: "lane_1_label"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 570.0 z: 0.0 }
+  size { x: 340.0 y: 30.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_yard_bg"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -170.0 y: 0.0 z: 0.0 }
+  size { x: 85.0 y: 30.0 z: 0.0 }
+  color { x: 0.35 y: 0.85 z: 0.35 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_yard_fill"
+  parent: "lane_1_yard_bg"
+  pivot: PIVOT_W
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 510.0 z: 0.0 }
+  scale { x: 1.4 y: 1.4 z: 1.0 }
+  size { x: 240.0 y: 60.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "25"
+  font: "default"
+  id: "lane_1_pos_text"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 200.0 z: 0.0 }
+  size { x: 200.0 y: 110.0 z: 0.0 }
+  color { x: 0.85 y: 0.68 z: 0.2 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_1_pill"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 2.0 y: 2.0 z: 1.0 }
+  size { x: 180.0 y: 80.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "+0"
+  font: "default"
+  id: "lane_1_pill_text"
+  parent: "lane_1_pill"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -550.0 z: 0.0 }
+  scale { x: 1.1 y: 1.1 z: 1.0 }
+  size { x: 240.0 y: 60.0 z: 0.0 }
+  color { x: 0.9 y: 0.9 z: 0.9 w: 1.0 }
+  type: TYPE_TEXT
+  text: "CARDS: 0/8"
+  font: "default"
+  id: "lane_1_cards_text"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 975.0 y: 1500.0 z: 0.0 }
+  size { x: 370.0 y: 1400.0 z: 0.0 }
+  color { x: 0.13 y: 0.32 z: 0.13 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 650.0 z: 0.0 }
+  scale { x: 1.5 y: 1.5 z: 1.0 }
+  size { x: 200.0 y: 60.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "LANE 3"
+  font: "default"
+  id: "lane_2_label"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 570.0 z: 0.0 }
+  size { x: 340.0 y: 30.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.08 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_yard_bg"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -170.0 y: 0.0 z: 0.0 }
+  size { x: 85.0 y: 30.0 z: 0.0 }
+  color { x: 0.35 y: 0.85 z: 0.35 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_yard_fill"
+  parent: "lane_2_yard_bg"
+  pivot: PIVOT_W
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 510.0 z: 0.0 }
+  scale { x: 1.4 y: 1.4 z: 1.0 }
+  size { x: 240.0 y: 60.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "25"
+  font: "default"
+  id: "lane_2_pos_text"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 200.0 z: 0.0 }
+  size { x: 200.0 y: 110.0 z: 0.0 }
+  color { x: 0.85 y: 0.68 z: 0.2 w: 1.0 }
+  type: TYPE_BOX
+  id: "lane_2_pill"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 2.0 y: 2.0 z: 1.0 }
+  size { x: 180.0 y: 80.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "+0"
+  font: "default"
+  id: "lane_2_pill_text"
+  parent: "lane_2_pill"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -550.0 z: 0.0 }
+  scale { x: 1.1 y: 1.1 z: 1.0 }
+  size { x: 240.0 y: 60.0 z: 0.0 }
+  color { x: 0.9 y: 0.9 z: 0.9 w: 1.0 }
+  type: TYPE_TEXT
+  text: "CARDS: 0/8"
+  font: "default"
+  id: "lane_2_cards_text"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 585.0 y: 550.0 z: 0.0 }
+  size { x: 1170.0 y: 320.0 z: 0.0 }
+  color { x: 0.05 y: 0.08 z: 0.05 w: 1.0 }
+  type: TYPE_BOX
+  id: "hand_bg"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 165.0 y: 550.0 z: 0.0 }
+  size { x: 180.0 y: 280.0 z: 0.0 }
+  color { x: 0.78 y: 0.7 z: 0.4 w: 1.0 }
+  type: TYPE_BOX
+  id: "hand_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -65.0 y: 110.0 z: 0.0 }
+  scale { x: 1.3 y: 1.3 z: 1.0 }
+  size { x: 50.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "3"
+  font: "default"
+  id: "hand_1_cost"
+  parent: "hand_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 60.0 y: 110.0 z: 0.0 }
+  size { x: 100.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "QB"
+  font: "default"
+  id: "hand_1_pos"
+  parent: "hand_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 160.0 y: 80.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "..."
+  font: "default"
+  id: "hand_1_name"
+  parent: "hand_1_root"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -100.0 z: 0.0 }
+  scale { x: 1.5 y: 1.5 z: 1.0 }
+  size { x: 160.0 y: 60.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: "OFF 0"
+  font: "default"
+  id: "hand_1_stat"
+  parent: "hand_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 360.0 y: 550.0 z: 0.0 }
+  size { x: 180.0 y: 280.0 z: 0.0 }
+  color { x: 0.78 y: 0.7 z: 0.4 w: 1.0 }
+  type: TYPE_BOX
+  id: "hand_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -65.0 y: 110.0 z: 0.0 }
+  scale { x: 1.3 y: 1.3 z: 1.0 }
+  size { x: 50.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "3"
+  font: "default"
+  id: "hand_2_cost"
+  parent: "hand_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 60.0 y: 110.0 z: 0.0 }
+  size { x: 100.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "QB"
+  font: "default"
+  id: "hand_2_pos"
+  parent: "hand_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 160.0 y: 80.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "..."
+  font: "default"
+  id: "hand_2_name"
+  parent: "hand_2_root"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -100.0 z: 0.0 }
+  scale { x: 1.5 y: 1.5 z: 1.0 }
+  size { x: 160.0 y: 60.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: "OFF 0"
+  font: "default"
+  id: "hand_2_stat"
+  parent: "hand_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 555.0 y: 550.0 z: 0.0 }
+  size { x: 180.0 y: 280.0 z: 0.0 }
+  color { x: 0.78 y: 0.7 z: 0.4 w: 1.0 }
+  type: TYPE_BOX
+  id: "hand_3_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -65.0 y: 110.0 z: 0.0 }
+  scale { x: 1.3 y: 1.3 z: 1.0 }
+  size { x: 50.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "3"
+  font: "default"
+  id: "hand_3_cost"
+  parent: "hand_3_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 60.0 y: 110.0 z: 0.0 }
+  size { x: 100.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "QB"
+  font: "default"
+  id: "hand_3_pos"
+  parent: "hand_3_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 160.0 y: 80.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "..."
+  font: "default"
+  id: "hand_3_name"
+  parent: "hand_3_root"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -100.0 z: 0.0 }
+  scale { x: 1.5 y: 1.5 z: 1.0 }
+  size { x: 160.0 y: 60.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: "OFF 0"
+  font: "default"
+  id: "hand_3_stat"
+  parent: "hand_3_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 750.0 y: 550.0 z: 0.0 }
+  size { x: 180.0 y: 280.0 z: 0.0 }
+  color { x: 0.78 y: 0.7 z: 0.4 w: 1.0 }
+  type: TYPE_BOX
+  id: "hand_4_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -65.0 y: 110.0 z: 0.0 }
+  scale { x: 1.3 y: 1.3 z: 1.0 }
+  size { x: 50.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "3"
+  font: "default"
+  id: "hand_4_cost"
+  parent: "hand_4_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 60.0 y: 110.0 z: 0.0 }
+  size { x: 100.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "QB"
+  font: "default"
+  id: "hand_4_pos"
+  parent: "hand_4_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 160.0 y: 80.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "..."
+  font: "default"
+  id: "hand_4_name"
+  parent: "hand_4_root"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -100.0 z: 0.0 }
+  scale { x: 1.5 y: 1.5 z: 1.0 }
+  size { x: 160.0 y: 60.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: "OFF 0"
+  font: "default"
+  id: "hand_4_stat"
+  parent: "hand_4_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 945.0 y: 550.0 z: 0.0 }
+  size { x: 180.0 y: 280.0 z: 0.0 }
+  color { x: 0.78 y: 0.7 z: 0.4 w: 1.0 }
+  type: TYPE_BOX
+  id: "hand_5_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: -65.0 y: 110.0 z: 0.0 }
+  scale { x: 1.3 y: 1.3 z: 1.0 }
+  size { x: 50.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "3"
+  font: "default"
+  id: "hand_5_cost"
+  parent: "hand_5_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 60.0 y: 110.0 z: 0.0 }
+  size { x: 100.0 y: 50.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "QB"
+  font: "default"
+  id: "hand_5_pos"
+  parent: "hand_5_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 160.0 y: 80.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "..."
+  font: "default"
+  id: "hand_5_name"
+  parent: "hand_5_root"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -100.0 z: 0.0 }
+  scale { x: 1.5 y: 1.5 z: 1.0 }
+  size { x: 160.0 y: 60.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: "OFF 0"
+  font: "default"
+  id: "hand_5_stat"
+  parent: "hand_5_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 585.0 y: 290.0 z: 0.0 }
+  size { x: 1170.0 y: 180.0 z: 0.0 }
+  color { x: 0.05 y: 0.08 z: 0.05 w: 1.0 }
+  type: TYPE_BOX
+  id: "action_bar"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 180.0 y: 290.0 z: 0.0 }
+  size { x: 240.0 y: 120.0 z: 0.0 }
+  color { x: 0.55 y: 0.15 z: 0.15 w: 1.0 }
+  type: TYPE_BOX
+  id: "concede_button"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 1.4 y: 1.4 z: 1.0 }
+  size { x: 220.0 y: 60.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "CONCEDE"
+  font: "default"
+  id: "concede_text"
+  parent: "concede_button"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 585.0 y: 290.0 z: 0.0 }
+  size { x: 140.0 y: 140.0 z: 0.0 }
+  color { x: 1.0 y: 0.78 z: 0.15 w: 1.0 }
+  type: TYPE_BOX
+  id: "energy_orb"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 2.0 y: 2.0 z: 1.0 }
+  size { x: 120.0 y: 80.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "12"
+  font: "default"
+  id: "energy_text"
+  parent: "energy_orb"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 990.0 y: 290.0 z: 0.0 }
+  size { x: 320.0 y: 140.0 z: 0.0 }
+  color { x: 0.8 y: 0.2 z: 0.2 w: 1.0 }
+  type: TYPE_BOX
+  id: "end_drive_button"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 1.6 y: 1.6 z: 1.0 }
+  size { x: 300.0 y: 60.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "END DRIVE"
+  font: "default"
+  id: "end_drive_text"
+  parent: "end_drive_button"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 585.0 y: 1266.0 z: 0.0 }
+  size { x: 1170.0 y: 2532.0 z: 0.0 }
+  color { x: 0.0 y: 0.0 z: 0.0 w: 0.7 }
+  type: TYPE_BOX
+  id: "summary_overlay"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 585.0 y: 1266.0 z: 0.0 }
+  size { x: 950.0 y: 800.0 z: 0.0 }
+  color { x: 0.12 y: 0.2 z: 0.14 w: 1.0 }
+  type: TYPE_BOX
+  id: "summary_panel"
+  parent: "summary_overlay"
+  inherit_alpha: false
+}
+nodes {
+  position { x: 0.0 y: 300.0 z: 0.0 }
+  scale { x: 2.4 y: 2.4 z: 1.0 }
+  size { x: 800.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "DRIVE COMPLETE"
+  font: "default"
+  id: "summary_title"
+  parent: "summary_panel"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 50.0 z: 0.0 }
+  scale { x: 1.5 y: 1.5 z: 1.0 }
+  size { x: 880.0 y: 280.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "LANE 1: +0\nLANE 2: +0\nLANE 3: +0"
+  font: "default"
+  id: "summary_text"
+  parent: "summary_panel"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -300.0 z: 0.0 }
+  size { x: 600.0 y: 140.0 z: 0.0 }
+  color { x: 0.8 y: 0.2 z: 0.2 w: 1.0 }
+  type: TYPE_BOX
+  id: "summary_button"
+  parent: "summary_panel"
+  inherit_alpha: true
+}
+nodes {
+  scale { x: 1.6 y: 1.6 z: 1.0 }
+  size { x: 580.0 y: 60.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: "RETURN TO MENU"
+  font: "default"
+  id: "summary_button_text"
+  parent: "summary_button"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 180.0 y: 280.0 z: 0.0 }
+  color { x: 0.95 y: 0.85 z: 0.45 w: 0.95 }
+  type: TYPE_BOX
+  id: "drag_ghost"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  scale { x: 1.2 y: 1.2 z: 1.0 }
+  size { x: 160.0 y: 240.0 z: 0.0 }
+  color { x: 0.1 y: 0.1 z: 0.1 w: 1.0 }
+  type: TYPE_TEXT
+  text: "..."
+  font: "default"
+  id: "drag_ghost_text"
+  parent: "drag_ghost"
+  line_break: true
   inherit_alpha: true
 }
 material: "/builtins/materials/gui.material"
 adjust_reference: ADJUST_REFERENCE_PARENT
+max_nodes: 512

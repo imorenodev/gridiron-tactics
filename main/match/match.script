@@ -1,0 +1,80 @@
+-- Match state machine. Owns the phase transitions ("play" -> "resolving" ->
+-- "ended") and orchestrates the per-frame conversation between match_state,
+-- the HUD GUI, and the card factory. No mutation of match_state lives in
+-- the GUI; all of it flows through here.
+
+local msgs = require "main.state.messages"
+local match_state = require "main.state.match_state"
+
+local RESOLVE_DURATION = 1.0  -- seconds we hold "resolving" before showing summary
+
+local function push_lane_state(lane_idx)
+    local lane = match_state.get_lane(lane_idx)
+    if not lane then return end
+    msg.post("/hud#gui", msgs.HUD_LANE_UPDATED, {
+        lane_idx = lane_idx,
+        you_pos = lane.you_pos,
+        you_net_yards = lane.you_net_yards,
+        you_off_sum = lane.you_off_sum,
+        you_cards_count = #lane.you_cards,
+    })
+end
+
+local function push_full_state()
+    msg.post("/hud#gui", msgs.HUD_HAND_CHANGED, { hand = match_state.get_hand() })
+    msg.post("/hud#gui", msgs.HUD_ENERGY_CHANGED, { energy = match_state.get_energy() })
+    for i = 0, match_state.get_lane_count() - 1 do
+        push_lane_state(i)
+    end
+end
+
+function init(self)
+    match_state.new_match()
+    push_full_state()
+end
+
+function on_message(self, message_id, message, sender)
+    if message_id == msgs.MATCH_PLAY_CARD then
+        if match_state.get_phase() ~= "play" then return end
+
+        local result = match_state.play_card(message.card_uid, message.lane_idx)
+        if not result.success then
+            -- Phase 1: silently drop invalid plays. The HUD's affordability
+            -- check should keep us from getting here in practice.
+            return
+        end
+
+        msg.post("/card_factory#script", msgs.CARD_SPAWN, {
+            card_uid = result.card.uid,
+            lane_idx = message.lane_idx,
+            slot_idx = result.slot_idx,
+        })
+
+        msg.post("/hud#gui", msgs.HUD_HAND_CHANGED, { hand = match_state.get_hand() })
+        msg.post("/hud#gui", msgs.HUD_ENERGY_CHANGED, { energy = result.new_energy })
+        push_lane_state(message.lane_idx)
+
+    elseif message_id == msgs.MATCH_END_DRIVE then
+        if match_state.get_phase() ~= "play" then return end
+        match_state.set_phase("resolving")
+
+        local summary = match_state.resolve_drive()
+        for _, lane in ipairs(summary.lanes) do
+            msg.post("/hud#gui", msgs.HUD_LANE_RESOLVED, {
+                lane_idx = lane.idx,
+                new_pos = lane.new_pos,
+                yards_gained = lane.yards_gained,
+            })
+        end
+
+        timer.delay(RESOLVE_DURATION, false, function(_self)
+            msg.post("/hud#gui", msgs.HUD_MATCH_ENDED, { summary = summary })
+            match_state.set_phase("ended")
+            msg.post("main:/loader#script", msgs.MATCH_DRIVE_COMPLETED)
+        end)
+
+    elseif message_id == msgs.MATCH_RETURN_TO_MENU then
+        match_state.reset()
+        msg.post("main:/loader#script", msgs.SHOW_MENU)
+    end
+end

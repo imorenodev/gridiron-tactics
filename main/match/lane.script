@@ -1,22 +1,13 @@
--- Lane state. Owns the lane's yards counter and orchestrates plays on its
--- card. Spawns a single card on init via the sibling card_factory; for the
--- slice the card lives in the lane for the entire match.
+-- Per-lane game-object script. Holds the lane's idx and exists as an
+-- architectural anchor; resolution itself goes through match.script ->
+-- match_state.resolve_drive(), not through individual lane scripts.
+--
+-- TODO Phase 2: modifier reveals and synergy checks hang off this script
+-- (LANE_RESOLVE message). Today it's intentionally a stub.
 
-local msgs = require "main.state.messages"
-
-local YARDS_PER_CARD = 10
+go.property("idx", 0)
 
 function init(self)
-    self.yards = 0
-    self.card_url = factory.create("/card_factory#factory")
-end
-
-function on_message(self, message_id, message, sender)
-    if message_id == msgs.MATCH_PLAY_TEST_CARD then
-        msg.post(self.card_url, msgs.CARD_PLAY)
-    elseif message_id == msgs.LANE_CARD_PLAYED then
-        self.yards = self.yards + YARDS_PER_CARD
-        msg.post("/hud#gui", msgs.HUD_YARDS_CHANGED, { yards = self.yards })
-        msg.post("main:/loader#script", msgs.YARDS_GAINED, { amount = YARDS_PER_CARD })
-    end
+    -- Nothing to set up. The lane's logical state lives in match_state.lua
+    -- and the lane's visual state lives in hud.gui.
 end
