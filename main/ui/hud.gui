@@ -475,342 +475,912 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 620.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: 600.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_ai_slot_0"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_ai_slot_0_frame"
+  parent: "lane_0_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_ai_slot_0_portrait"
+  parent: "lane_0_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_ai_slot_0_pos_icon"
+  parent: "lane_0_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_ai_slot_0_ability_star"
+  parent: "lane_0_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_ai_slot_0_text"
+  id: "lane_0_ai_slot_0_cost"
   parent: "lane_0_ai_slot_0"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 550.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_0_name"
+  parent: "lane_0_ai_slot_0"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_0_stat"
+  parent: "lane_0_ai_slot_0"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 380.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_ai_slot_1"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_ai_slot_1_frame"
+  parent: "lane_0_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_ai_slot_1_portrait"
+  parent: "lane_0_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_ai_slot_1_pos_icon"
+  parent: "lane_0_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_ai_slot_1_ability_star"
+  parent: "lane_0_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_ai_slot_1_text"
+  id: "lane_0_ai_slot_1_cost"
   parent: "lane_0_ai_slot_1"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 480.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_1_name"
+  parent: "lane_0_ai_slot_1"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_1_stat"
+  parent: "lane_0_ai_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 160.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_ai_slot_2"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_ai_slot_2_frame"
+  parent: "lane_0_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_ai_slot_2_portrait"
+  parent: "lane_0_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_ai_slot_2_pos_icon"
+  parent: "lane_0_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_ai_slot_2_ability_star"
+  parent: "lane_0_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_ai_slot_2_text"
+  id: "lane_0_ai_slot_2_cost"
   parent: "lane_0_ai_slot_2"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 410.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_2_name"
+  parent: "lane_0_ai_slot_2"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_2_stat"
+  parent: "lane_0_ai_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -60.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_ai_slot_3"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_ai_slot_3_frame"
+  parent: "lane_0_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_ai_slot_3_portrait"
+  parent: "lane_0_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_ai_slot_3_pos_icon"
+  parent: "lane_0_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_ai_slot_3_ability_star"
+  parent: "lane_0_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_ai_slot_3_text"
+  id: "lane_0_ai_slot_3_cost"
   parent: "lane_0_ai_slot_3"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 340.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_3_name"
+  parent: "lane_0_ai_slot_3"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_3_stat"
+  parent: "lane_0_ai_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -280.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_ai_slot_4"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_ai_slot_4_frame"
+  parent: "lane_0_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_ai_slot_4_portrait"
+  parent: "lane_0_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_ai_slot_4_pos_icon"
+  parent: "lane_0_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_ai_slot_4_ability_star"
+  parent: "lane_0_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_ai_slot_4_text"
+  id: "lane_0_ai_slot_4_cost"
   parent: "lane_0_ai_slot_4"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -620.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_4_name"
+  parent: "lane_0_ai_slot_4"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_ai_slot_4_stat"
+  parent: "lane_0_ai_slot_4"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -700.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_p_slot_0"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_p_slot_0_frame"
+  parent: "lane_0_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_p_slot_0_portrait"
+  parent: "lane_0_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_p_slot_0_pos_icon"
+  parent: "lane_0_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_p_slot_0_ability_star"
+  parent: "lane_0_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_p_slot_0_text"
+  id: "lane_0_p_slot_0_cost"
   parent: "lane_0_p_slot_0"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -550.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_0_name"
+  parent: "lane_0_p_slot_0"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_0_stat"
+  parent: "lane_0_p_slot_0"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -480.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_p_slot_1"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_p_slot_1_frame"
+  parent: "lane_0_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_p_slot_1_portrait"
+  parent: "lane_0_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_p_slot_1_pos_icon"
+  parent: "lane_0_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_p_slot_1_ability_star"
+  parent: "lane_0_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_p_slot_1_text"
+  id: "lane_0_p_slot_1_cost"
   parent: "lane_0_p_slot_1"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -480.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_1_name"
+  parent: "lane_0_p_slot_1"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_1_stat"
+  parent: "lane_0_p_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -260.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_p_slot_2"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_p_slot_2_frame"
+  parent: "lane_0_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_p_slot_2_portrait"
+  parent: "lane_0_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_p_slot_2_pos_icon"
+  parent: "lane_0_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_p_slot_2_ability_star"
+  parent: "lane_0_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_p_slot_2_text"
+  id: "lane_0_p_slot_2_cost"
   parent: "lane_0_p_slot_2"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -410.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_2_name"
+  parent: "lane_0_p_slot_2"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_2_stat"
+  parent: "lane_0_p_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -40.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_p_slot_3"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_p_slot_3_frame"
+  parent: "lane_0_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_p_slot_3_portrait"
+  parent: "lane_0_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_p_slot_3_pos_icon"
+  parent: "lane_0_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_p_slot_3_ability_star"
+  parent: "lane_0_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_p_slot_3_text"
+  id: "lane_0_p_slot_3_cost"
   parent: "lane_0_p_slot_3"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -340.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_3_name"
+  parent: "lane_0_p_slot_3"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_3_stat"
+  parent: "lane_0_p_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 180.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_0_p_slot_4"
   parent: "lane_0_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_0_p_slot_4_frame"
+  parent: "lane_0_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_0_p_slot_4_portrait"
+  parent: "lane_0_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_0_p_slot_4_pos_icon"
+  parent: "lane_0_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_0_p_slot_4_ability_star"
+  parent: "lane_0_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_0_p_slot_4_text"
+  id: "lane_0_p_slot_4_cost"
+  parent: "lane_0_p_slot_4"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_4_name"
+  parent: "lane_0_p_slot_4"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_0_p_slot_4_stat"
   parent: "lane_0_p_slot_4"
   inherit_alpha: true
 }
@@ -1095,342 +1665,912 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 620.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: 600.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_ai_slot_0"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_ai_slot_0_frame"
+  parent: "lane_1_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_ai_slot_0_portrait"
+  parent: "lane_1_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_ai_slot_0_pos_icon"
+  parent: "lane_1_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_ai_slot_0_ability_star"
+  parent: "lane_1_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_ai_slot_0_text"
+  id: "lane_1_ai_slot_0_cost"
   parent: "lane_1_ai_slot_0"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 550.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_0_name"
+  parent: "lane_1_ai_slot_0"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_0_stat"
+  parent: "lane_1_ai_slot_0"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 380.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_ai_slot_1"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_ai_slot_1_frame"
+  parent: "lane_1_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_ai_slot_1_portrait"
+  parent: "lane_1_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_ai_slot_1_pos_icon"
+  parent: "lane_1_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_ai_slot_1_ability_star"
+  parent: "lane_1_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_ai_slot_1_text"
+  id: "lane_1_ai_slot_1_cost"
   parent: "lane_1_ai_slot_1"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 480.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_1_name"
+  parent: "lane_1_ai_slot_1"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_1_stat"
+  parent: "lane_1_ai_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 160.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_ai_slot_2"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_ai_slot_2_frame"
+  parent: "lane_1_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_ai_slot_2_portrait"
+  parent: "lane_1_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_ai_slot_2_pos_icon"
+  parent: "lane_1_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_ai_slot_2_ability_star"
+  parent: "lane_1_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_ai_slot_2_text"
+  id: "lane_1_ai_slot_2_cost"
   parent: "lane_1_ai_slot_2"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 410.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_2_name"
+  parent: "lane_1_ai_slot_2"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_2_stat"
+  parent: "lane_1_ai_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -60.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_ai_slot_3"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_ai_slot_3_frame"
+  parent: "lane_1_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_ai_slot_3_portrait"
+  parent: "lane_1_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_ai_slot_3_pos_icon"
+  parent: "lane_1_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_ai_slot_3_ability_star"
+  parent: "lane_1_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_ai_slot_3_text"
+  id: "lane_1_ai_slot_3_cost"
   parent: "lane_1_ai_slot_3"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 340.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_3_name"
+  parent: "lane_1_ai_slot_3"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_3_stat"
+  parent: "lane_1_ai_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -280.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_ai_slot_4"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_ai_slot_4_frame"
+  parent: "lane_1_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_ai_slot_4_portrait"
+  parent: "lane_1_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_ai_slot_4_pos_icon"
+  parent: "lane_1_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_ai_slot_4_ability_star"
+  parent: "lane_1_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_ai_slot_4_text"
+  id: "lane_1_ai_slot_4_cost"
   parent: "lane_1_ai_slot_4"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -620.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_4_name"
+  parent: "lane_1_ai_slot_4"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_ai_slot_4_stat"
+  parent: "lane_1_ai_slot_4"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -700.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_p_slot_0"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_p_slot_0_frame"
+  parent: "lane_1_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_p_slot_0_portrait"
+  parent: "lane_1_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_p_slot_0_pos_icon"
+  parent: "lane_1_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_p_slot_0_ability_star"
+  parent: "lane_1_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_p_slot_0_text"
+  id: "lane_1_p_slot_0_cost"
   parent: "lane_1_p_slot_0"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -550.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_0_name"
+  parent: "lane_1_p_slot_0"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_0_stat"
+  parent: "lane_1_p_slot_0"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -480.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_p_slot_1"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_p_slot_1_frame"
+  parent: "lane_1_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_p_slot_1_portrait"
+  parent: "lane_1_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_p_slot_1_pos_icon"
+  parent: "lane_1_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_p_slot_1_ability_star"
+  parent: "lane_1_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_p_slot_1_text"
+  id: "lane_1_p_slot_1_cost"
   parent: "lane_1_p_slot_1"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -480.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_1_name"
+  parent: "lane_1_p_slot_1"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_1_stat"
+  parent: "lane_1_p_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -260.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_p_slot_2"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_p_slot_2_frame"
+  parent: "lane_1_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_p_slot_2_portrait"
+  parent: "lane_1_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_p_slot_2_pos_icon"
+  parent: "lane_1_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_p_slot_2_ability_star"
+  parent: "lane_1_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_p_slot_2_text"
+  id: "lane_1_p_slot_2_cost"
   parent: "lane_1_p_slot_2"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -410.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_2_name"
+  parent: "lane_1_p_slot_2"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_2_stat"
+  parent: "lane_1_p_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -40.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_p_slot_3"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_p_slot_3_frame"
+  parent: "lane_1_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_p_slot_3_portrait"
+  parent: "lane_1_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_p_slot_3_pos_icon"
+  parent: "lane_1_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_p_slot_3_ability_star"
+  parent: "lane_1_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_p_slot_3_text"
+  id: "lane_1_p_slot_3_cost"
   parent: "lane_1_p_slot_3"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -340.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_3_name"
+  parent: "lane_1_p_slot_3"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_3_stat"
+  parent: "lane_1_p_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 180.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_1_p_slot_4"
   parent: "lane_1_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_1_p_slot_4_frame"
+  parent: "lane_1_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_1_p_slot_4_portrait"
+  parent: "lane_1_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_1_p_slot_4_pos_icon"
+  parent: "lane_1_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_1_p_slot_4_ability_star"
+  parent: "lane_1_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_1_p_slot_4_text"
+  id: "lane_1_p_slot_4_cost"
+  parent: "lane_1_p_slot_4"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_4_name"
+  parent: "lane_1_p_slot_4"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_1_p_slot_4_stat"
   parent: "lane_1_p_slot_4"
   inherit_alpha: true
 }
@@ -1715,342 +2855,912 @@ nodes {
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 620.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: 600.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_ai_slot_0"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_ai_slot_0_frame"
+  parent: "lane_2_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_ai_slot_0_portrait"
+  parent: "lane_2_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_ai_slot_0_pos_icon"
+  parent: "lane_2_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_ai_slot_0_ability_star"
+  parent: "lane_2_ai_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_ai_slot_0_text"
+  id: "lane_2_ai_slot_0_cost"
   parent: "lane_2_ai_slot_0"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 550.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_0_name"
+  parent: "lane_2_ai_slot_0"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_0_stat"
+  parent: "lane_2_ai_slot_0"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 380.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_ai_slot_1"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_ai_slot_1_frame"
+  parent: "lane_2_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_ai_slot_1_portrait"
+  parent: "lane_2_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_ai_slot_1_pos_icon"
+  parent: "lane_2_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_ai_slot_1_ability_star"
+  parent: "lane_2_ai_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_ai_slot_1_text"
+  id: "lane_2_ai_slot_1_cost"
   parent: "lane_2_ai_slot_1"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 480.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_1_name"
+  parent: "lane_2_ai_slot_1"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_1_stat"
+  parent: "lane_2_ai_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 160.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_ai_slot_2"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_ai_slot_2_frame"
+  parent: "lane_2_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_ai_slot_2_portrait"
+  parent: "lane_2_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_ai_slot_2_pos_icon"
+  parent: "lane_2_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_ai_slot_2_ability_star"
+  parent: "lane_2_ai_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_ai_slot_2_text"
+  id: "lane_2_ai_slot_2_cost"
   parent: "lane_2_ai_slot_2"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 410.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_2_name"
+  parent: "lane_2_ai_slot_2"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_2_stat"
+  parent: "lane_2_ai_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -60.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_ai_slot_3"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_ai_slot_3_frame"
+  parent: "lane_2_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_ai_slot_3_portrait"
+  parent: "lane_2_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_ai_slot_3_pos_icon"
+  parent: "lane_2_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_ai_slot_3_ability_star"
+  parent: "lane_2_ai_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_ai_slot_3_text"
+  id: "lane_2_ai_slot_3_cost"
   parent: "lane_2_ai_slot_3"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: 340.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_3_name"
+  parent: "lane_2_ai_slot_3"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_3_stat"
+  parent: "lane_2_ai_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -280.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_ai_slot_4"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_ai_slot_4_frame"
+  parent: "lane_2_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_ai_slot_4_portrait"
+  parent: "lane_2_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_ai_slot_4_pos_icon"
+  parent: "lane_2_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_ai_slot_4_ability_star"
+  parent: "lane_2_ai_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_ai_slot_4_text"
+  id: "lane_2_ai_slot_4_cost"
   parent: "lane_2_ai_slot_4"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -620.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_4_name"
+  parent: "lane_2_ai_slot_4"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_ai_slot_4_stat"
+  parent: "lane_2_ai_slot_4"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -700.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_p_slot_0"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_p_slot_0_frame"
+  parent: "lane_2_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_p_slot_0_portrait"
+  parent: "lane_2_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_p_slot_0_pos_icon"
+  parent: "lane_2_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_p_slot_0_ability_star"
+  parent: "lane_2_p_slot_0"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_p_slot_0_text"
+  id: "lane_2_p_slot_0_cost"
   parent: "lane_2_p_slot_0"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -550.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_0_name"
+  parent: "lane_2_p_slot_0"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_0_stat"
+  parent: "lane_2_p_slot_0"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -480.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_p_slot_1"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_p_slot_1_frame"
+  parent: "lane_2_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_p_slot_1_portrait"
+  parent: "lane_2_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_p_slot_1_pos_icon"
+  parent: "lane_2_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_p_slot_1_ability_star"
+  parent: "lane_2_p_slot_1"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_p_slot_1_text"
+  id: "lane_2_p_slot_1_cost"
   parent: "lane_2_p_slot_1"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -480.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_1_name"
+  parent: "lane_2_p_slot_1"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_1_stat"
+  parent: "lane_2_p_slot_1"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -260.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_p_slot_2"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_p_slot_2_frame"
+  parent: "lane_2_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_p_slot_2_portrait"
+  parent: "lane_2_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_p_slot_2_pos_icon"
+  parent: "lane_2_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_p_slot_2_ability_star"
+  parent: "lane_2_p_slot_2"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_p_slot_2_text"
+  id: "lane_2_p_slot_2_cost"
   parent: "lane_2_p_slot_2"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -410.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_2_name"
+  parent: "lane_2_p_slot_2"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_2_stat"
+  parent: "lane_2_p_slot_2"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -40.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_p_slot_3"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_p_slot_3_frame"
+  parent: "lane_2_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_p_slot_3_portrait"
+  parent: "lane_2_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_p_slot_3_pos_icon"
+  parent: "lane_2_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_p_slot_3_ability_star"
+  parent: "lane_2_p_slot_3"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_p_slot_3_text"
+  id: "lane_2_p_slot_3_cost"
   parent: "lane_2_p_slot_3"
   inherit_alpha: true
 }
 nodes {
-  position {
-    y: -340.0
-  }
-  size {
-    x: 320.0
-    y: 60.0
-  }
-  color {
-    x: 0.18
-    y: 0.18
-    z: 0.22
-  }
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_3_name"
+  parent: "lane_2_p_slot_3"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_3_stat"
+  parent: "lane_2_p_slot_3"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 180.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 0.18 y: 0.18 z: 0.22 w: 1.0 }
   type: TYPE_BOX
   id: "lane_2_p_slot_4"
   parent: "lane_2_root"
-  inherit_alpha: true
   enabled: false
+  inherit_alpha: true
 }
 nodes {
-  scale {
-    x: 0.9
-    y: 0.9
-  }
-  size {
-    x: 300.0
-    y: 50.0
-  }
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 140.0 y: 200.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "cards/frame_common_off"
+  id: "lane_2_p_slot_4_frame"
+  parent: "lane_2_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 20.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "portraits/qb_black_navy"
+  id: "lane_2_p_slot_4_portrait"
+  parent: "lane_2_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/pos_qb"
+  id: "lane_2_p_slot_4_pos_icon"
+  parent: "lane_2_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: -52.0 y: 80.0 z: 0.0 }
+  size { x: 28.0 y: 28.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "ui_chrome/star_ability"
+  id: "lane_2_p_slot_4_ability_star"
+  parent: "lane_2_p_slot_4"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 80.0 z: 0.0 }
+  scale { x: 0.8 y: 0.8 z: 1.0 }
+  size { x: 40.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
   type: TYPE_TEXT
+  text: ""
   font: "default"
-  id: "lane_2_p_slot_4_text"
+  id: "lane_2_p_slot_4_cost"
+  parent: "lane_2_p_slot_4"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -50.0 z: 0.0 }
+  scale { x: 0.7 y: 0.7 z: 1.0 }
+  size { x: 130.0 y: 40.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_4_name"
+  parent: "lane_2_p_slot_4"
+  line_break: true
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -85.0 z: 0.0 }
+  scale { x: 0.9 y: 0.9 z: 1.0 }
+  size { x: 130.0 y: 30.0 z: 0.0 }
+  color { x: 0.95 y: 0.5 z: 0.15 w: 1.0 }
+  type: TYPE_TEXT
+  text: ""
+  font: "default"
+  id: "lane_2_p_slot_4_stat"
   parent: "lane_2_p_slot_4"
   inherit_alpha: true
 }
@@ -3683,6 +5393,127 @@ nodes {
   font: "default"
   id: "discard_modal_hint"
   parent: "discard_modal_panel"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 200.0 y: 140.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.10 w: 0.0 }
+  type: TYPE_BOX
+  id: "lane_0_medallion_root"
+  parent: "lane_0_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 25.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/mod_homeTurf"
+  id: "lane_0_medallion_icon"
+  parent: "lane_0_medallion_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -45.0 z: 0.0 }
+  scale { x: 0.85 y: 0.85 z: 1.0 }
+  size { x: 200.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "MODIFIER"
+  font: "default"
+  id: "lane_0_medallion_name"
+  parent: "lane_0_medallion_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 200.0 y: 140.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.10 w: 0.0 }
+  type: TYPE_BOX
+  id: "lane_1_medallion_root"
+  parent: "lane_1_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 25.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/mod_homeTurf"
+  id: "lane_1_medallion_icon"
+  parent: "lane_1_medallion_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -45.0 z: 0.0 }
+  scale { x: 0.85 y: 0.85 z: 1.0 }
+  size { x: 200.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "MODIFIER"
+  font: "default"
+  id: "lane_1_medallion_name"
+  parent: "lane_1_medallion_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  size { x: 200.0 y: 140.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.10 w: 0.0 }
+  type: TYPE_BOX
+  id: "lane_2_medallion_root"
+  parent: "lane_2_root"
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 25.0 z: 0.0 }
+  size { x: 80.0 y: 80.0 z: 0.0 }
+  color { x: 1.0 y: 1.0 z: 1.0 w: 1.0 }
+  type: TYPE_BOX
+  texture: "icons/mod_homeTurf"
+  id: "lane_2_medallion_icon"
+  parent: "lane_2_medallion_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: -45.0 z: 0.0 }
+  scale { x: 0.85 y: 0.85 z: 1.0 }
+  size { x: 200.0 y: 30.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "MODIFIER"
+  font: "default"
+  id: "lane_2_medallion_name"
+  parent: "lane_2_medallion_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 585.0 y: 1100.0 z: 0.0 }
+  size { x: 900.0 y: 200.0 z: 0.0 }
+  color { x: 0.08 y: 0.08 z: 0.12 w: 0.95 }
+  type: TYPE_BOX
+  id: "modifier_toast_root"
+  enabled: false
+  inherit_alpha: true
+}
+nodes {
+  position { x: 0.0 y: 0.0 z: 0.0 }
+  scale { x: 1.0 y: 1.0 z: 1.0 }
+  size { x: 860.0 y: 180.0 z: 0.0 }
+  color { x: 1.0 y: 0.85 z: 0.2 w: 1.0 }
+  type: TYPE_TEXT
+  text: "MODIFIER"
+  font: "default"
+  id: "modifier_toast_text"
+  parent: "modifier_toast_root"
+  line_break: true
   inherit_alpha: true
 }
 material: "/builtins/materials/gui.material"

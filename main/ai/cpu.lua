@@ -10,6 +10,8 @@
 -- 1-indexed (matching the Lua iteration in this file); the caller converts
 -- to the 0-indexed form match_state expects.
 
+local match_state = require("main.state.match_state")
+
 local M = {}
 
 local MAX_SLOTS = 8
@@ -37,13 +39,17 @@ function M.choose_plays(ai_hand, ai_energy, lanes)
     end
 
     for _, card in ipairs(playable) do
-        if (card.cost or 0) <= energy_left then
+        do
             local best_lane = -1
             local best_score = -math.huge
+            local best_cost = card.cost or 0
 
             for i = 1, 3 do
                 local lane = lanes[i]
-                if lane and lane_fill[i] < MAX_SLOTS then
+                -- Phase 6: cost is per-lane (Hurry-Up / Prevent D).
+                local zero_idx = i - 1
+                local lane_cost = match_state.effective_cost(card, zero_idx)
+                if lane and lane_fill[i] < MAX_SLOTS and lane_cost <= energy_left then
                     local score = 0
                     if card.side == "off" then
                         score = card.off or 0
@@ -92,6 +98,7 @@ function M.choose_plays(ai_hand, ai_energy, lanes)
                     if score > best_score then
                         best_score = score
                         best_lane = i
+                        best_cost = lane_cost
                     end
                 end
             end
@@ -99,7 +106,7 @@ function M.choose_plays(ai_hand, ai_energy, lanes)
             if best_lane >= 1 then
                 table.insert(plays, { card = card, lane_idx = best_lane })
                 lane_fill[best_lane] = lane_fill[best_lane] + 1
-                energy_left = energy_left - (card.cost or 0)
+                energy_left = energy_left - best_cost
             end
         end
     end

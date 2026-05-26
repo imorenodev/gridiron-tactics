@@ -54,6 +54,11 @@ M.HUD_DRIVE_CHANGED         = hash("hud.drive_changed")
 M.HUD_ENERGY_AT_CAP         = hash("hud.energy_at_cap")
 M.HUD_OPEN_DISCARD_MODAL    = hash("hud.open_discard_modal")
 
+-- Phase 6: lane modifiers
+M.HUD_MODIFIERS_REVEAL            = hash("hud.modifiers_reveal")
+M.MATCH_MODIFIERS_REVEAL_COMPLETE = hash("match.modifiers_reveal_complete")
+M.HUD_SHOW_MODIFIER_TOAST         = hash("hud.show_modifier_toast")
+
 -- Loader / screen transitions
 M.SHOW_MENU             = hash("show_menu")
 M.SHOW_MATCH            = hash("show_match")

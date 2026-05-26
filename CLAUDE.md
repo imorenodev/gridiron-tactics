@@ -22,6 +22,8 @@ Gridiron Tactics is a Marvel Snap-style card game with a football theme, being p
 - **Phase 3: complete (scoring — TD, safety, PAT, 2pt, pick-6, FG).** Ball positions ≥ 100 score a TD (6); auto-PAT (+1) if a Kicker is revealed in that lane; 2-pt conversion modal with a 3D coin flip when the scoring side has more revealed OFF than the defender has revealed DEF. Ball ≤ 0 scores safety (+2) or pick-6 (+6) for the defender (4+ revealed DBs = pick-6). The `try_apply_snap_ability` dispatcher is wired with one ability — Clutch Kicker (FG +3 if past midfield at reveal). After every score, the lane resets: cards cleared, both balls re-kickoff (15-35 normally, 5% chance of 40-60 big return). Score bursts animate per event at ~1.8s with the top-bar score pulsing. Match still ends after one drive. See "Phase 3 — Scoring notes" at the bottom of this file.
 - **Phase 4: complete (multi-drive cycle + deck cycle).** Match is now 8 drives. Each side has a 30-card deck (with-replacement from `cards.lua`'s 18-card pool) + a discard pile that's filled with unplayed hand cards at drive end. Deck reshuffles from the discard when it empties. Energy escalates: drive N grants N energy on top of any carryover (capped at MAX_ENERGY_BANK=10); a "+N CARRIED" toast appears when carryover happens; the orb pulses when at cap. Cards played to the field stay in the lane between drives but their `cur_off`/`cur_def` get zeroed by `consume_drive_cards()` so they don't keep contributing yards across drives. Discard and draw both have arc animations (cards rotate/scale/fade out to the discard badge; new cards arc in from the deck badge); "RESHUFFLING DECK" text + a discard-badge bump signals when the deck refills. Deck/discard count badges show remaining cards with a bump animation on change; tapping the discard badge opens a text modal listing per-drive discards. AI's deck cycle runs silently. Scoring still works across drives. See "Phase 4 — Multi-drive notes" at the bottom of this file.
 - **Phase 5: complete (asset integration — atlases, card frames, portraits, coin upgrade).** Five atlases built from the 37 PNGs in `assets/images/ui/`: `field.atlas`, `ui_chrome.atlas`, `cards.atlas`, `icons.atlas`, `portraits.atlas`. Stadium photo behind the lanes, painted endzones (red top, green bottom) per lane, broadcast scoreboard frame with 9-slice on the top bar, button chrome with 9-slice on CONCEDE / END DRIVE, badge backgrounds on the energy orb + deck + discard, team rings behind the score numbers, power circles behind both pills per lane, football icon in the scoreboard center, real card frames (8 rarity × side variants) on hand cards via runtime `gui.play_flipbook`, per-card portrait + position icon + ability star sub-nodes on hand cards (QB portrait PNG; everything else falls back to a POSITION_COLOR box), and a real coin flip using two synchronized sprite nodes (`coin_heads` + `coin_tails`, rotation.y offset by 180°). The menu screen now uses the football-field photo background with a dark vignette overlay. Default font kept (real fonts ship in Phase 5.5). See "Phase 5 — Asset integration notes" at the bottom of this file.
+- **Phase 5.5: complete (fan layout + played-slot polish + hud.gui_script refactor).** All nine sub-phases shipped across two prompts. Refactor (5.5.1–5.5.3): `hud.gui_script` split into `main/ui/hud_conversion.lua` (2-pt modal), `main/ui/hud_drag.lua` (drag flow), `main/ui/hud_render.lua` (everything else). Fan layout (5.5.4–5.5.7): replaced 30 horizontal-bar slots with portrait-card hierarchies (140×200 each, 8 nodes per slot: root + frame + portrait + position icon + ability star + cost + name + stat). Marvel Snap-style stacking via `hud_render.compute_stack_position(lane_idx, side, slot_idx)` — 35px vertical offset, ±5px x-jitter, ±2° z-rotation, newer cards draw on top. AI face-down cards use `animate_card_slap_down` (drop from above with overshoot + settle pulse). Player drops use the ghost handoff: ghost travels from cursor to stack position over 300ms while shrinking from hand size to played size, cross-fading with the spawned card's `render_slot` fade-in (220ms delay + 80ms fade). Lane resets play a 500ms synchronized exit animation (fade + scale + position shift + rotation kick) before clearing. See "Phase 5.5 — Fan layout + refactor notes" at the bottom of this file.
+- **Phase 6: complete (16 lane modifiers — Tier 1 stat changes + Tier 2 cost/reveal).** Three random modifiers per match (one per lane) drawn at match start from `main/data/modifiers.lua` (16-card pool). Slot-machine reveal animation (~1.5s: 16-tick fast cycle + 4-tick deceleration + settle pulse) gates input until the medallions land. Tapping a medallion shows a 1.5s description toast. Tier 1 (12 stat modifiers — HOME TURF, MUDDY FIELD, WIND TUNNEL, BLINDING SUN, RED ZONE, SCRAMBLE, GROUND & POUND, AIR RAID, TRENCHES, SECONDARY, ST UNIT, PLAY OF GAME) mutates `cur_off`/`cur_def` on revealed cards in `recompute_lane_sums` (reset to base → `apply_lane_modifier` → sum). Tier 2: HURRY-UP / PREVENT D discount cost per-lane via `match_state.effective_cost(card, lane_idx)`; SCOUTED reveals the first card per side immediately at play time (bypasses pending_plays); BLITZ ZONE scaffolds doubled-trigger DEF abilities via `trigger_count` on `try_apply_snap_ability` (no visible effect in Phase 6 — Clutch Kicker is OFF). Drag affordability check moved to drop time: drag starts if ANY lane is affordable, drop validates the specific lane; failed drop shows a "NOT ENOUGH ENERGY" toast and snaps back. CPU heuristic uses `effective_cost` per-lane so it favors OFF cards in HURRY-UP lanes. The 4 Tier 3 mechanical modifiers (Frozen Tundra, Coin Flip, Turnover, Sudden Death) are deferred to Phase 6.5. See "Phase 6 — Lane modifiers notes" at the bottom of this file.
 
 ## Hard rules — non-negotiable
 
@@ -677,3 +679,113 @@ The row-major name order in the slicing script matches the prompt's expected lay
 | football-field-bg.png | field | football_field_bg |
 | logo.png / subtitle-logo.png | (not yet wired) | — |
 | 05_medallion_pill.png / 06_yardage_strip.png | (not used) | — |
+
+## Phase 5.5 — Fan layout + refactor notes
+
+Phase 5.5 shipped across two prompts. The original prompt (`defold-phase-5-5-fan-layout-refactor-prompt.md`) bundled two large efforts: (1) split the ~1100-line `hud.gui_script` into focused helper modules, and (2) restructure played-card slots into Marvel-Snap-style portrait cards with fan/overlap stacking, slap-down + lane-reset exit animations, and ghost continuity from hand to lane. The first prompt landed sub-phases **5.5.1–5.5.3** (refactor) and **5.5.9** (this doc); a follow-up prompt (`defold-phase-5-5-fan-continuation-prompt.md`) landed **5.5.4–5.5.8** (the visual fan-layout transformation).
+
+### What's in (5.5.1–5.5.3)
+
+`hud.gui_script` is now thin: it caches node refs in `init`, holds the few pieces of state that cross message boundaries (`current_hand`, `current_energy`, `dragging`, `conversion`, `orb_state`, `summary_visible`, `input_enabled`, `discard_modal_visible`), and dispatches `on_input` / `on_message` to the helper modules. Three modules under `main/ui/`:
+
+- **`main/ui/hud_conversion.lua`** (~195 lines). 2-pt conversion modal. State machine: `hidden | initial | calling | flipping | result`. Coin flip via two synchronized rotation.y animations on heads + tails sprites. Public API: `M.new()`, `M.show(state, nodes, context)`, `M.hide(state, nodes)`, `M.is_visible(state)`, `M.handle_input(state, nodes, action, on_complete)`. The `on_complete` callback fires with `{ result, side, lane_idx, call, outcome }` when the player completes the flow.
+- **`main/ui/hud_drag.lua`** (~172 lines). Drag-from-hand-to-lane. Owns `LANE_REGION_RECT` (drop-zone rectangles), lane hover highlight, and ghost snap-back animation. Public API: `M.try_start_drag(refs, action)` → drag_state | nil, `M.update_drag(drag_state, refs, action)`, `M.end_drag(drag_state, refs, action, on_drop)`, `M.cancel_drag(drag_state, refs)`. The `on_drop(card_uid, lane_idx)` callback posts `MATCH_PLAY_CARD`.
+- **`main/ui/hud_render.lua`** (~508 lines). All card rendering, lane meta rendering, badge bumps, pulses, score bursts, carried toast, reshuffle visual, energy orb pulse loop, discard/draw arc animations, slot flip. Public API includes `M.render_hand_slot(nodes, card, current_energy)`, `M.render_slot(slot, card_data, revealed)`, `M.flip_slot(slot)`, `M.render_lane_meta(nodes, ...)`, `M.animate_lane_reset(slots, refs, ...)`, `M.show_score_burst(node, type)`, `M.pulse_score_node(node)`, `M.pulse_drive_node(node)`, `M.bump_badge(node)`, `M.show_carried_toast(node, base_pos, amount)`, `M.show_reshuffle_visual(text, badge)`, `M.start_orb_pulse(node, state, reduced_motion)`, `M.stop_orb_pulse(node, state)`, `M.handle_discard_anim(...)`, `M.handle_draw_anim(...)`. Constants like `HAND_X_BY_INDEX`, `HAND_Y`, `POSITION_COLOR`, and durations also live here for use by `hud.gui_script`.
+
+### Key architectural choices to preserve
+
+- **Helper modules take node refs (and bookkeeping state) as parameters.** Modules never store GUI state internally. `hud.gui_script` owns the state objects (`self.dragging`, `self.conversion`, `self.orb_state`, etc.) and passes them in. This makes modules independently inspectable and re-usable per match.
+- **Per-call `drag_refs_for(self)` helper** in `hud.gui_script` builds a fresh refs table for each drag tick. Slightly wasteful (one table allocation per touch frame) but keeps the drag module's interface clean — no hidden state, no ordering dependency between init and use.
+- **`hud_render` exports its constants as `M.*`.** `HAND_X_BY_INDEX` and `HAND_Y` are needed by both the render code (for snap-back targets) and `hud.gui_script` (to build drag home positions). Re-exporting from `hud_render` keeps the single source of truth.
+- **`orb_state` is a plain table with `active` flag.** The orb-pulse loop is recursive via `timer.delay` chains; the loop checks `orb_state.active` each step and exits if it flipped to false. Means the caller can stop the loop from anywhere by mutating the flag — no token bookkeeping needed.
+- **`hud_conversion` returns true from `handle_input` even on press** so a stray tap-and-hold doesn't accidentally trigger MENU/CONCEDE under the modal.
+
+### What's in — sub-phases 5.5.4–5.5.8 (fan-continuation prompt)
+
+- **5.5.4 — Portrait-shaped lane slots.** The 30 horizontal-bar slot blocks in `hud.gui` were replaced with portrait-card hierarchies via `.claude/skills/defold-project-setup/scripts/rewrite_slots_portrait.py`. Each slot is now 140×200 with 8 nodes: root (the "card back" dark box), `_frame` child sprite (card art when face-up), `_portrait`, `_pos_icon`, `_ability_star` child sprites, and `_cost` + `_name` + `_stat` child text nodes. All children default to `enabled: false` so the slot reads as a dark box until a card lands there. Re-run the slicing script + rewrite script if the GUI is regenerated. Initial slot positions are the Phase 5.5.4-spec vertical column (220px stride); runtime overrides those positions via `compute_stack_position`.
+- **5.5.5 — Fan/overlap stacking.** `hud_render.compute_stack_position(lane_idx, side, slot_idx)` returns `{ position, rotation_z, z_order }`. 35px vertical offset per card, ±5px x-jitter, ±2° rotation alternating with `slot_idx`. Player stack base y = 800 (slot 0 sits there); AI stack base y = 2100. `hud_render.apply_stack_position(node, lane_idx, side, slot_idx)` writes the lane-relative position + rotation to the slot's root. `render_slot` calls `apply_stack_position` whenever it renders a non-empty slot. AI face-down cards use `hud_render.animate_card_slap_down` (start ~80px above target, scale 1.4 → 1.0 + alpha 0 → 1 over 250ms with `EASING_OUTBACK`, then a 100ms settle pulse).
+- **5.5.6 — Lane reset exit animation.** `hud_render.animate_lane_reset_exit(slots_for_lane, on_complete)` runs all cards in a lane through a synchronized exit: position shift ±200px (player up / AI down), color.w → 0, scale → 0.6, rotation z += ±15°, all over 500ms with `EASING_INQUAD`. `on_complete` fires after the slowest-finishing tween, then `finalize_lane_reset` clears slot state and animates the yard fills to the new kickoff. HUD's `HUD_LANE_RESET` handler chains these two steps; `match.script.LANE_RESET_DURATION` (0.5s) matches the exit duration so the scoring pipeline doesn't stall.
+- **5.5.7 — Hand-to-lane ghost continuity.** `hud_drag.end_drag` now takes a `target_stack_pos` parameter (pre-computed by `hud.gui_script` from `compute_stack_position(target_lane, "you", filled_count)`). On valid drop, the ghost animates to that position over `hud_render.GHOST_TRAVEL_DURATION` (300ms): position + shrink to played size (180×280 → 140×200, scale ratio ~0.78/0.71) + rotation to match stack rotation. The last 80ms cross-fades the ghost out. In parallel, the spawned card's `render_slot` detects `was_empty` (the slot's previous `card_data` was nil) and fades the card in from alpha 0 to full with `CARD_FADE_IN_DELAY` (220ms) + `CARD_FADE_IN_DURATION` (80ms), creating a smooth visual handoff.
+- **5.5.8 — Verify + this doc update.**
+
+### Phase 5.5 deviation notes
+
+- **`POSITION_COLOR` is defined but not visually used.** The non-QB portrait fallback is to disable the portrait node (because Defold's `gui.set_texture` won't release a texture binding at runtime). A future polish pass could add a 1×1 blank sprite to `portraits.atlas` and use `POSITION_COLOR` as a tint.
+- **Slap-down vs ghost handoff use different paths intentionally.** AI face-down cards use `animate_card_slap_down` (visible drop from above). Player drops use the ghost handoff (visible card moving from cursor to stack). The handoff gives the player a stronger "this is the card I dragged" feel; slap-down works for the AI side because there's no source-of-truth visual to hand off from.
+- **`gui.set_color` on the slot root is the dim/face-down indicator.** For face-down state, the root's color is `SLOT_FACE_DOWN_COLOR` (dark gray). For face-up, root is white tint; the `_frame` child sprite renders the card art at native colors. This avoids the Phase 5 issue where the frame texture stayed faintly visible under a dimmed color tint.
+- **Portrait slot positions in `hud.gui` are the 5.5.4 vertical-column defaults.** Runtime via `apply_stack_position` overrides them once a card lands. The defaults only show during editor preview or for the brief moment between slot enable and first render — invisible to the player.
+- **Slap-down animation transforms reset on lane reset.** `finalize_lane_reset` walks every slot and resets scale to (1,1,1) and rotation to (0,0,0). Without this, a slot whose card was exit-animated would keep its 0.6 scale and ±15° rotation across drives, breaking the next spawn.
+- **The hand_N_root ghost is reused across drags.** `end_drag` resets the ghost's scale + rotation + color after the fade-out callback so the next `try_start_drag`'s show-ghost starts from a known clean state. Without this, a previous handoff's 0.78 scale would persist into the next drag.
+
+## Phase 6 — Lane modifiers notes
+
+Six sub-phases (6.1–6.6) shipped together. The 16 Tier 1+2 modifiers are live; Tier 3 mechanical modifiers (Frozen Tundra, Coin Flip, Turnover, Sudden Death) are deferred to Phase 6.5.
+
+### Sub-phase 6.1 — data + state plumbing
+
+- `main/data/modifiers.lua` — 16-record pool with `id`, `icon`, `name`, `desc`, `category`. `draw_random(count)` Fisher-Yates shuffles a copy of `POOL` and returns the first N records.
+- `main/state/match_state.lua` extensions:
+  - `lane_modifiers` module-local array (1..3, lane-1-indexed internally; the public API takes 0-indexed `lane_idx` for consistency).
+  - `make_lane` adds `scouted_first_played_you = false` and `scouted_first_played_ai = false` (independent flags per side because each side gets its own "first card" reveal).
+  - `M.new_match` calls `modifiers.draw_random(3)` and populates `lane_modifiers[1..3]`.
+  - `M.get_modifiers()`, `M.get_modifier_for_lane(lane_idx)`, `M.is_scouted_lane`, `M.is_scouted_first_play`, `M.mark_scouted_first_played` — accessors.
+  - `M.effective_cost(card, lane_idx)` — returns `max(1, base - 1)` for HURRY-UP × OFF or PREVENT D × DEF; otherwise base cost.
+  - `apply_lane_modifier(lane_idx)` (module-local) — switch over all 12 Tier 1 modifier IDs. Called from `recompute_lane_sums` AFTER resetting revealed cards to base stats and BEFORE summing. Resetting to base is critical — without it modifier deltas would compound on every reveal.
+- `main/state/messages.lua` — 3 new hashes: `HUD_MODIFIERS_REVEAL`, `MATCH_MODIFIERS_REVEAL_COMPLETE`, `HUD_SHOW_MODIFIER_TOAST`.
+
+### Sub-phase 6.2 — medallion GUI + tap toast
+
+- `main/ui/hud.gui` — 4 nodes per lane appended at the end of the file: `lane_X_medallion_root` (invisible 200×140 transform parent for tap detection), `lane_X_medallion_icon` (80×80, default `icons/mod_homeTurf` sprite, enabled=false), `lane_X_medallion_name` (text below the icon, enabled=false). Plus a shared `modifier_toast_root` + `modifier_toast_text` for the description popup. Total +14 nodes (12 medallion + 2 toast).
+- `hud_render.render_modifier_medallion(refs, modifier)` — sets icon flipbook + text, enables both, or hides if modifier is nil.
+- `hud_render.show_modifier_toast(refs, modifier)` and the generic `hud_render.show_text_toast(refs, text)` — 200ms fade-in / 1.5s hold / 300ms fade-out, reusing the same modifier_toast node pair.
+- `hud.gui_script` caches medallion refs in `self.modifier_refs[lane_idx] = { root, icon, name }` and toast refs in `self.modifier_toast_refs`. `handle_button_taps` walks the 3 medallion roots first via `gui.pick_node` and fires `show_modifier_toast` on hit.
+
+### Sub-phase 6.3 — slot-machine reveal animation
+
+- `hud_render.start_modifier_reveal(medallion_refs_by_lane, chosen_modifiers, on_complete)` — Phase A: 16 cycles × 62 ms ≈ 1.0 s rapid cycle through random pool members. Phase B: 4 decelerating ticks (intervals 0.07, 0.10, 0.13, 0.20) ≈ 0.5 s. Phase C: settle on the chosen modifier with a 1.0 → 1.15 → 1.0 scale pulse on the icon. Total ~1.5 s. Reduced motion shortcuts to instant final state.
+- All chained timer.delay calls. Not animate_helper (these are content swaps, not interpolated property animations — animate_helper.is_reduced_motion() is used to detect the reduced-motion case).
+- `match.script` `init` posts `HUD_MODIFIERS_REVEAL` with the chosen modifiers and transitions to phase `"resolving"`. The HUD runs the slot-machine and posts `MATCH_MODIFIERS_REVEAL_COMPLETE` on the on_complete callback; match.script transitions back to `"play"`. Input is gated via the existing `HUD_PHASE_CHANGED` flow.
+
+### Sub-phase 6.4 — Tier 1 effects (12 stat modifiers)
+
+`apply_lane_modifier` covers all 12. Implementation notes:
+
+- All cards in the lane reset to `_base_off` / `_base_def` (cached at first reveal in `reveal_single_play` and in the Scouted spawn path) before reapplying.
+- HOME TURF, MUDDY FIELD, RED ZONE, SCRAMBLE, GROUND & POUND, AIR RAID, TRENCHES, SECONDARY, ST UNIT, PLAY OF GAME, WIND TUNNEL, BLINDING SUN — math matches the prompt spec exactly.
+- PLAY OF GAME picks the highest current stat across both sides of the lane after all other modifiers would have applied (it's the only modifier in the lane, since one modifier per lane).
+- MUDDY FIELD uses `math.floor` for both 0.75× and 1.25× scaling so the per-card stats stay integers.
+- Negative stat clamps via `math.max(0, ...)` for WIND TUNNEL, BLINDING SUN, and HOME TURF's enemy debuff.
+
+### Sub-phase 6.5 — Tier 2 effects (cost / reveal)
+
+- **Hurry-Up / Prevent D** — `M.play_card` and `M.ai_play_card` compute cost via `M.effective_cost(card, lane_idx)` before the energy check and before the deduction.
+- **Scouted** — first card per side per lane skips `pending_plays` entirely: card.revealed flips to true at play time, `_base_off` / `_base_def` snapshot, `recompute_lane_sums` runs, `try_apply_snap_ability` fires. Returns `scouted_revealed = true` plus the lane sums and any ability event so match.script can route differently.
+- **Blitz Zone** — `try_apply_snap_ability(card, lane_idx, side, trigger_count)` honors an explicit `trigger_count` or auto-detects: if lane has blitzZone AND card.side == "def", trigger_count = 2. No visible effect in Phase 6 because Clutch Kicker is OFF, but the dispatcher is structured for future DEF abilities.
+- **Drag affordability** — `hud_drag.try_start_drag` uses `affordable_anywhere(card, current_energy)` (drag if any lane's effective_cost ≤ energy); `end_drag` validates against the chosen lane's exact effective_cost and fires `refs.on_invalid_drop("insufficient_energy")` if it fails. The HUD's `on_invalid_drop` triggers `hud_render.show_text_toast(self.modifier_toast_refs, "NOT ENOUGH ENERGY")`.
+- **AI heuristic** — `cpu.lua` now requires `match_state` and computes `lane_cost = match_state.effective_cost(card, zero_idx)` inside the per-lane scoring loop. Affordability is checked per lane; the deducted cost when the play is committed is the chosen lane's cost.
+- **HUD_AI_CARDS_SPAWNED handler** generalized — `play.side` defaults to "ai", `play.revealed` defaults to false. Scouted player plays piggyback on this message with `side = "you", revealed = true`.
+
+### Sub-phase 6.6 — notes (this section)
+
+### Phase 6 known limitations
+
+- **Scouted + Clutch Kicker corner case.** If a player or AI plays Clutch Kicker as their first card in a Scouted lane while their position is ≥50, the FG fires immediately during play phase (or during `start_ai_plays`). The score burst + score update post, but the lane is NOT reset mid-drive (that would be confusing UX while the player is still playing). The kicker stays revealed in the lane; the FG score is final. This matches how mid-drive FGs naturally work in the HTML game.
+- **Medallion taps work even while input is gated.** The medallion-tap path in `handle_button_taps` doesn't check `self.input_enabled`, so the player can tap medallions during the slot-machine reveal animation. The toast still shows the final landed modifier (cached at `HUD_MODIFIERS_REVEAL` time), so the description is correct, just slightly ahead of the visual settle.
+- **Medallion default sprite is `mod_homeTurf`.** Defold's editor preview shows that one until the reveal animation kicks off. The actual rendered modifier is set during the slot-machine via `gui.play_flipbook`.
+
+### Phase 6.5 follow-ups (deferred mechanical modifiers)
+
+- **Sudden Death** — first scorer in the lane locks subsequent scoring on that lane. Needs a per-lane `locked = false/side` flag in match_state + a visual indicator + a guard in `check_lane_for_scoring`.
+- **Turnover** — ball-swap after 3 scoreless drives. Needs a per-lane scoreless counter + a swap animation.
+- **Coin Flip** — per-drive 50/50 double-or-halve yards. Reuses the existing two-sprite coin animation from `hud_conversion.lua`.
+- **Frozen Tundra** — disables abilities in the lane. Per-card `ability_disabled` flag or a lane-level guard in `try_apply_snap_ability`.
+
+### Phase 7 candidates
+
+- **Card synergies** (the 13 HTML combos that trigger on card stacks — e.g. two QBs, four DBs, full backfield).
+- **More SNAP / FIELD card abilities** to actually exercise the Blitz Zone scaffolding.
+- **Perks system** (Phase A of the leveling roadmap).
+- **Real fonts** (Bebas Neue / Oswald / JetBrains Mono).
+- **More portrait PNGs** for the other 11 positions.
+- **Audio** (SFX for slap-down, ghost handoff, lane reset, score bursts, modifier reveal).
+- **Game-over splash and leveling/summary screen.**

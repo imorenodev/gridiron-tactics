@@ -1,780 +1,213 @@
--- Match HUD. Pure presentation + input-translation. Phase 4 expanded:
---   * Top-bar shows "DRIVE N OF 8" with pulse on change.
---   * Energy escalation: "+N CARRIED" toast above the orb after each
---     drive transition (when carryover > 0); orb pulses when at cap.
---   * Deck + discard badges show counts with bump on change; tapping
---     the discard badge opens a text modal listing per-drive discards.
---   * Discard arc + draw arc animations between drives. AI's deck cycle
---     is intentionally silent (no AI hand renders → nothing to animate).
+-- Match HUD. Pure presentation + input-translation.
 --
--- Phase 4 deviates from AGENTS.md's "GUI scripts don't access game
--- logic" rule in one narrow place: HUD requires match_state read-only
--- to populate the discard modal. The prompt is explicit about this
--- shape; the alternative (message round-trip) was rejected to keep
--- modal-open latency at one frame.
+-- Phase 5.5 refactor: rendering, drag-and-drop, and the 2-pt conversion
+-- modal each live in their own module under `main/ui/`. This script's
+-- responsibilities are:
+--   1. Cache every node reference into structured `self.*_refs` tables.
+--   2. Hold the small amount of state that crosses message boundaries
+--      (current_hand, current_energy, dragging, conversion, orb_pulse).
+--   3. Dispatch each HUD_* message to the appropriate module function.
+--
+-- Helper modules are pure-functional: they take node refs (and the
+-- bookkeeping state they need) as parameters. They never store GUI
+-- state internally.
 
-local msgs = require("main.state.messages")
-local animate_helper = require("main.animation.animate_helper")
-local meta_state = require("main.state.meta_state")
-local match_state = require("main.state.match_state")
+local msgs            = require("main.state.messages")
+local animate_helper  = require("main.animation.animate_helper")
+local meta_state      = require("main.state.meta_state")
+local match_state     = require("main.state.match_state")
+local hud_render      = require("main.ui.hud_render")
+local hud_drag        = require("main.ui.hud_drag")
+local hud_conversion  = require("main.ui.hud_conversion")
 
-local HAND_SIZE = 5
-local LANE_COUNT = 3
+local HAND_SIZE      = 5
+local LANE_COUNT     = 3
 local SLOTS_PER_SIDE = 5
-
-local CARD_DIMMED       = vmath.vector4(0.4, 0.4, 0.4, 0.55)
-local CARD_FULL         = vmath.vector4(1.0, 1.0, 1.0, 1.0)
-local LANE_BASE_COLOR   = vmath.vector4(0.13, 0.32, 0.13, 1.0)
-local LANE_HOVER_COLOR  = vmath.vector4(0.25, 0.55, 0.25, 1.0)
-local YARD_BAR_WIDTH    = 320
-local SLOT_FACE_DOWN_COLOR = vmath.vector4(0.18, 0.18, 0.22, 1.0)
-
--- Phase 5: per-position fallback color when a card has no real portrait.
--- QB is the only card with a portrait PNG today; everyone else paints a
--- solid-color box in the portrait area.
-local POSITION_COLOR = {
-    QB = vmath.vector4(0.30, 0.55, 0.85, 1),
-    RB = vmath.vector4(0.95, 0.65, 0.25, 1),
-    WR = vmath.vector4(0.40, 0.85, 0.50, 1),
-    TE = vmath.vector4(0.85, 0.85, 0.40, 1),
-    OL = vmath.vector4(0.60, 0.40, 0.30, 1),
-    K  = vmath.vector4(0.95, 0.85, 0.30, 1),
-    CB = vmath.vector4(0.70, 0.30, 0.85, 1),
-    S  = vmath.vector4(0.30, 0.70, 0.85, 1),
-    LB = vmath.vector4(0.85, 0.30, 0.30, 1),
-    DE = vmath.vector4(0.85, 0.45, 0.30, 1),
-    DT = vmath.vector4(0.45, 0.30, 0.85, 1),
-    ST = vmath.vector4(0.60, 0.60, 0.70, 1),
-}
-
-local BURST_SCALE_BASE    = 6.0
-local BURST_SCALE_START   = 1.8
-local BURST_FADE_IN       = 0.3
-local BURST_SCALE_IN      = 0.4
-local BURST_HOLD          = 0.9
-local BURST_FADE_OUT      = 0.5
-
-local BURST_TEXT_BY_TYPE = {
-    td      = "TOUCHDOWN",
-    safety  = "SAFETY +2",
-    pick6   = "PICK SIX +6",
-    fg      = "FIELD GOAL +3",
-    pat     = "PAT GOOD +1",
-    ["2pt"] = "2-PT CONVERSION!",
-}
-local BURST_COLOR_BY_TYPE = {
-    td      = vmath.vector4(0.29, 1.0,  0.54, 1.0),
-    safety  = vmath.vector4(1.0,  0.72, 0.0,  1.0),
-    pick6   = vmath.vector4(1.0,  0.42, 0.42, 1.0),
-    fg      = vmath.vector4(1.0,  0.84, 0.0,  1.0),
-    pat     = vmath.vector4(1.0,  0.84, 0.0,  1.0),
-    ["2pt"] = vmath.vector4(0.29, 1.0,  0.54, 1.0),
-}
-
-local SCORE_BASE_SCALE  = vmath.vector3(2.2, 2.2, 1)
-local SCORE_PULSE_SCALE = vmath.vector3(2.86, 2.86, 1)
-local DRIVE_BASE_SCALE  = vmath.vector3(1.6, 1.6, 1)
-local DRIVE_PULSE_SCALE = vmath.vector3(1.84, 1.84, 1)
-local BADGE_BASE_SCALE  = vmath.vector3(1.0, 1.0, 1.0)
-local BADGE_BUMP_SCALE  = vmath.vector3(1.18, 1.18, 1.0)
-local ORB_PULSE_SCALE   = vmath.vector3(1.08, 1.08, 1.0)
-
-local COIN_FLIP_DURATION = 1.4
-
--- Phase 4 animation timings (match.script mirrors these for sequencing).
-local DISCARD_DURATION   = 0.6
-local DISCARD_STAGGER    = 0.04
-local DRAW_DURATION      = 0.4
-local DRAW_STAGGER       = 0.08
-local TOAST_FADE_IN      = 0.2
-local TOAST_HOLD         = 0.85
-local TOAST_FADE_OUT     = 0.25
-local TOAST_RISE_PHASE1  = 12
-local TOAST_RISE_PHASE2  = 22
-
-local LANE_REGION_RECT  = {
-    [0] = { x0 = 10,  x1 = 380,  y0 = 800, y1 = 2200 },
-    [1] = { x0 = 400, x1 = 770,  y0 = 800, y1 = 2200 },
-    [2] = { x0 = 790, x1 = 1160, y0 = 800, y1 = 2200 },
-}
-local HAND_X_BY_INDEX = { [1] = 165, [2] = 360, [3] = 555, [4] = 750, [5] = 945 }
-local HAND_Y          = 550
+local MAX_ENERGY_BANK = 10
 
 -- ---------------------------------------------------------------------------
--- Geometry / helpers
+-- Lifecycle
 -- ---------------------------------------------------------------------------
 
-local function point_in_lane(x, y, rect)
-    return x >= rect.x0 and x <= rect.x1 and y >= rect.y0 and y <= rect.y1
-end
+function init(self)
+    msg.post(".", "acquire_input_focus")
 
-local function pick_lane_at(x, y)
+    -- Top bar / global buttons
+    self.menu_button     = gui.get_node("menu_button")
+    self.you_score_text  = gui.get_node("you_score_text")
+    self.drive_text      = gui.get_node("drive_text")
+    self.cpu_score_text  = gui.get_node("cpu_score_text")
+
+    -- Action bar
+    self.concede_button   = gui.get_node("concede_button")
+    self.energy_orb       = gui.get_node("energy_orb")
+    self.energy_text      = gui.get_node("energy_text")
+    self.end_drive_button = gui.get_node("end_drive_button")
+
+    -- Lanes + per-slot card nodes + Phase 6 modifier medallion
+    self.lane_refs = {}
+    self.lane_root_nodes = {}
+    self.modifier_refs = {}
+    self.slots = {}
     for i = 0, LANE_COUNT - 1 do
-        if point_in_lane(x, y, LANE_REGION_RECT[i]) then
-            return i
-        end
-    end
-    return nil
-end
-
-local function stat_color_for_side(side)
-    if side == "def" then
-        return vmath.vector4(0.4, 0.7, 1.0, 1.0)
-    end
-    return vmath.vector4(0.95, 0.5, 0.15, 1.0)
-end
-
-local function stat_text_for_card(card)
-    if card.side == "def" then
-        return "DEF " .. tostring(card.def or 0)
-    end
-    return "OFF " .. tostring(card.off or 0)
-end
-
-local function compact_slot_text(card)
-    local stat_label = (card.side == "def") and "DEF" or "OFF"
-    local stat_value = (card.side == "def") and (card.def or 0) or (card.off or 0)
-    return string.format("%s c%d  %s %d",
-        tostring(card.pos or "?"), card.cost or 0, stat_label, stat_value)
-end
-
--- Phase 5: atlas sprite name for a card's frame, e.g. "frame_rare_off".
--- Used by render_hand_slot, render_slot, and flip_slot when transitioning
--- a slot to face-up. The atlas binding name ("cards") is set separately
--- via gui.set_texture; this is the sprite within the atlas.
-local function get_card_frame_sprite(card)
-    local rarity = card.rarity or "common"
-    local side = card.side or "off"
-    return "frame_" .. rarity .. "_" .. side
-end
-
--- Returns the portraits-atlas sprite for cards that have a real portrait,
--- nil otherwise. Phase 5 only ships the QB portrait; everything else uses
--- the POSITION_COLOR fallback.
-local function get_portrait_sprite(card)
-    if card.pos == "QB" then return "qb_black_navy" end
-    return nil
-end
-
--- ---------------------------------------------------------------------------
--- Hand rendering
--- ---------------------------------------------------------------------------
-
-local function render_hand_slot(self, idx, card)
-    local nodes = self.hand_nodes[idx]
-    if card == nil or card.empty then
-        -- Empty slot: dim the box and leave any previously-set frame
-        -- texture in place. Defold's gui.set_texture doesn't accept ""
-        -- or nil to clear a texture (raises "Texture '' is not specified
-        -- in scene"); the dim tint is enough to read as empty.
-        gui.set_color(nodes.root, CARD_DIMMED)
-        gui.set_text(nodes.cost, "")
-        gui.set_text(nodes.pos, "")
-        gui.set_text(nodes.name, "EMPTY")
-        gui.set_text(nodes.stat, "")
-        if nodes.portrait then gui.set_enabled(nodes.portrait, false) end
-        if nodes.pos_icon then gui.set_enabled(nodes.pos_icon, false) end
-        if nodes.ability_star then gui.set_enabled(nodes.ability_star, false) end
-        return
-    end
-
-    -- Card frame texture (rarity + side). If the player can't afford this
-    -- card given the current energy, dim it so drag-start failure has a
-    -- visual cue. With Phase 4's drive-1 energy of 1, most cards in a
-    -- random opening hand are unaffordable, and silent drag-failure looked
-    -- like "drag is broken".
-    local can_afford = (card.cost or 0) <= (self.current_energy or 0)
-    if can_afford then
-        gui.set_color(nodes.root, CARD_FULL)
-    else
-        gui.set_color(nodes.root, vmath.vector4(0.45, 0.45, 0.45, 1.0))
-    end
-    gui.set_texture(nodes.root, "cards")
-    gui.play_flipbook(nodes.root, hash(get_card_frame_sprite(card)))
-
-    gui.set_text(nodes.cost, tostring(card.cost))
-    -- The position abbreviation is now shown via the pos_icon sprite; we
-    -- blank the text so it doesn't double up. Kept as a node for layout
-    -- continuity / future use.
-    gui.set_text(nodes.pos, "")
-    gui.set_text(nodes.name, card.name)
-    gui.set_text(nodes.stat, stat_text_for_card(card))
-    gui.set_color(nodes.stat, stat_color_for_side(card.side))
-
-    -- Portrait: real PNG if available, else hide the node entirely.
-    -- (Phase 5 prompt asked for a POSITION_COLOR-tinted box fallback,
-    -- but Defold's gui.set_texture won't release the texture binding at
-    -- runtime, so a non-QB card can't show a clean colored box without
-    -- a "blank" sprite in the portraits atlas. Hidden is the next-best
-    -- look; the card frame + position icon already carry the position.)
-    if nodes.portrait then
-        local sprite = get_portrait_sprite(card)
-        if sprite then
-            gui.set_enabled(nodes.portrait, true)
-            gui.set_texture(nodes.portrait, "portraits")
-            gui.play_flipbook(nodes.portrait, hash(sprite))
-            gui.set_color(nodes.portrait, CARD_FULL)
-        else
-            gui.set_enabled(nodes.portrait, false)
+        self.modifier_refs[i] = {
+            root = gui.get_node("lane_" .. i .. "_medallion_root"),
+            icon = gui.get_node("lane_" .. i .. "_medallion_icon"),
+            name = gui.get_node("lane_" .. i .. "_medallion_name"),
+        }
+        self.lane_refs[i] = {
+            root         = gui.get_node("lane_" .. i .. "_root"),
+            p_yard_fill  = gui.get_node("lane_" .. i .. "_p_yard_fill"),
+            p_pos_text   = gui.get_node("lane_" .. i .. "_p_pos_text"),
+            p_pill_text  = gui.get_node("lane_" .. i .. "_p_pill_text"),
+            ai_yard_fill = gui.get_node("lane_" .. i .. "_ai_yard_fill"),
+            ai_pos_text  = gui.get_node("lane_" .. i .. "_ai_pos_text"),
+            ai_pill_text = gui.get_node("lane_" .. i .. "_ai_pill_text"),
+        }
+        self.lane_root_nodes[i] = self.lane_refs[i].root
+        self.slots[i] = { you = {}, ai = {} }
+        for s = 0, SLOTS_PER_SIDE - 1 do
+            local p_prefix = "lane_" .. i .. "_p_slot_" .. s
+            self.slots[i].you[s] = {
+                root         = gui.get_node(p_prefix),
+                frame        = gui.get_node(p_prefix .. "_frame"),
+                portrait     = gui.get_node(p_prefix .. "_portrait"),
+                pos_icon     = gui.get_node(p_prefix .. "_pos_icon"),
+                ability_star = gui.get_node(p_prefix .. "_ability_star"),
+                cost         = gui.get_node(p_prefix .. "_cost"),
+                name         = gui.get_node(p_prefix .. "_name"),
+                stat         = gui.get_node(p_prefix .. "_stat"),
+                card_data = nil,
+                revealed = false,
+            }
+            local ai_prefix = "lane_" .. i .. "_ai_slot_" .. s
+            self.slots[i].ai[s] = {
+                root         = gui.get_node(ai_prefix),
+                frame        = gui.get_node(ai_prefix .. "_frame"),
+                portrait     = gui.get_node(ai_prefix .. "_portrait"),
+                pos_icon     = gui.get_node(ai_prefix .. "_pos_icon"),
+                ability_star = gui.get_node(ai_prefix .. "_ability_star"),
+                cost         = gui.get_node(ai_prefix .. "_cost"),
+                name         = gui.get_node(ai_prefix .. "_name"),
+                stat         = gui.get_node(ai_prefix .. "_stat"),
+                card_data = nil,
+                revealed = false,
+            }
         end
     end
 
-    -- Position icon sprite (top-right corner).
-    if nodes.pos_icon then
-        gui.set_enabled(nodes.pos_icon, true)
-        gui.set_texture(nodes.pos_icon, "icons")
-        gui.play_flipbook(nodes.pos_icon, hash("pos_" .. string.lower(card.pos or "qb")))
+    -- Hand cards
+    self.hand_nodes = {}
+    for i = 1, HAND_SIZE do
+        self.hand_nodes[i] = {
+            root         = gui.get_node("hand_" .. i .. "_root"),
+            cost         = gui.get_node("hand_" .. i .. "_cost"),
+            pos          = gui.get_node("hand_" .. i .. "_pos"),
+            name         = gui.get_node("hand_" .. i .. "_name"),
+            stat         = gui.get_node("hand_" .. i .. "_stat"),
+            portrait     = gui.get_node("hand_" .. i .. "_portrait"),
+            pos_icon     = gui.get_node("hand_" .. i .. "_pos_icon"),
+            ability_star = gui.get_node("hand_" .. i .. "_ability_star"),
+        }
     end
 
-    -- Ability star (top-center, only shown for cards with a non-empty ability).
-    if nodes.ability_star then
-        local has_ability = card.ability ~= nil and card.ability ~= ""
-        gui.set_enabled(nodes.ability_star, has_ability)
-    end
-end
-
--- ---------------------------------------------------------------------------
--- Lane card slots
--- ---------------------------------------------------------------------------
-
-local function render_slot(self, lane_idx, side, slot_idx, card_data, revealed)
-    local sides_map = self.slots[lane_idx]
-    if not sides_map then return end
-    local slot = sides_map[side] and sides_map[side][slot_idx]
-    if not slot then return end
-
-    if not card_data then
-        -- Slot has no card — disable and bail. We deliberately do NOT
-        -- call gui.set_texture("") here: Defold raises if the texture
-        -- name doesn't resolve. The slot's enabled=false hides it
-        -- regardless of what texture is currently bound.
-        gui.set_enabled(slot.root, false)
-        gui.set_scale(slot.root, vmath.vector3(1, 1, 1))
-        slot.card_data = nil
-        slot.revealed = false
-        return
-    end
-
-    slot.card_data = card_data
-    slot.revealed = revealed and true or false
-    gui.set_enabled(slot.root, true)
-    gui.set_scale(slot.root, vmath.vector3(1, 1, 1))
-
-    if slot.revealed then
-        -- Face-up: white tint + card frame texture so the PNG renders
-        -- at native colors. Side coloring is baked into the frame art.
-        gui.set_color(slot.root, CARD_FULL)
-        gui.set_texture(slot.root, "cards")
-        gui.play_flipbook(slot.root, hash(get_card_frame_sprite(card_data)))
-        gui.set_text(slot.text, compact_slot_text(card_data))
-    else
-        -- Face-down: dim color. Any previously-set frame texture stays
-        -- bound but will tint down with the dark color. We can't unbind
-        -- a texture at runtime (see render_hand_slot empty-branch note).
-        gui.set_color(slot.root, SLOT_FACE_DOWN_COLOR)
-        gui.set_text(slot.text, "")
-    end
-end
-
-local function render_lane_cards(self, lane_idx, you_cards, ai_cards)
-    for slot_idx = 0, SLOTS_PER_SIDE - 1 do
-        local you_card = (you_cards or {})[slot_idx + 1]
-        render_slot(self, lane_idx, "you", slot_idx, you_card, you_card and you_card.revealed)
-        local ai_card = (ai_cards or {})[slot_idx + 1]
-        render_slot(self, lane_idx, "ai", slot_idx, ai_card, ai_card and ai_card.revealed)
-    end
-end
-
-local function flip_slot(self, lane_idx, side, slot_idx)
-    local sides_map = self.slots[lane_idx]
-    if not sides_map then return end
-    local slot = sides_map[side] and sides_map[side][slot_idx]
-    if not slot or not slot.card_data then return end
-
-    local card_data = slot.card_data
-
-    animate_helper.animate_gui(slot.root, "scale.x", 0,
-        gui.EASING_INQUAD, 0.14, 0,
-        function(_s)
-            -- Mid-flip: swap to face-up (white tint + card frame texture).
-            gui.set_color(slot.root, CARD_FULL)
-            gui.set_texture(slot.root, "cards")
-            gui.play_flipbook(slot.root, hash(get_card_frame_sprite(card_data)))
-            gui.set_text(slot.text, compact_slot_text(card_data))
-            slot.revealed = true
-            animate_helper.animate_gui(slot.root, "scale.x", 1,
-                gui.EASING_OUTQUAD, 0.14)
-        end)
-end
-
-local function clear_lane_card_slots(self, lane_idx)
-    for s = 0, SLOTS_PER_SIDE - 1 do
-        render_slot(self, lane_idx, "you", s, nil, false)
-        render_slot(self, lane_idx, "ai", s, nil, false)
-    end
-end
-
--- ---------------------------------------------------------------------------
--- Pills, yardage bars, position text
--- ---------------------------------------------------------------------------
-
-local function render_lane_meta(self, lane_idx, you_pos, ai_pos, you_net, ai_net)
-    local nodes = self.lane_nodes[lane_idx]
-    if not nodes then return end
-
-    local you_w = math.max(0, math.min(YARD_BAR_WIDTH, (you_pos or 0) / 100 * YARD_BAR_WIDTH))
-    local ai_w = math.max(0, math.min(YARD_BAR_WIDTH, (ai_pos or 0) / 100 * YARD_BAR_WIDTH))
-    gui.set_size(nodes.p_yard_fill, vmath.vector3(you_w, 25, 0))
-    gui.set_size(nodes.ai_yard_fill, vmath.vector3(ai_w, 25, 0))
-    gui.set_text(nodes.p_pos_text, tostring(you_pos or 0))
-    gui.set_text(nodes.ai_pos_text, tostring(ai_pos or 0))
-    gui.set_text(nodes.p_pill_text, "+" .. tostring(you_net or 0))
-    gui.set_text(nodes.ai_pill_text, "+" .. tostring(ai_net or 0))
-end
-
-local function update_lane_hover(self, hovered_idx)
-    for i = 0, LANE_COUNT - 1 do
-        local nodes = self.lane_nodes[i]
-        if i == hovered_idx then
-            gui.set_color(nodes.root, LANE_HOVER_COLOR)
-        else
-            gui.set_color(nodes.root, LANE_BASE_COLOR)
-        end
-    end
-end
-
-local function clear_lane_hover(self)
-    update_lane_hover(self, -1)
-end
-
--- ---------------------------------------------------------------------------
--- Drag ghost
--- ---------------------------------------------------------------------------
-
-local function show_drag_ghost(self, card, x, y)
-    gui.set_enabled(self.drag_ghost, true)
-    gui.set_position(self.drag_ghost, vmath.vector3(x, y, 0))
-    gui.set_text(self.drag_ghost_text,
-        card.pos .. " c" .. tostring(card.cost) .. "\n" .. card.name)
-end
-
-local function animate_ghost_back(self, source_index, on_done)
-    local target_x = HAND_X_BY_INDEX[source_index] or 585
-    local target_y = HAND_Y
-    animate_helper.animate_gui(self.drag_ghost, gui.PROP_POSITION,
-        vmath.vector3(target_x, target_y, 0),
-        gui.EASING_OUTQUAD, 0.2, 0, on_done)
-end
-
-local function cancel_drag(self)
-    if not self.dragging then return end
-    local drag = self.dragging
-    self.dragging = nil
+    -- Drag ghost
+    self.drag_ghost      = gui.get_node("drag_ghost")
+    self.drag_ghost_text = gui.get_node("drag_ghost_text")
     gui.set_enabled(self.drag_ghost, false)
-    local src = self.hand_nodes[drag.source_index]
-    if src and not (self.current_hand[drag.source_index] or {}).empty then
-        gui.set_color(src.root, CARD_FULL)
-    end
-    clear_lane_hover(self)
-end
 
-local function affordable(self, card)
-    return card ~= nil and not card.empty and (card.cost or 0) <= (self.current_energy or 0)
-end
+    -- Score burst + match-end summary
+    self.score_burst     = gui.get_node("score_burst_text")
+    gui.set_enabled(self.score_burst, false)
+    self.summary_overlay = gui.get_node("summary_overlay")
+    self.summary_text    = gui.get_node("summary_text")
+    self.summary_button  = gui.get_node("summary_button")
+    gui.set_enabled(self.summary_overlay, false)
 
--- ---------------------------------------------------------------------------
--- Score burst animation
--- ---------------------------------------------------------------------------
-
-local function show_score_burst(self, event_type, points)
-    local text = BURST_TEXT_BY_TYPE[event_type] or "SCORE!"
-    local base_color = BURST_COLOR_BY_TYPE[event_type] or vmath.vector4(1, 1, 1, 1)
-
-    gui.set_enabled(self.score_burst, true)
-    gui.set_text(self.score_burst, text)
-    gui.set_scale(self.score_burst, vmath.vector3(BURST_SCALE_START, BURST_SCALE_START, 1))
-
-    local start_color = vmath.vector4(base_color.x, base_color.y, base_color.z, 0)
-    gui.set_color(self.score_burst, start_color)
-
-    animate_helper.animate_gui(self.score_burst, "scale",
-        vmath.vector3(BURST_SCALE_BASE, BURST_SCALE_BASE, 1),
-        gui.EASING_OUTBACK, BURST_SCALE_IN)
-
-    local full_color = vmath.vector4(base_color.x, base_color.y, base_color.z, 1)
-    animate_helper.animate_gui(self.score_burst, "color",
-        full_color, gui.EASING_OUTQUAD, BURST_FADE_IN, 0,
-        function(_s)
-            timer.delay(BURST_HOLD, false, function(s2)
-                local fade_color = vmath.vector4(base_color.x, base_color.y, base_color.z, 0)
-                animate_helper.animate_gui(s2.score_burst, "color",
-                    fade_color, gui.EASING_INQUAD, BURST_FADE_OUT)
-            end)
-        end)
-end
-
-local function pulse_score_node(self, node)
-    animate_helper.animate_gui(node, gui.PROP_SCALE, SCORE_PULSE_SCALE,
-        gui.EASING_OUTQUAD, 0.15, 0,
-        function(_s)
-            animate_helper.animate_gui(node, gui.PROP_SCALE, SCORE_BASE_SCALE,
-                gui.EASING_INQUAD, 0.15)
-        end)
-end
-
-local function pulse_drive_node(self)
-    animate_helper.animate_gui(self.drive_text, gui.PROP_SCALE, DRIVE_PULSE_SCALE,
-        gui.EASING_OUTQUAD, 0.125, 0,
-        function(_s)
-            animate_helper.animate_gui(self.drive_text, gui.PROP_SCALE, DRIVE_BASE_SCALE,
-                gui.EASING_INQUAD, 0.125)
-        end)
-end
-
-local function bump_badge(self, badge_node)
-    animate_helper.animate_gui(badge_node, gui.PROP_SCALE, BADGE_BUMP_SCALE,
-        gui.EASING_OUTQUAD, 0.11, 0,
-        function(_s)
-            animate_helper.animate_gui(badge_node, gui.PROP_SCALE, BADGE_BASE_SCALE,
-                gui.EASING_INQUAD, 0.11)
-        end)
-end
-
--- ---------------------------------------------------------------------------
--- 2-pt conversion modal state machine
--- ---------------------------------------------------------------------------
-
-local function hide_conversion(self)
+    -- 2-pt conversion modal nodes (passed to hud_conversion module)
+    self.conv_root  = gui.get_node("conversion_root")
     gui.set_enabled(self.conv_root, false)
-    self.conversion.state = "hidden"
-end
-
-local function set_conversion_state(self, new_state)
-    self.conversion.state = new_state
-    local n = self.conv_nodes
-
-    gui.set_enabled(n.go_for_2_btn, false)
-    gui.set_enabled(n.kick_pat_btn, false)
-    gui.set_enabled(n.heads_btn, false)
-    gui.set_enabled(n.tails_btn, false)
-    gui.set_enabled(n.coin, false)
-    if n.coin_tails then gui.set_enabled(n.coin_tails, false) end
-    gui.set_enabled(n.result_text, false)
-    gui.set_enabled(n.result_hint, false)
-
-    if new_state == "initial" then
-        gui.set_text(n.title, "GO FOR 2?")
-        gui.set_text(n.subtitle, "MORE OFF THAN THEIR DEF")
-        gui.set_enabled(n.go_for_2_btn, true)
-        gui.set_enabled(n.kick_pat_btn, true)
-    elseif new_state == "calling" then
-        gui.set_text(n.title, "CALL IT")
-        gui.set_text(n.subtitle, "HEADS OR TAILS?")
-        gui.set_enabled(n.heads_btn, true)
-        gui.set_enabled(n.tails_btn, true)
-    elseif new_state == "flipping" then
-        gui.set_text(n.title, "FLIPPING...")
-        gui.set_text(n.subtitle, "")
-        gui.set_enabled(n.coin, true)
-        if n.coin_tails then gui.set_enabled(n.coin_tails, true) end
-    elseif new_state == "result" then
-        gui.set_enabled(n.result_text, true)
-        gui.set_enabled(n.result_hint, true)
-    end
-end
-
-local function show_conversion(self, side, lane_idx)
-    self.conversion = {
-        state = "initial",
-        context = { side = side, lane_idx = lane_idx },
-        player_call = nil,
-        coin_result = nil,
-        matched = nil,
+    self.conv_nodes = {
+        root         = self.conv_root,
+        panel        = gui.get_node("conversion_panel"),
+        title        = gui.get_node("conversion_title"),
+        subtitle     = gui.get_node("conversion_subtitle"),
+        go_for_2_btn = gui.get_node("conversion_go_for_2_btn"),
+        kick_pat_btn = gui.get_node("conversion_kick_pat_btn"),
+        heads_btn    = gui.get_node("conversion_heads_btn"),
+        tails_btn    = gui.get_node("conversion_tails_btn"),
+        coin         = gui.get_node("conversion_coin"),
+        coin_face    = gui.get_node("conversion_coin_face"),
+        coin_tails   = gui.get_node("conversion_coin_tails"),
+        result_text  = gui.get_node("conversion_result_text"),
+        result_hint  = gui.get_node("conversion_result_hint"),
     }
-    gui.set_enabled(self.conv_root, true)
-    -- Phase 5: the coin_face text node is no longer used (real PNG faces
-    -- are on conversion_coin and conversion_coin_tails). Blank the text
-    -- so any stale "H"/"T" left over from a previous flip is hidden.
-    gui.set_text(self.conv_nodes.coin_face, "")
-    -- Reset both coin rotations to their starting orientation. Heads
-    -- starts at 0° facing the camera; tails starts at 180° (facing away)
-    -- so only one face is visible at a time as both spin together.
-    gui.set_rotation(self.conv_nodes.coin, vmath.vector3(0, 0, 0))
-    if self.conv_nodes.coin_tails then
-        gui.set_rotation(self.conv_nodes.coin_tails, vmath.vector3(0, 180, 0))
-    end
-    set_conversion_state(self, "initial")
-end
+    self.conversion = hud_conversion.new()
 
-local function send_two_pt_result(self, result, call, outcome)
-    local context = self.conversion.context
-    msg.post("/match#script", msgs.MATCH_TWO_PT_CHOICE, {
-        result = result,
-        side = context.side,
-        lane_idx = context.lane_idx,
-        call = call,
-        outcome = outcome,
-    })
-    hide_conversion(self)
-end
+    -- Phase 4 chrome (deck/discard badges, reshuffle, carried toast, discard modal)
+    self.deck_badge          = gui.get_node("deck_badge")
+    self.deck_badge_count    = gui.get_node("deck_badge_count")
+    self.discard_badge       = gui.get_node("discard_badge")
+    self.discard_badge_count = gui.get_node("discard_badge_count")
+    self.reshuffle_text      = gui.get_node("reshuffle_text")
+    gui.set_enabled(self.reshuffle_text, false)
+    self.carried_toast       = gui.get_node("carried_toast")
+    gui.set_enabled(self.carried_toast, false)
+    self.carried_toast_base_pos = gui.get_position(self.carried_toast)
 
-local function on_flip_complete(self)
-    local conv = self.conversion
-    conv.matched = (conv.player_call == conv.coin_result)
-    set_conversion_state(self, "result")
+    self.discard_modal_root  = gui.get_node("discard_modal_root")
+    self.discard_modal_panel = gui.get_node("discard_modal_panel")
+    self.discard_modal_body  = gui.get_node("discard_modal_body")
+    gui.set_enabled(self.discard_modal_root, false)
+    self.discard_modal_visible = false
 
-    local result_text = self.conv_nodes.result_text
-    if conv.matched then
-        gui.set_text(result_text, "CONVERTED +2")
-        gui.set_color(result_text, vmath.vector4(0.29, 1.0, 0.54, 1.0))
-    else
-        gui.set_text(result_text, "NO GOOD")
-        gui.set_color(result_text, vmath.vector4(1.0, 0.42, 0.42, 1.0))
-    end
-end
+    -- Phase 6: modifier description toast (one shared toast for all 3
+    -- medallions; tapping a medallion re-uses it).
+    self.modifier_toast_refs = {
+        root = gui.get_node("modifier_toast_root"),
+        text = gui.get_node("modifier_toast_text"),
+    }
+    gui.set_enabled(self.modifier_toast_refs.root, false)
+    self.current_modifiers = {}
 
-local function start_coin_flip(self)
-    -- Phase 5: synchronized 3D-style flip across two sprite nodes. The
-    -- heads sprite (conv_nodes.coin) starts at rotation.y=0; the tails
-    -- sprite (conv_nodes.coin_tails) starts at rotation.y=180. Both
-    -- animate rotation.y by the same delta — Defold's GL renderer culls
-    -- the back of each sprite via the standard quad winding, so only
-    -- whichever face is currently within ±90° of the camera is visible.
-    --
-    -- Heads-facing positions: 0°, 360°, 720°, ...
-    -- Tails-facing positions: 180°, 540°, 900°, ...
-    --
-    -- For two full spins (720°) ending heads-up; one extra half-spin
-    -- (900°) for the heads sprite ends with tails facing camera.
-    local heads_final = (self.conversion.coin_result == "heads") and 720 or 900
-    local tails_final = heads_final + 180
-    animate_helper.animate_gui(self.conv_nodes.coin, "rotation.y", heads_final,
-        gui.EASING_OUTQUAD, COIN_FLIP_DURATION, 0,
-        function(s) on_flip_complete(s) end)
-    if self.conv_nodes.coin_tails then
-        animate_helper.animate_gui(self.conv_nodes.coin_tails, "rotation.y", tails_final,
-            gui.EASING_OUTQUAD, COIN_FLIP_DURATION, 0, nil)
-    end
-end
-
-local function do_coin_call(self, call)
-    self.conversion.player_call = call
-    self.conversion.coin_result = (math.random() < 0.5) and "heads" or "tails"
-    set_conversion_state(self, "flipping")
-    start_coin_flip(self)
-end
-
-local function handle_conversion_tap(self, x, y)
-    if not self.conversion or self.conversion.state == "hidden" then
-        return false
-    end
-    local state = self.conversion.state
-    local n = self.conv_nodes
-
-    if state == "initial" then
-        if gui.pick_node(n.go_for_2_btn, x, y) then
-            set_conversion_state(self, "calling")
-        elseif gui.pick_node(n.kick_pat_btn, x, y) then
-            send_two_pt_result(self, "skip", nil, nil)
-        end
-        return true
-    elseif state == "calling" then
-        if gui.pick_node(n.heads_btn, x, y) then
-            do_coin_call(self, "heads")
-        elseif gui.pick_node(n.tails_btn, x, y) then
-            do_coin_call(self, "tails")
-        end
-        return true
-    elseif state == "flipping" then
-        return true
-    elseif state == "result" then
-        local conv = self.conversion
-        local result = conv.matched and "converted" or "failed"
-        send_two_pt_result(self, result, conv.player_call, conv.coin_result)
-        return true
-    end
-    return false
+    -- Crossing-message state
+    self.current_hand = {}
+    for i = 1, HAND_SIZE do self.current_hand[i] = { empty = true } end
+    self.current_energy = 0
+    self.dragging = nil  -- hud_drag.try_start_drag returns a drag_state | nil
+    self.summary_visible = false
+    self.input_enabled = true
+    self.orb_state = { active = false }
 end
 
 -- ---------------------------------------------------------------------------
--- Lane reset
+-- Drag refs (built per-call so it always reflects current state)
 -- ---------------------------------------------------------------------------
 
-local function animate_lane_reset(self, lane_idx, new_you_pos, new_ai_pos)
-    clear_lane_card_slots(self, lane_idx)
-    local nodes = self.lane_nodes[lane_idx]
-    if not nodes then return end
-    local target_you_w = math.max(0, math.min(YARD_BAR_WIDTH,
-        (new_you_pos or 0) / 100 * YARD_BAR_WIDTH))
-    local target_ai_w = math.max(0, math.min(YARD_BAR_WIDTH,
-        (new_ai_pos or 0) / 100 * YARD_BAR_WIDTH))
-    animate_helper.animate_gui(nodes.p_yard_fill, "size.x", target_you_w,
-        gui.EASING_OUTQUAD, 0.4)
-    animate_helper.animate_gui(nodes.ai_yard_fill, "size.x", target_ai_w,
-        gui.EASING_OUTQUAD, 0.4)
-    gui.set_text(nodes.p_pos_text, tostring(new_you_pos or 0))
-    gui.set_text(nodes.ai_pos_text, tostring(new_ai_pos or 0))
-    gui.set_text(nodes.p_pill_text, "+0")
-    gui.set_text(nodes.ai_pill_text, "+0")
-end
-
--- ---------------------------------------------------------------------------
--- Phase 4: carryover toast + energy orb pulse
--- ---------------------------------------------------------------------------
-
-local function show_carried_toast(self, amount)
-    if not amount or amount <= 0 then return end
-    gui.set_text(self.carried_toast, "+" .. tostring(amount) .. " CARRIED")
-    gui.set_enabled(self.carried_toast, true)
-
-    local base = self.carried_toast_base_pos
-    gui.set_position(self.carried_toast, base)
-    gui.set_color(self.carried_toast, vmath.vector4(1, 0.85, 0.2, 0))
-
-    local pos1 = vmath.vector3(base.x, base.y + TOAST_RISE_PHASE1, base.z)
-    animate_helper.animate_gui(self.carried_toast, gui.PROP_POSITION, pos1,
-        gui.EASING_OUTQUAD, TOAST_FADE_IN)
-    animate_helper.animate_gui(self.carried_toast, "color.w", 1,
-        gui.EASING_OUTQUAD, TOAST_FADE_IN, 0,
-        function(_s)
-            timer.delay(TOAST_HOLD, false, function(s2)
-                local pos2 = vmath.vector3(base.x, base.y + TOAST_RISE_PHASE2, base.z)
-                animate_helper.animate_gui(s2.carried_toast, gui.PROP_POSITION, pos2,
-                    gui.EASING_INQUAD, TOAST_FADE_OUT)
-                animate_helper.animate_gui(s2.carried_toast, "color.w", 0,
-                    gui.EASING_INQUAD, TOAST_FADE_OUT, 0,
-                    function(s3)
-                        gui.set_position(s3.carried_toast, base)
-                        gui.set_enabled(s3.carried_toast, false)
-                    end)
-            end)
-        end)
-end
-
-local orb_pulse_step
-orb_pulse_step = function(self)
-    if not self.orb_pulsing then
-        gui.set_scale(self.energy_orb, vmath.vector3(1, 1, 1))
-        return
-    end
-    animate_helper.animate_gui(self.energy_orb, gui.PROP_SCALE, ORB_PULSE_SCALE,
-        gui.EASING_INOUTQUAD, 0.5, 0,
-        function(s)
-            if not s.orb_pulsing then return end
-            animate_helper.animate_gui(s.energy_orb, gui.PROP_SCALE,
-                vmath.vector3(1, 1, 1),
-                gui.EASING_INOUTQUAD, 0.5, 0,
-                function(s2)
-                    if not s2.orb_pulsing then return end
-                    orb_pulse_step(s2)
-                end)
-        end)
-end
-
-local function start_orb_pulse(self)
-    if self.orb_pulsing then return end
-    -- Reduced motion skips the loop entirely. Without this guard the
-    -- 1ms-each animate_helper callbacks would tight-spin.
-    if meta_state.is_reduced_motion() then return end
-    self.orb_pulsing = true
-    orb_pulse_step(self)
-end
-
-local function stop_orb_pulse(self)
-    self.orb_pulsing = false
-    gui.set_scale(self.energy_orb, vmath.vector3(1, 1, 1))
-end
-
--- ---------------------------------------------------------------------------
--- Phase 4: reshuffle visual
--- ---------------------------------------------------------------------------
-
-local function show_reshuffle_visual(self)
-    gui.set_enabled(self.reshuffle_text, true)
-    gui.set_color(self.reshuffle_text, vmath.vector4(1, 0.85, 0.2, 0))
-
-    animate_helper.animate_gui(self.reshuffle_text, "color.w", 1,
-        gui.EASING_OUTQUAD, 0.3, 0,
-        function(_s)
-            timer.delay(0.4, false, function(s2)
-                animate_helper.animate_gui(s2.reshuffle_text, "color.w", 0,
-                    gui.EASING_INQUAD, 0.3, 0,
-                    function(s3)
-                        gui.set_enabled(s3.reshuffle_text, false)
-                    end)
-            end)
-        end)
-
-    bump_badge(self, self.discard_badge)
-end
-
--- ---------------------------------------------------------------------------
--- Phase 4: discard arc + draw arc
--- ---------------------------------------------------------------------------
-
-local function handle_discard_anim(self)
-    if not self.current_hand then return end
-    local discard_pos = gui.get_position(self.discard_badge)
-
+local function drag_refs_for(self)
+    local home = {}
     for i = 1, HAND_SIZE do
-        local card = self.current_hand[i]
-        if card and not card.empty then
-            local node = self.hand_nodes[i].root
-            local delay = (i - 1) * DISCARD_STAGGER
-
-            animate_helper.animate_gui(node, gui.PROP_POSITION, discard_pos,
-                gui.EASING_INQUAD, DISCARD_DURATION, delay)
-            animate_helper.animate_gui(node, "rotation.z", 30,
-                gui.EASING_INQUAD, DISCARD_DURATION, delay)
-            animate_helper.animate_gui(node, gui.PROP_SCALE,
-                vmath.vector3(0.4, 0.4, 1),
-                gui.EASING_INQUAD, DISCARD_DURATION, delay)
-            animate_helper.animate_gui(node, "color.w", 0,
-                gui.EASING_INQUAD, DISCARD_DURATION, delay)
-        end
+        home[i] = vmath.vector3(hud_render.HAND_X_BY_INDEX[i], hud_render.HAND_Y, 0)
     end
-end
-
-local function handle_draw_anim(self, drawn_cards)
-    local deck_pos = gui.get_position(self.deck_badge)
-    drawn_cards = drawn_cards or {}
-
-    for i = 1, HAND_SIZE do
-        local node = self.hand_nodes[i].root
-        local card = drawn_cards[i]
-        local target_pos = vmath.vector3(HAND_X_BY_INDEX[i], HAND_Y, 0)
-
-        if card and not card.empty then
-            -- Reset to deck-badge start state, render the new card, then
-            -- animate into the hand slot.
-            gui.set_position(node, deck_pos)
-            gui.set_rotation(node, vmath.vector3(0, 0, 0))
-            gui.set_scale(node, vmath.vector3(0.4, 0.4, 1))
-            gui.set_color(node, vmath.vector4(1, 1, 1, 0.35))
-            render_hand_slot(self, i, card)
-
-            local delay = (i - 1) * DRAW_STAGGER
-            animate_helper.animate_gui(node, gui.PROP_POSITION, target_pos,
-                gui.EASING_OUTQUAD, DRAW_DURATION, delay)
-            animate_helper.animate_gui(node, gui.PROP_SCALE,
-                vmath.vector3(1, 1, 1),
-                gui.EASING_OUTQUAD, DRAW_DURATION, delay)
-            animate_helper.animate_gui(node, "color.w", 1,
-                gui.EASING_OUTQUAD, DRAW_DURATION, delay)
-        else
-            -- No card drawn for this slot — reset to natural position
-            -- with empty render. No animation needed.
-            gui.set_position(node, target_pos)
-            gui.set_rotation(node, vmath.vector3(0, 0, 0))
-            gui.set_scale(node, vmath.vector3(1, 1, 1))
-            gui.set_color(node, vmath.vector4(1, 1, 1, 1))
-            render_hand_slot(self, i, nil)
-        end
-    end
+    return {
+        hand_nodes       = self.hand_nodes,
+        lane_root_nodes  = self.lane_root_nodes,
+        ghost            = self.drag_ghost,
+        ghost_text       = self.drag_ghost_text,
+        current_hand     = self.current_hand,
+        current_energy   = self.current_energy,
+        hand_slots_home  = home,
+        on_invalid_drop  = function(reason)
+            if reason == "insufficient_energy" then
+                hud_render.show_text_toast(self.modifier_toast_refs,
+                    "NOT ENOUGH ENERGY")
+            end
+        end,
+    }
 end
 
 -- ---------------------------------------------------------------------------
--- Phase 4: discard modal
+-- Discard modal helpers
 -- ---------------------------------------------------------------------------
 
 local function format_discard_summary(summary)
@@ -782,20 +215,15 @@ local function format_discard_summary(summary)
         return "Nothing discarded yet."
     end
     local lines = {}
-
-    -- Count distinct drives with discards.
     local drives_with_discards = 0
     for _, _ in pairs(summary.per_drive) do
         drives_with_discards = drives_with_discards + 1
     end
-
     local card_word = (summary.total == 1) and "card" or "cards"
     local drive_word = (drives_with_discards == 1) and "drive" or "drives"
     table.insert(lines, string.format("You discarded %d %s across %d %s:",
         summary.total, card_word, drives_with_discards, drive_word))
     table.insert(lines, "")
-
-    -- Sort drive numbers ascending.
     local drive_nums = {}
     for d, _ in pairs(summary.per_drive) do
         table.insert(drive_nums, d)
@@ -806,14 +234,11 @@ local function format_discard_summary(summary)
         local word = (count == 1) and "card" or "cards"
         table.insert(lines, string.format("Drive %d: %d %s", d, count, word))
     end
-
     return table.concat(lines, "\n")
 end
 
 local function show_discard_modal(self)
     if self.discard_modal_visible then return end
-    -- HUD reads match_state directly here per the Phase 4 prompt's
-    -- explicit instruction. Read-only access for display data only.
     local summary = match_state.get_discard_summary("you")
     gui.set_text(self.discard_modal_body, format_discard_summary(summary))
     gui.set_enabled(self.discard_modal_root, true)
@@ -828,143 +253,31 @@ local function hide_discard_modal(self)
     self.discard_modal_visible = false
     animate_helper.animate_gui(self.discard_modal_panel, gui.PROP_SCALE,
         vmath.vector3(0.9, 0.9, 1), gui.EASING_INQUAD, 0.12, 0,
-        function(s)
-            gui.set_enabled(s.discard_modal_root, false)
+        function(_s)
+            gui.set_enabled(self.discard_modal_root, false)
         end)
 end
 
 -- ---------------------------------------------------------------------------
--- Lifecycle
--- ---------------------------------------------------------------------------
-
-function init(self)
-    msg.post(".", "acquire_input_focus")
-
-    self.menu_button = gui.get_node("menu_button")
-    self.you_score_text = gui.get_node("you_score_text")
-    self.drive_text = gui.get_node("drive_text")
-    self.cpu_score_text = gui.get_node("cpu_score_text")
-
-    self.concede_button = gui.get_node("concede_button")
-    self.energy_orb = gui.get_node("energy_orb")
-    self.energy_text = gui.get_node("energy_text")
-    self.end_drive_button = gui.get_node("end_drive_button")
-
-    self.lane_nodes = {}
-    self.slots = {}
-    for i = 0, LANE_COUNT - 1 do
-        self.lane_nodes[i] = {
-            root         = gui.get_node("lane_" .. i .. "_root"),
-            p_yard_fill  = gui.get_node("lane_" .. i .. "_p_yard_fill"),
-            p_pos_text   = gui.get_node("lane_" .. i .. "_p_pos_text"),
-            p_pill_text  = gui.get_node("lane_" .. i .. "_p_pill_text"),
-            ai_yard_fill = gui.get_node("lane_" .. i .. "_ai_yard_fill"),
-            ai_pos_text  = gui.get_node("lane_" .. i .. "_ai_pos_text"),
-            ai_pill_text = gui.get_node("lane_" .. i .. "_ai_pill_text"),
-        }
-        self.slots[i] = { you = {}, ai = {} }
-        for s = 0, SLOTS_PER_SIDE - 1 do
-            self.slots[i].you[s] = {
-                root = gui.get_node("lane_" .. i .. "_p_slot_" .. s),
-                text = gui.get_node("lane_" .. i .. "_p_slot_" .. s .. "_text"),
-                card_data = nil,
-                revealed = false,
-            }
-            self.slots[i].ai[s] = {
-                root = gui.get_node("lane_" .. i .. "_ai_slot_" .. s),
-                text = gui.get_node("lane_" .. i .. "_ai_slot_" .. s .. "_text"),
-                card_data = nil,
-                revealed = false,
-            }
-        end
-    end
-
-    self.hand_nodes = {}
-    for i = 1, HAND_SIZE do
-        self.hand_nodes[i] = {
-            root         = gui.get_node("hand_" .. i .. "_root"),
-            cost         = gui.get_node("hand_" .. i .. "_cost"),
-            pos          = gui.get_node("hand_" .. i .. "_pos"),
-            name         = gui.get_node("hand_" .. i .. "_name"),
-            stat         = gui.get_node("hand_" .. i .. "_stat"),
-            -- Phase 5: card frame texture + portrait + position icon + ability star.
-            portrait     = gui.get_node("hand_" .. i .. "_portrait"),
-            pos_icon     = gui.get_node("hand_" .. i .. "_pos_icon"),
-            ability_star = gui.get_node("hand_" .. i .. "_ability_star"),
-        }
-    end
-
-    self.drag_ghost = gui.get_node("drag_ghost")
-    self.drag_ghost_text = gui.get_node("drag_ghost_text")
-    gui.set_enabled(self.drag_ghost, false)
-
-    self.summary_overlay = gui.get_node("summary_overlay")
-    self.summary_text = gui.get_node("summary_text")
-    self.summary_button = gui.get_node("summary_button")
-    gui.set_enabled(self.summary_overlay, false)
-
-    self.score_burst = gui.get_node("score_burst_text")
-    gui.set_enabled(self.score_burst, false)
-
-    self.conv_root = gui.get_node("conversion_root")
-    gui.set_enabled(self.conv_root, false)
-    self.conv_nodes = {
-        panel        = gui.get_node("conversion_panel"),
-        title        = gui.get_node("conversion_title"),
-        subtitle     = gui.get_node("conversion_subtitle"),
-        go_for_2_btn = gui.get_node("conversion_go_for_2_btn"),
-        kick_pat_btn = gui.get_node("conversion_kick_pat_btn"),
-        heads_btn    = gui.get_node("conversion_heads_btn"),
-        tails_btn    = gui.get_node("conversion_tails_btn"),
-        coin         = gui.get_node("conversion_coin"),
-        coin_face    = gui.get_node("conversion_coin_face"),
-        -- Phase 5: real coin face PNGs. `coin` is now the heads sprite,
-        -- `coin_tails` starts rotated 180° so both faces are present and
-        -- the GPU shows whichever is currently facing the camera during
-        -- the synchronized Y-axis spin.
-        coin_tails   = gui.get_node("conversion_coin_tails"),
-        result_text  = gui.get_node("conversion_result_text"),
-        result_hint  = gui.get_node("conversion_result_hint"),
-    }
-    self.conversion = { state = "hidden", context = nil }
-
-    -- Phase 4: deck/discard badges, reshuffle text, carried toast,
-    -- discard modal.
-    self.deck_badge = gui.get_node("deck_badge")
-    self.deck_badge_count = gui.get_node("deck_badge_count")
-    self.discard_badge = gui.get_node("discard_badge")
-    self.discard_badge_count = gui.get_node("discard_badge_count")
-    self.reshuffle_text = gui.get_node("reshuffle_text")
-    gui.set_enabled(self.reshuffle_text, false)
-    self.carried_toast = gui.get_node("carried_toast")
-    gui.set_enabled(self.carried_toast, false)
-    self.carried_toast_base_pos = gui.get_position(self.carried_toast)
-
-    self.discard_modal_root = gui.get_node("discard_modal_root")
-    self.discard_modal_panel = gui.get_node("discard_modal_panel")
-    self.discard_modal_body = gui.get_node("discard_modal_body")
-    gui.set_enabled(self.discard_modal_root, false)
-    self.discard_modal_visible = false
-
-    self.current_hand = {}
-    for i = 1, HAND_SIZE do self.current_hand[i] = { empty = true } end
-    self.current_energy = 0
-    self.dragging = nil
-    self.summary_visible = false
-    self.input_enabled = true
-    self.orb_pulsing = false
-end
-
--- ---------------------------------------------------------------------------
--- Input
+-- Button taps + input
 -- ---------------------------------------------------------------------------
 
 local function handle_button_taps(self, x, y)
-    -- The discard badge is tappable in every phase; check it first so
-    -- the modal can open even mid-reveal.
+    -- Discard badge is tappable in every phase.
     if gui.pick_node(self.discard_badge, x, y) then
         msg.post(".", msgs.HUD_OPEN_DISCARD_MODAL)
         return
+    end
+    -- Phase 6: tap any lane medallion to see its description toast.
+    for lane_idx = 0, LANE_COUNT - 1 do
+        local refs = self.modifier_refs[lane_idx]
+        if refs and refs.root and gui.pick_node(refs.root, x, y) then
+            local modifier = self.current_modifiers[lane_idx + 1]
+            if modifier then
+                hud_render.show_modifier_toast(self.modifier_toast_refs, modifier)
+            end
+            return
+        end
     end
     if self.summary_visible then
         if gui.pick_node(self.summary_button, x, y) then
@@ -979,80 +292,64 @@ local function handle_button_taps(self, x, y)
     end
 end
 
-local function try_start_drag(self, x, y)
-    if self.summary_visible then return end
-    if not self.input_enabled then return end
-    if self.conversion and self.conversion.state ~= "hidden" then return end
-    if self.discard_modal_visible then return end
-    for i = 1, HAND_SIZE do
-        local node = self.hand_nodes[i].root
-        if gui.pick_node(node, x, y) then
-            local card = self.current_hand[i]
-            if affordable(self, card) then
-                self.dragging = {
-                    card_uid = card.uid,
-                    source_index = i,
-                    card = card,
-                }
-                show_drag_ghost(self, card, x, y)
-                gui.set_color(node, CARD_DIMMED)
-            end
-            return
-        end
-    end
-end
-
 function on_input(self, action_id, action)
     if action_id ~= msgs.TOUCH then return end
 
     -- Discard modal blocks everything else while visible.
     if self.discard_modal_visible then
-        if action.released then
-            hide_discard_modal(self)
-        end
+        if action.released then hide_discard_modal(self) end
         return
     end
 
-    -- 2-pt modal also blocks while visible.
-    if self.conversion and self.conversion.state ~= "hidden" then
-        if action.released then
-            handle_conversion_tap(self, action.x, action.y)
-        end
+    -- 2-pt modal blocks everything else while visible.
+    if hud_conversion.is_visible(self.conversion) then
+        hud_conversion.handle_input(self.conversion, self.conv_nodes, action,
+            function(result)
+                msg.post("/match#script", msgs.MATCH_TWO_PT_CHOICE, result)
+            end)
         return
     end
 
     if action.pressed then
-        try_start_drag(self, action.x, action.y)
+        -- Try to start a drag from a hand card.
+        if not self.summary_visible and self.input_enabled then
+            self.dragging = hud_drag.try_start_drag(drag_refs_for(self), action)
+        end
         return
     end
 
     if self.dragging then
         if action.released then
-            local target_lane = pick_lane_at(action.x, action.y)
             local drag = self.dragging
             self.dragging = nil
-            clear_lane_hover(self)
 
-            if target_lane ~= nil then
-                gui.set_enabled(self.drag_ghost, false)
-                msg.post("/match#script", msgs.MATCH_PLAY_CARD, {
-                    card_uid = drag.card_uid,
-                    lane_idx = target_lane,
-                })
-            else
-                animate_ghost_back(self, drag.source_index, function(s)
-                    gui.set_enabled(s.drag_ghost, false)
-                    local src = s.hand_nodes[drag.source_index]
-                    if src and not (s.current_hand[drag.source_index] or {}).empty then
-                        gui.set_color(src.root, CARD_FULL)
+            -- Phase 5.5.7: predict the target stack position so the
+            -- ghost can animate to where the spawned card will land.
+            -- match_state hasn't committed the play yet, so we count
+            -- the filled HUD slots in the target lane as the prediction.
+            local target_lane = hud_drag.pick_lane_at(action.x, action.y)
+            local target_stack_pos = nil
+            if target_lane ~= nil and self.slots[target_lane] then
+                local filled = 0
+                local you_slots = self.slots[target_lane].you
+                for s = 0, SLOTS_PER_SIDE - 1 do
+                    if you_slots[s] and you_slots[s].card_data ~= nil then
+                        filled = filled + 1
                     end
-                end)
+                end
+                target_stack_pos = hud_render.compute_stack_position(target_lane, "you", filled)
             end
+
+            hud_drag.end_drag(drag, drag_refs_for(self), action, target_stack_pos,
+                function(card_uid, lane_idx)
+                    msg.post("/match#script", msgs.MATCH_PLAY_CARD, {
+                        card_uid = card_uid,
+                        lane_idx = lane_idx,
+                    })
+                end)
             return
         end
-
-        gui.set_position(self.drag_ghost, vmath.vector3(action.x, action.y, 0))
-        update_lane_hover(self, pick_lane_at(action.x, action.y) or -1)
+        hud_drag.update_drag(self.dragging, drag_refs_for(self), action)
         return
     end
 
@@ -1069,70 +366,99 @@ function on_message(self, message_id, message, sender)
     if message_id == msgs.HUD_HAND_CHANGED then
         self.current_hand = message.hand or {}
         for i = 1, HAND_SIZE do
-            render_hand_slot(self, i, self.current_hand[i])
+            hud_render.render_hand_slot(self.hand_nodes[i], self.current_hand[i], self.current_energy)
         end
 
     elseif message_id == msgs.HUD_ENERGY_CHANGED then
         self.current_energy = message.energy or 0
         gui.set_text(self.energy_text, tostring(self.current_energy))
-        -- Energy change affects which cards are affordable, so re-render
-        -- the hand to refresh the can-afford dim. Hand state itself is
-        -- unchanged.
+        -- Re-render hand to refresh affordability dim.
         for i = 1, HAND_SIZE do
-            render_hand_slot(self, i, self.current_hand[i])
+            hud_render.render_hand_slot(self.hand_nodes[i], self.current_hand[i], self.current_energy)
         end
 
     elseif message_id == msgs.HUD_LANE_UPDATED then
-        render_lane_meta(self, message.lane_idx,
+        hud_render.render_lane_meta(self.lane_refs[message.lane_idx],
             message.you_pos, message.ai_pos,
             message.you_net_yards, message.ai_net_yards)
-        render_lane_cards(self, message.lane_idx, message.you_cards, message.ai_cards)
+        local slots_for_lane = self.slots[message.lane_idx]
+        if slots_for_lane then
+            for slot_idx = 0, SLOTS_PER_SIDE - 1 do
+                local you_card = (message.you_cards or {})[slot_idx + 1]
+                hud_render.render_slot(slots_for_lane.you[slot_idx], you_card,
+                    you_card and you_card.revealed,
+                    message.lane_idx, "you", slot_idx)
+                local ai_card = (message.ai_cards or {})[slot_idx + 1]
+                hud_render.render_slot(slots_for_lane.ai[slot_idx], ai_card,
+                    ai_card and ai_card.revealed,
+                    message.lane_idx, "ai", slot_idx)
+            end
+        end
 
     elseif message_id == msgs.HUD_AI_CARDS_SPAWNED then
+        -- Phase 5.5.5: AI face-down cards use the slap-down animation
+        -- (drop from above into stack position with scale + alpha).
+        -- Phase 6: Scouted plays piggyback on this message so they
+        -- spawn face-up directly. `play.side` and `play.revealed`
+        -- default to the legacy AI / face-down behavior.
+        local slots = self.slots
         for _, play in ipairs(message.plays or {}) do
-            render_slot(self, play.lane_idx, "ai", play.slot_idx, play.card_data, false)
+            local side = play.side or "ai"
+            local revealed = play.revealed and true or false
+            local sides_map = slots[play.lane_idx]
+            if sides_map and sides_map[side] then
+                hud_render.animate_card_slap_down(
+                    sides_map[side][play.slot_idx],
+                    play.card_data,
+                    play.lane_idx, side, play.slot_idx,
+                    revealed)
+            end
         end
 
     elseif message_id == msgs.HUD_REVEAL_CARD then
-        flip_slot(self, message.lane_idx, message.side, message.slot_idx)
+        local sides_map = self.slots[message.lane_idx]
+        if sides_map and sides_map[message.side] then
+            hud_render.flip_slot(sides_map[message.side][message.slot_idx])
+        end
 
     elseif message_id == msgs.HUD_LANE_SUMS_UPDATED then
-        local nodes = self.lane_nodes[message.lane_idx]
-        if nodes then
-            gui.set_text(nodes.p_pill_text, "+" .. tostring(message.you_net_yards or 0))
-            gui.set_text(nodes.ai_pill_text, "+" .. tostring(message.ai_net_yards or 0))
+        local refs = self.lane_refs[message.lane_idx]
+        if refs then
+            gui.set_text(refs.p_pill_text, "+" .. tostring(message.you_net_yards or 0))
+            gui.set_text(refs.ai_pill_text, "+" .. tostring(message.ai_net_yards or 0))
         end
 
     elseif message_id == msgs.HUD_LANE_RESOLVED then
-        local nodes = self.lane_nodes[message.lane_idx]
-        if nodes then
-            local target_you_w = math.max(0, math.min(YARD_BAR_WIDTH,
-                (message.new_you_pos or 0) / 100 * YARD_BAR_WIDTH))
-            local target_ai_w = math.max(0, math.min(YARD_BAR_WIDTH,
-                (message.new_ai_pos or 0) / 100 * YARD_BAR_WIDTH))
-            animate_helper.animate_gui(nodes.p_yard_fill, "size.x", target_you_w,
-                gui.EASING_OUTQUAD, 0.6)
-            animate_helper.animate_gui(nodes.ai_yard_fill, "size.x", target_ai_w,
-                gui.EASING_OUTQUAD, 0.6)
-            gui.set_text(nodes.p_pos_text, tostring(message.new_you_pos or 0))
-            gui.set_text(nodes.ai_pos_text, tostring(message.new_ai_pos or 0))
-        end
+        hud_render.animate_lane_resolved(self.lane_refs[message.lane_idx],
+            message.new_you_pos, message.new_ai_pos)
 
     elseif message_id == msgs.HUD_SCORE_BURST then
-        show_score_burst(self, message.type, message.points or 0)
+        hud_render.show_score_burst(self.score_burst, message.type, message.points or 0)
 
     elseif message_id == msgs.HUD_SCORE_UPDATED then
         gui.set_text(self.you_score_text, "YOU " .. tostring(message.you_score or 0))
         gui.set_text(self.cpu_score_text, tostring(message.ai_score or 0) .. " CPU")
         local pulse_node = (message.changed_side == "you") and self.you_score_text or self.cpu_score_text
-        pulse_score_node(self, pulse_node)
+        hud_render.pulse_score_node(pulse_node)
 
     elseif message_id == msgs.HUD_LANE_RESET then
-        animate_lane_reset(self, message.lane_idx,
-            message.new_you_pos, message.new_ai_pos)
+        -- Phase 5.5.6: synchronized exit animation. Cards animate out
+        -- (fade + scale + position shift + rotation kick) over 500ms,
+        -- THEN we clear slot state and animate yard fills back to the
+        -- new kickoff. match.script's LANE_RESET_DURATION (0.5s) matches
+        -- the exit duration so the scoring pipeline doesn't stall.
+        local slots_for_lane = self.slots[message.lane_idx]
+        local refs = self.lane_refs[message.lane_idx]
+        local new_you_pos = message.new_you_pos
+        local new_ai_pos = message.new_ai_pos
+        hud_render.animate_lane_reset_exit(slots_for_lane, function()
+            hud_render.finalize_lane_reset(slots_for_lane, refs, new_you_pos, new_ai_pos)
+        end)
 
     elseif message_id == msgs.HUD_TWO_PT_PROMPT then
-        show_conversion(self, message.side, message.lane_idx)
+        hud_conversion.show(self.conversion, self.conv_nodes, {
+            side = message.side, lane_idx = message.lane_idx,
+        })
 
     elseif message_id == msgs.HUD_MATCH_ENDED then
         local summary = message.summary or { lanes = {} }
@@ -1151,8 +477,9 @@ function on_message(self, message_id, message, sender)
     elseif message_id == msgs.HUD_PHASE_CHANGED then
         local new_phase = message.phase
         self.input_enabled = (new_phase == "play")
-        if not self.input_enabled then
-            cancel_drag(self)
+        if not self.input_enabled and self.dragging then
+            hud_drag.cancel_drag(self.dragging, drag_refs_for(self))
+            self.dragging = nil
         end
 
     elseif message_id == msgs.HUD_DRIVE_CHANGED then
@@ -1160,36 +487,48 @@ function on_message(self, message_id, message, sender)
         local max_drives = message.max_drives or 8
         gui.set_text(self.drive_text,
             string.format("DRIVE %d OF %d", drive, max_drives))
-        pulse_drive_node(self)
+        hud_render.pulse_drive_node(self.drive_text)
 
     elseif message_id == msgs.HUD_CARRIED_TOAST then
-        show_carried_toast(self, message.amount or 0)
+        hud_render.show_carried_toast(self.carried_toast,
+            self.carried_toast_base_pos, message.amount or 0)
 
     elseif message_id == msgs.HUD_ENERGY_AT_CAP then
         if message.at_cap then
-            start_orb_pulse(self)
+            hud_render.start_orb_pulse(self.energy_orb, self.orb_state,
+                meta_state.is_reduced_motion())
         else
-            stop_orb_pulse(self)
+            hud_render.stop_orb_pulse(self.energy_orb, self.orb_state)
         end
 
     elseif message_id == msgs.HUD_DECK_COUNT_CHANGED then
         gui.set_text(self.deck_badge_count, tostring(message.count or 0))
-        bump_badge(self, self.deck_badge)
+        hud_render.bump_badge(self.deck_badge)
 
     elseif message_id == msgs.HUD_DISCARD_COUNT_CHANGED then
         gui.set_text(self.discard_badge_count, tostring(message.count or 0))
-        bump_badge(self, self.discard_badge)
+        hud_render.bump_badge(self.discard_badge)
 
     elseif message_id == msgs.HUD_RESHUFFLE then
-        show_reshuffle_visual(self)
+        hud_render.show_reshuffle_visual(self.reshuffle_text, self.discard_badge)
 
     elseif message_id == msgs.HUD_START_DISCARD_ANIM then
-        handle_discard_anim(self)
+        hud_render.handle_discard_anim(self.hand_nodes, self.current_hand, self.discard_badge)
 
     elseif message_id == msgs.HUD_START_DRAW_ANIM then
-        handle_draw_anim(self, message.drawn_cards)
+        hud_render.handle_draw_anim(self.hand_nodes, message.drawn_cards,
+            self.deck_badge, self.current_energy)
 
     elseif message_id == msgs.HUD_OPEN_DISCARD_MODAL then
         show_discard_modal(self)
+
+    elseif message_id == msgs.HUD_MODIFIERS_REVEAL then
+        -- Phase 6: cache modifiers, run the slot-machine reveal, then
+        -- notify match.script so it can unlock input.
+        self.current_modifiers = message.modifiers or {}
+        hud_render.start_modifier_reveal(self.modifier_refs,
+            self.current_modifiers, function()
+                msg.post("/match#script", msgs.MATCH_MODIFIERS_REVEAL_COMPLETE)
+            end)
     end
 end

@@ -18,6 +18,7 @@
 -- Phase machine still owned by match.script.
 
 local cards = require "main.data.cards"
+local modifiers = require "main.data.modifiers"
 
 math.randomseed(os.time())
 
@@ -63,6 +64,11 @@ local lanes = {}
 local drive_summary = nil
 local uid_counter = 0
 
+-- Phase 6: lane modifiers (one per lane, drawn at match start). Indexed
+-- 1..LANE_COUNT internally; the public API takes 0-indexed lane_idx for
+-- consistency with the rest of the module.
+local lane_modifiers = {}
+
 local you_score = 0
 local ai_score = 0
 local score_events = {}
@@ -90,6 +96,10 @@ local function make_lane(idx)
         ai_off_sum = 0,
         ai_def_sum = 0,
         ai_net_yards = 0,
+        -- Phase 6: Scouted modifier tracks first-card-per-side
+        -- independently for player vs AI.
+        scouted_first_played_you = false,
+        scouted_first_played_ai = false,
     }
 end
 
@@ -120,9 +130,133 @@ local function count_dbs_revealed(cards_arr)
     return n
 end
 
+-- Returns just the revealed cards in `arr` (drops face-down placeholders
+-- so modifiers don't accidentally affect cards the opponent can't yet
+-- see).
+local function revealed_cards(arr)
+    local out = {}
+    for _, c in ipairs(arr) do
+        if c.revealed then table.insert(out, c) end
+    end
+    return out
+end
+
+-- Phase 6: per-lane modifier effect. Mutates cur_off/cur_def on revealed
+-- cards in this lane after they've been reset to base values. Order
+-- inside recompute_lane_sums: reset → apply_lane_modifier → sum.
+--
+-- hurryUp / preventD: handled by M.effective_cost at play time, not here.
+-- scouted:            handled by M.play_card / M.ai_play_card branches.
+-- blitzZone:          handled by M.try_apply_snap_ability dispatcher.
+local function apply_lane_modifier(lane_idx)
+    local modifier = lane_modifiers[lane_idx + 1]
+    if not modifier then return end
+    local lane = lanes[lane_idx + 1]
+    if not lane then return end
+
+    local you_revealed = revealed_cards(lane.you_cards)
+    local ai_revealed = revealed_cards(lane.ai_cards)
+    local all = {}
+    for _, c in ipairs(you_revealed) do table.insert(all, c) end
+    for _, c in ipairs(ai_revealed) do table.insert(all, c) end
+
+    local id = modifier.id
+    if id == "homeTurf" then
+        for _, c in ipairs(you_revealed) do
+            if c.side == "off" then c.cur_off = c.cur_off + 5 end
+        end
+        for _, c in ipairs(ai_revealed) do
+            if c.side == "off" then c.cur_off = math.max(0, c.cur_off - 5) end
+        end
+    elseif id == "muddyField" then
+        for _, c in ipairs(all) do
+            c.cur_off = math.floor(c.cur_off * 0.75)
+            c.cur_def = math.floor(c.cur_def * 1.25)
+        end
+    elseif id == "windTunnel" then
+        for _, c in ipairs(all) do
+            if c.pos == "QB" or c.pos == "WR" then
+                c.cur_off = math.max(0, c.cur_off - 5)
+            end
+        end
+    elseif id == "blindingSun" then
+        for _, c in ipairs(all) do
+            if c.pos == "WR" or c.pos == "TE" then
+                c.cur_off = math.max(0, c.cur_off - 8)
+            end
+        end
+    elseif id == "redZone" then
+        for _, c in ipairs(all) do
+            if c.side == "off" then c.cur_off = c.cur_off + 8 end
+        end
+    elseif id == "scramble" then
+        for _, c in ipairs(all) do
+            if c.pos == "QB" then c.cur_off = c.cur_off + 12 end
+        end
+    elseif id == "groundPound" then
+        for _, c in ipairs(all) do
+            if c.pos == "RB" then c.cur_off = c.cur_off + 10 end
+            if c.pos == "OL" then c.cur_off = c.cur_off + 5 end
+        end
+    elseif id == "airRaid" then
+        for _, c in ipairs(all) do
+            if c.pos == "WR" or c.pos == "TE" then c.cur_off = c.cur_off + 8 end
+        end
+    elseif id == "trenches" then
+        for _, c in ipairs(all) do
+            if c.pos == "OL" then c.cur_off = c.cur_off + 6 end
+            if c.pos == "DT" then c.cur_def = c.cur_def + 6 end
+        end
+    elseif id == "secondary" then
+        for _, c in ipairs(all) do
+            if c.pos == "CB" or c.pos == "S" then c.cur_def = c.cur_def + 6 end
+        end
+    elseif id == "specialUnit" then
+        for _, c in ipairs(all) do
+            if c.pos == "K"  then c.cur_off = c.cur_off + 15 end
+            if c.pos == "ST" then c.cur_def = c.cur_def + 15 end
+        end
+    elseif id == "playOfGame" then
+        if #all > 0 then
+            local highest = all[1]
+            local highest_stat = (highest.side == "off") and highest.cur_off or highest.cur_def
+            for _, c in ipairs(all) do
+                local stat = (c.side == "off") and c.cur_off or c.cur_def
+                if stat > highest_stat then
+                    highest = c
+                    highest_stat = stat
+                end
+            end
+            if highest.side == "off" then
+                highest.cur_off = highest.cur_off + 20
+            else
+                highest.cur_def = highest.cur_def + 20
+            end
+        end
+    end
+end
+
 local function recompute_lane_sums(lane_idx)
     local lane = lanes[lane_idx + 1]
     if not lane then return nil end
+
+    -- Phase 6: reset revealed cards back to their base values before
+    -- the modifier reapplies. Without this step, modifier deltas would
+    -- compound every time a new card is revealed in the lane.
+    for _, c in ipairs(lane.you_cards) do
+        if c.revealed then
+            c.cur_off = c._base_off or c.off or 0
+            c.cur_def = c._base_def or c.def or 0
+        end
+    end
+    for _, c in ipairs(lane.ai_cards) do
+        if c.revealed then
+            c.cur_off = c._base_off or c.off or 0
+            c.cur_def = c._base_def or c.def or 0
+        end
+    end
+
+    apply_lane_modifier(lane_idx)
 
     local you_off, you_def = 0, 0
     for _, c in ipairs(lane.you_cards) do
@@ -172,14 +306,32 @@ local function try_field_goal(card, lane_idx, side)
     return event
 end
 
-function M.try_apply_snap_ability(card, lane_idx, side)
+-- Phase 6: `trigger_count` parameter scaffolds Blitz Zone (DEF SNAP
+-- abilities trigger twice). The current ability set (only Clutch
+-- Kicker's snapFieldGoal, which is OFF) cannot exercise the doubled
+-- path yet, but the dispatcher honors trigger_count for future DEF
+-- abilities. When omitted, defaults to 1, OR to 2 if the lane has the
+-- blitzZone modifier AND the card is DEF.
+function M.try_apply_snap_ability(card, lane_idx, side, trigger_count)
     if not card or not card.desc then return nil end
 
-    if card.desc == "snapFieldGoal" then
-        return try_field_goal(card, lane_idx, side)
+    if trigger_count == nil then
+        local modifier = lane_modifiers[lane_idx + 1]
+        if modifier and modifier.id == "blitzZone" and card.side == "def" then
+            trigger_count = 2
+        else
+            trigger_count = 1
+        end
     end
 
-    return nil
+    local last_event = nil
+    for _ = 1, trigger_count do
+        if card.desc == "snapFieldGoal" then
+            local ev = try_field_goal(card, lane_idx, side)
+            if ev then last_event = ev end
+        end
+    end
+    return last_event
 end
 
 -- ---------------------------------------------------------------------------
@@ -212,6 +364,7 @@ function M.reset()
     ai_score = 0
     score_events = {}
     pending_two_pt = nil
+    lane_modifiers = {}
 end
 
 -- Build a 30-card deck for `side` and seed `count` cards into its hand.
@@ -245,6 +398,11 @@ function M.new_match()
 
     for i = 0, LANE_COUNT - 1 do
         lanes[i + 1] = make_lane(i)
+    end
+
+    local drawn = modifiers.draw_random(LANE_COUNT)
+    for i = 1, LANE_COUNT do
+        lane_modifiers[i] = drawn[i]
     end
 end
 
@@ -384,6 +542,9 @@ end
 -- per-side lane sums too so the HUD pills snap back to +0 for the next
 -- drive. Ball positions (you_pos / ai_pos) stay — they're cumulative.
 function M.consume_drive_cards()
+    -- Phase 6: also zero `_base_off` / `_base_def` so the recompute_lane_sums
+    -- reset (which now restores from base before reapplying modifiers)
+    -- doesn't un-spend these cards in subsequent drives.
     for i = 1, LANE_COUNT do
         local lane = lanes[i]
         if lane then
@@ -391,12 +552,16 @@ function M.consume_drive_cards()
                 if c.revealed then
                     c.cur_off = 0
                     c.cur_def = 0
+                    c._base_off = 0
+                    c._base_def = 0
                 end
             end
             for _, c in ipairs(lane.ai_cards) do
                 if c.revealed then
                     c.cur_off = 0
                     c.cur_def = 0
+                    c._base_off = 0
+                    c._base_def = 0
                 end
             end
             lane.you_off_sum = 0
@@ -416,6 +581,61 @@ end
 function M.get_drive() return drive end
 function M.get_phase() return phase end
 function M.set_phase(p) phase = p end
+
+-- Phase 6: lane modifier accessors.
+function M.get_modifiers()
+    local copy = {}
+    for i = 1, LANE_COUNT do
+        copy[i] = lane_modifiers[i]
+    end
+    return copy
+end
+
+function M.get_modifier_for_lane(lane_idx)
+    return lane_modifiers[lane_idx + 1]
+end
+
+function M.is_scouted_lane(lane_idx)
+    local m = lane_modifiers[lane_idx + 1]
+    return m ~= nil and m.id == "scouted"
+end
+
+function M.is_scouted_first_play(lane_idx, side)
+    if not M.is_scouted_lane(lane_idx) then return false end
+    local lane = lanes[lane_idx + 1]
+    if not lane then return false end
+    if side == "you" then
+        return not lane.scouted_first_played_you
+    else
+        return not lane.scouted_first_played_ai
+    end
+end
+
+function M.mark_scouted_first_played(lane_idx, side)
+    local lane = lanes[lane_idx + 1]
+    if not lane then return end
+    if side == "you" then
+        lane.scouted_first_played_you = true
+    else
+        lane.scouted_first_played_ai = true
+    end
+end
+
+-- Returns the lane-adjusted cost for `card` in `lane_idx` after
+-- Hurry-Up / Prevent D discounts. Floor of 1 — discounts never grant
+-- free plays.
+function M.effective_cost(card, lane_idx)
+    local base = card.cost or 0
+    local modifier = lane_modifiers[lane_idx + 1]
+    if not modifier then return base end
+    if modifier.id == "hurryUp" and card.side == "off" then
+        return math.max(1, base - 1)
+    end
+    if modifier.id == "preventD" and card.side == "def" then
+        return math.max(1, base - 1)
+    end
+    return base
+end
 
 function M.get_energy() return energy end
 function M.get_ai_energy() return ai_energy end
@@ -519,7 +739,8 @@ function M.play_card(card_uid, lane_idx)
         return { success = false, reason = "card_not_in_hand" }
     end
     local card = hand[slot_idx]
-    if energy < card.cost then
+    local cost = M.effective_cost(card, lane_idx)
+    if energy < cost then
         return { success = false, reason = "insufficient_energy" }
     end
     local lane = lanes[lane_idx + 1]
@@ -530,9 +751,34 @@ function M.play_card(card_uid, lane_idx)
         return { success = false, reason = "lane_full" }
     end
 
-    energy = energy - card.cost
+    energy = energy - cost
     hand[slot_idx] = { empty = true }
     played_uids[card_uid] = true
+
+    -- Phase 6: Scouted first-card-per-side reveals immediately and
+    -- bypasses pending_plays. Subsequent cards in the same lane fall
+    -- through to the normal face-down path.
+    if M.is_scouted_first_play(lane_idx, "you") then
+        card.revealed = true
+        card._base_off = card.off
+        card._base_def = card.def
+        card.cur_off = card.off
+        card.cur_def = card.def
+        table.insert(lane.you_cards, card)
+        local placed_slot_idx = #lane.you_cards - 1
+        M.mark_scouted_first_played(lane_idx, "you")
+        local ability_event = M.try_apply_snap_ability(card, lane_idx, "you")
+        local sums = recompute_lane_sums(lane_idx)
+        return {
+            success = true,
+            card = card,
+            slot_idx = placed_slot_idx,
+            new_energy = energy,
+            scouted_revealed = true,
+            ability_event = ability_event,
+            sums = sums,
+        }
+    end
 
     card.revealed = false
     table.insert(lane.you_cards, card)
@@ -556,7 +802,8 @@ function M.play_card(card_uid, lane_idx)
 end
 
 function M.ai_play_card(card, lane_idx)
-    if ai_energy < (card.cost or 0) then
+    local cost = M.effective_cost(card, lane_idx)
+    if ai_energy < cost then
         return { success = false, reason = "insufficient_energy" }
     end
     local lane = lanes[lane_idx + 1]
@@ -571,8 +818,31 @@ function M.ai_play_card(card, lane_idx)
     if slot_in_hand then
         ai_hand[slot_in_hand] = { empty = true }
     end
-    ai_energy = ai_energy - card.cost
+    ai_energy = ai_energy - cost
     ai_played_uids[card.uid] = true
+
+    -- Phase 6: Scouted first-card-per-side path for AI as well.
+    if M.is_scouted_first_play(lane_idx, "ai") then
+        card.revealed = true
+        card._base_off = card.off
+        card._base_def = card.def
+        card.cur_off = card.off
+        card.cur_def = card.def
+        table.insert(lane.ai_cards, card)
+        local placed_slot_idx = #lane.ai_cards - 1
+        M.mark_scouted_first_played(lane_idx, "ai")
+        local ability_event = M.try_apply_snap_ability(card, lane_idx, "ai")
+        local sums = recompute_lane_sums(lane_idx)
+        return {
+            success = true,
+            card = card,
+            slot_idx = placed_slot_idx,
+            new_ai_energy = ai_energy,
+            scouted_revealed = true,
+            ability_event = ability_event,
+            sums = sums,
+        }
+    end
 
     card.revealed = false
     table.insert(lane.ai_cards, card)

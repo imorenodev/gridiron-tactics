@@ -40,4 +40,8 @@ function M.animate_gui(node, property, target, easing, duration, delay, callback
     end
 end
 
+function M.is_reduced_motion()
+    return meta_state.is_reduced_motion()
+end
+
 return M

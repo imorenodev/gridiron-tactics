@@ -131,6 +131,8 @@ local function start_ai_plays()
     local intended = cpu.choose_plays(ai_hand, ai_energy, lanes_view)
 
     local spawns = {}
+    local lane_sums_to_push = {}
+    local ability_events = {}
     for _, play in ipairs(intended) do
         local zero_idx = play.lane_idx - 1
         local result = match_state.ai_play_card(play.card, zero_idx)
@@ -144,6 +146,8 @@ local function start_ai_plays()
             table.insert(spawns, {
                 lane_idx = zero_idx,
                 slot_idx = result.slot_idx,
+                side = "ai",
+                revealed = result.scouted_revealed and true or false,
                 card_data = {
                     id = result.card.id,
                     name = result.card.name,
@@ -156,10 +160,29 @@ local function start_ai_plays()
                     uid = result.card.uid,
                 },
             })
+            -- Phase 6: a Scouted-first play already ran lane recompute.
+            if result.scouted_revealed and result.sums then
+                table.insert(lane_sums_to_push, result.sums)
+            end
+            if result.ability_event then
+                table.insert(ability_events, result.ability_event)
+            end
         end
     end
 
     msg.post("/hud#gui", msgs.HUD_AI_CARDS_SPAWNED, { plays = spawns })
+    for _, s in ipairs(lane_sums_to_push) do
+        msg.post("/hud#gui", msgs.HUD_LANE_SUMS_UPDATED, s)
+    end
+    -- Phase 6 known limitation: ability events triggered by Scouted-
+    -- revealed cards surface as a burst + score update only. The lane
+    -- is NOT reset here because we're still gathering all AI plays —
+    -- the regular drive-end scoring pipeline handles position-based
+    -- resets at drive close.
+    for _, ev in ipairs(ability_events) do
+        post_burst(ev.type, ev.points)
+        post_score_update(ev.side)
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -480,8 +503,13 @@ function init(self)
     self.spawned_cards_by_lane = { [0] = {}, [1] = {}, [2] = {} }
     self.drive_summary = nil
     self.draw_result = nil
-    transition_phase("play")
+    -- Phase 6: gate input behind the slot-machine reveal. HUD posts
+    -- MATCH_MODIFIERS_REVEAL_COMPLETE when the animation finishes, at
+    -- which point we transition to "play".
+    transition_phase("resolving")
     push_full_state()
+    msg.post("/hud#gui", msgs.HUD_MODIFIERS_REVEAL,
+        { modifiers = match_state.get_modifiers() })
 end
 
 function on_message(self, message_id, message, sender)
@@ -502,7 +530,42 @@ function on_message(self, message_id, message, sender)
         msg.post("/hud#gui", msgs.HUD_ENERGY_CHANGED, { energy = result.new_energy })
         -- Spending energy may have dropped us below cap; refresh the pulse.
         post_at_cap()
-        push_lane_state(message.lane_idx)
+
+        -- Phase 6: Scouted lane → card revealed at play time. Spawn it
+        -- face-up via HUD_AI_CARDS_SPAWNED (which uses slap-down + can
+        -- render face-up via the `revealed` flag) and push the updated
+        -- lane sums. Otherwise fall through to the normal lane push.
+        if result.scouted_revealed then
+            msg.post("/hud#gui", msgs.HUD_AI_CARDS_SPAWNED, {
+                plays = {
+                    {
+                        lane_idx = message.lane_idx,
+                        slot_idx = result.slot_idx,
+                        side = "you",
+                        revealed = true,
+                        card_data = {
+                            id = result.card.id, name = result.card.name,
+                            pos = result.card.pos, cost = result.card.cost,
+                            off = result.card.off, def = result.card.def,
+                            side = result.card.side, rarity = result.card.rarity,
+                            uid = result.card.uid,
+                        },
+                    },
+                },
+            })
+            if result.sums then
+                msg.post("/hud#gui", msgs.HUD_LANE_SUMS_UPDATED, result.sums)
+            end
+            -- Phase 6: any ability event (e.g. Clutch Kicker FG) fires
+            -- immediately during play phase. Surface as burst + score
+            -- update; lane stays in place (no mid-drive reset).
+            if result.ability_event then
+                post_burst(result.ability_event.type, result.ability_event.points)
+                post_score_update(result.ability_event.side)
+            end
+        else
+            push_lane_state(message.lane_idx)
+        end
 
     elseif message_id == msgs.MATCH_END_DRIVE then
         if match_state.get_phase() ~= "play" then return end
@@ -545,6 +608,12 @@ function on_message(self, message_id, message, sender)
             print("[2pt player] chose KICK PAT")
         end
         reset_lane_and_continue(self, lane_idx)
+
+    elseif message_id == msgs.MATCH_MODIFIERS_REVEAL_COMPLETE then
+        -- Phase 6: slot-machine reveal finished — unlock input.
+        if match_state.get_phase() == "resolving" then
+            transition_phase("play")
+        end
 
     elseif message_id == msgs.MATCH_RETURN_TO_MENU then
         match_state.reset()
