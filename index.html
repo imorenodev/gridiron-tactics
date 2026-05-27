@@ -2,24 +2,43 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gridiron Tactics">
+<meta name="theme-color" content="#050810">
+<meta name="format-detection" content="telephone=no">
 <title>GRIDIRON TACTICS</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
-    width: 100%; height: 100%;
+    width: 100%;
+    height: 100vh;          /* fallback */
+    height: 100dvh;         /* iOS Safari: follows visible viewport, not max viewport */
     background: #050810;
     color: #e8e8e0;
     font-family: 'Oswald', sans-serif;
     overflow: hidden;
+    overscroll-behavior: none; /* prevent iOS rubber-band scrolling */
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
     touch-action: none;
+    /* Lock body position so iOS Safari can't scroll the page when the canvas is dragged */
+    position: fixed;
+    inset: 0;
   }
   #game-container {
-    width: 100vw; height: 100vh;
+    position: fixed;
+    /* Respect notch/home-indicator safe areas */
+    top: env(safe-area-inset-top, 0px);
+    right: env(safe-area-inset-right, 0px);
+    bottom: env(safe-area-inset-bottom, 0px);
+    left: env(safe-area-inset-left, 0px);
     display: flex; align-items: center; justify-content: center;
     background:
       radial-gradient(ellipse at top, #182040 0%, transparent 60%),
@@ -29,9 +48,17 @@
   #game-container canvas {
     display: block;
     box-shadow: 0 0 80px rgba(255, 184, 0, 0.18);
+    /* Block iOS gesture handlers from intercepting drags */
+    touch-action: none;
+    -webkit-user-drag: none;
   }
   #loading-overlay {
-    position: fixed; inset: 0; display: flex; flex-direction: column;
+    position: fixed;
+    top: env(safe-area-inset-top, 0px);
+    right: env(safe-area-inset-right, 0px);
+    bottom: env(safe-area-inset-bottom, 0px);
+    left: env(safe-area-inset-left, 0px);
+    display: flex; flex-direction: column;
     align-items: center; justify-content: center;
     background: #050810; color: #ffb800; z-index: 10000;
     font-family: 'Bebas Neue', sans-serif;
@@ -1003,13 +1030,76 @@ const config = {
   width: GAME_W, height: GAME_H,
   backgroundColor: '#050810',
   resolution: Math.min(window.devicePixelRatio || 1, 2),
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // Tell Phaser to use the parent element (which is sized by safe-area insets)
+    // rather than the raw window — important for iOS notch + dynamic toolbars.
+    parent: 'game-container',
+    expandParent: false
+  },
+  // iOS Safari: don't auto-pause audio context on tab visibility (Phaser does this
+  // by default; we manage our own AudioContext via audio() so let it run).
+  // activePointers >= 2 is required for touch input to work alongside mouse.
+  // smoothFactor smooths jittery touch movement; touch must be explicitly enabled.
+  input: {
+    activePointers: 3,
+    touch: { capture: true },
+    mouse: true,
+    smoothFactor: 0.2
+  },
   scene: []
 };
 
 window.addEventListener('DOMContentLoaded', () => {
   loadPlayerData();
 });
+
+// ============================================================
+// iOS Safari viewport / gesture hardening
+// ============================================================
+// 1. visualViewport changes (URL bar collapse/expand) — tell Phaser to refit.
+//    innerWidth/innerHeight don't fire reliably on iOS, but visualViewport does.
+(function() {
+  const refit = () => {
+    if (window.game && window.game.scale && window.game.scale.refresh) {
+      window.game.scale.refresh();
+    }
+  };
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', refit);
+    window.visualViewport.addEventListener('scroll', refit);
+  }
+  window.addEventListener('resize', refit);
+  window.addEventListener('orientationchange', () => {
+    // iOS sometimes reports stale dimensions immediately after rotation.
+    setTimeout(refit, 100);
+    setTimeout(refit, 400);
+  });
+})();
+
+// 2. Kill iOS double-tap zoom (the viewport meta blocks pinch-zoom but not double-tap).
+let _lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - _lastTouchEnd <= 320) e.preventDefault();
+  _lastTouchEnd = now;
+}, { passive: false });
+
+// 3. Kill iOS Safari's two-finger-pinch zoom + gesture* events (defensive — viewport
+//    meta usually handles this, but Safari occasionally honors gestures anyway).
+['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
+  document.addEventListener(evt, (e) => e.preventDefault(), { passive: false });
+});
+
+// 4. Block page-level touchmove scrolling so a card-drag never scrolls the page.
+//    Phaser's own input still receives the events because it listens on the canvas.
+document.addEventListener('touchmove', (e) => {
+  // Allow scrolling inside any element that explicitly opts in (none today, but
+  // keeps the door open). Otherwise, swallow the gesture.
+  if (e.target && e.target.closest && e.target.closest('[data-allow-scroll]')) return;
+  e.preventDefault();
+}, { passive: false });
 </script>
 <script id="scenes-script">
 // ============================================================
@@ -1442,16 +1532,44 @@ class GameScene extends Phaser.Scene {
       handCard.x = x; handCard.y = 0;
       handCard.dataCard = card;
       this.handContainer.add(handCard);
-      handCard.setSize(handCard.cardWidth, handCard.cardHeight).setInteractive({ useHandCursor:true });
-      let dragged = false;
-      handCard.on('pointerdown', () => { dragged = false; });
-      handCard.on('pointermove', (p) => { if (p.isDown && (Math.abs(p.x - p.downX) > 6 || Math.abs(p.y - p.downY) > 6)) dragged = true; });
-      handCard.on('pointerup', (p) => { if (!dragged) this.showCardInspect(card); });
+
+      // Explicit Rectangle hit area — auto-sizing from setSize is unreliable on
+      // touch when the object lives inside a Container. Pass draggable in the
+      // same setInteractive call so the flag is set atomically (separate
+      // setDraggable() has a race that drops the first touch on some Phaser builds).
+      const hitW = handCard.cardWidth, hitH = handCard.cardHeight;
+      const hitArea = new Phaser.Geom.Rectangle(-hitW/2, -hitH/2, hitW, hitH);
+      handCard.setInteractive({
+        hitArea,
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+        useHandCursor: true,
+        draggable: affordable
+      });
+
+      // Tap vs drag: time-based (under 250ms with no dragstart = tap-to-inspect).
+      // Don't use a pointermove threshold — touch jitter trips it before Phaser's
+      // own drag detection kicks in, leaving the card in a half-dragged state.
+      let downTime = 0;
+      let didDragStart = false;
+      handCard.on('pointerdown', () => { downTime = performance.now(); didDragStart = false; });
+      handCard.on('pointerup',   () => {
+        const held = performance.now() - downTime;
+        if (!didDragStart && held < 250) this.showCardInspect(card);
+      });
+
       if (affordable) {
-        this.input.setDraggable(handCard);
+        // pointerover is mouse-only — touch users get visual feedback on dragstart instead.
         handCard.on('pointerover', () => { if (!handCard.input.isDragging && !this.reduced) this.tweens.add({ targets: handCard, y: -16, scale: 1.06, duration: 150 }); });
-        handCard.on('pointerout',  () => { if (!handCard.input.isDragging && !this.reduced) this.tweens.add({ targets: handCard, y: 0, scale: 1, duration: 150 }); });
-        handCard.on('dragstart', () => { handCard.setDepth(2000); handCard.setScale(1.15); dragged = true; });
+        handCard.on('pointerout',  () => { if (!handCard.input.isDragging && !this.reduced) this.tweens.add({ targets: handCard, y: 0,  scale: 1,    duration: 150 }); });
+        handCard.on('dragstart', () => {
+          didDragStart = true;
+          handCard.setDepth(2000);
+          // Quick tactile pop so touch users see the card "pick up" — important
+          // because there's no hover state on touch to telegraph the drag.
+          this.tweens.add({ targets: handCard, scale: 1.15, duration: 80, ease:'Cubic.out' });
+        });
+        // dragX/dragY are in the parent container's local space (Phaser handles
+        // the inverse transform), so assigning directly tracks the finger.
         handCard.on('drag', (p, dx, dy) => { handCard.x = dx; handCard.y = dy; });
       }
     });
@@ -3031,6 +3149,8 @@ class LockerRoomScene extends Phaser.Scene {
 // ============================================================
 config.scene = [BootScene, MenuScene, GameScene, ConversionScene, DraftScene, SeasonHubScene, RosterScene, MatchSummaryScene, LockerRoomScene, EndScene];
 const game = new Phaser.Game(config);
+// Expose so the iOS visualViewport refit closure (declared higher up) can call game.scale.refresh().
+window.game = game;
 
 // Defer-toast plumbing: shown on next MenuScene create
 game.events.on('step', () => {
