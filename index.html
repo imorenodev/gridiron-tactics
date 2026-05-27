@@ -816,6 +816,9 @@ function cardFrameKey(card) { return `card_${card.rarity}_${card.side}`; }
 function buildCard(scene, card, targetW, opts = {}) {
   const hidden = !!opts.hidden;
   const dimmed = !!opts.dimmed;
+  // contextHand bumps the stat readability and changes the unaffordable-card
+  // treatment from "NO ENERGY" overlay to a subtle red cost+border accent.
+  const contextHand = !!opts.contextHand;
   const cont = scene.add.container(0, 0);
   const frameKey = cardFrameKey(card);
   const tex = scene.textures.get(frameKey);
@@ -875,8 +878,22 @@ function buildCard(scene, card, targetW, opts = {}) {
 
   const cX = (CARD_LAYOUT.cost.cx - 0.5) * W;
   const cY = (CARD_LAYOUT.cost.cy - 0.5) * H;
+  // Red-tint the cost circle when this is a hand card the player can't afford.
+  // Painted right over the frame's gold cost circle so the text reads as a
+  // "locked" badge without obscuring the rest of the card.
+  if (contextHand && dimmed) {
+    const costR = CARD_LAYOUT.cost.r * W;
+    const costRing = scene.add.graphics();
+    costRing.fillStyle(0xc02020, 0.92);
+    costRing.fillCircle(cX, cY, costR);
+    costRing.lineStyle(2, 0xff5a5a, 1);
+    costRing.strokeCircle(cX, cY, costR);
+    cont.add(costRing);
+  }
   cont.add(scene.add.text(cX, cY, String(card.cost), {
-    fontFamily:'Bebas Neue', fontSize: Math.round(H*0.075)+'px', color:'#ffb800', stroke:'#000', strokeThickness:3
+    fontFamily:'Bebas Neue', fontSize: Math.round(H*0.075)+'px',
+    color: (contextHand && dimmed) ? '#fff' : '#ffb800',
+    stroke:'#000', strokeThickness:3
   }).setOrigin(0.5));
 
   const posX = (CARD_LAYOUT.pos.x + CARD_LAYOUT.pos.w/2 - 0.5) * W;
@@ -885,22 +902,44 @@ function buildCard(scene, card, targetW, opts = {}) {
     fontFamily:'Bebas Neue', fontSize: Math.round(H*0.045)+'px', color:'#fff', stroke:'#000', strokeThickness:2
   }).setOrigin(0.5));
 
+  // Name bar — hand cards get a black backing strip behind the text for contrast
+  // (the frame's printed name area is washed out at small sizes).
   const nX = (CARD_LAYOUT.name.x + CARD_LAYOUT.name.w/2 - 0.5) * W;
   const nY = (CARD_LAYOUT.name.y + CARD_LAYOUT.name.h/2 - 0.5) * H;
   const nameW = CARD_LAYOUT.name.w * W;
+  const nameH = CARD_LAYOUT.name.h * H;
+  if (contextHand) {
+    const nameBg = scene.add.graphics();
+    nameBg.fillStyle(0x000000, 0.65);
+    nameBg.fillRect(nX - nameW/2, nY - nameH/2, nameW, nameH);
+    cont.add(nameBg);
+  }
   const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
   const nameTxt = scene.add.text(nX, nY, lastName + ' · ' + card.team, {
-    fontFamily:'Bebas Neue', fontSize: Math.round(H*0.05)+'px', color:'#222', letterSpacing:1
+    fontFamily:'Bebas Neue', fontSize: Math.round(H*0.05)+'px',
+    color: contextHand ? '#ffe8a8' : '#222', letterSpacing:1
   }).setOrigin(0.5);
   if (nameTxt.width > nameW - 8) nameTxt.setScale((nameW - 8) / nameTxt.width);
   cont.add(nameTxt);
 
+  // Stat block — bigger font + black backing strip for hand cards so the
+  // number reads clearly at thumbnail scale.
   const sX = (CARD_LAYOUT.stat.x + CARD_LAYOUT.stat.w/2 - 0.5) * W;
   const sY = (CARD_LAYOUT.stat.y + CARD_LAYOUT.stat.h/2 - 0.5) * H;
   const statVal = card.side==='off' ? (card.curOff ?? card.off) : (card.curDef ?? card.def);
   const statColor = card.side==='off' ? '#ff7a1a' : '#2a8aff';
+  if (contextHand) {
+    const sW = CARD_LAYOUT.stat.w * W;
+    const sH = CARD_LAYOUT.stat.h * H;
+    const statBg = scene.add.graphics();
+    statBg.fillStyle(0x000000, 0.7);
+    statBg.fillRoundedRect(sX - sW/2, sY - sH/2, sW, sH, 4);
+    cont.add(statBg);
+  }
+  const statFont = contextHand ? Math.round(H * 0.16) : Math.round(H * 0.11);
   cont.add(scene.add.text(sX, sY, String(statVal), {
-    fontFamily:'Bebas Neue', fontSize: Math.round(H*0.11)+'px', color:statColor, stroke:'#000', strokeThickness:3
+    fontFamily:'Bebas Neue', fontSize: statFont + 'px', color: statColor,
+    stroke:'#000', strokeThickness: contextHand ? 4 : 3
   }).setOrigin(0.5));
 
   if (card.hasAbility || card.ability) {
@@ -912,12 +951,23 @@ function buildCard(scene, card, targetW, opts = {}) {
   }
 
   if (dimmed) {
+    // Hand context: softer dim (so stats stay legible) + red border glow.
+    // Field context: keep the heavier dim so revealed-but-ejected cards read
+    // clearly as out-of-play.
     const dim = scene.add.graphics();
-    dim.fillStyle(0x000000, 0.55); dim.fillRoundedRect(-W/2, -H/2, W, H, 12);
+    dim.fillStyle(0x000000, contextHand ? 0.35 : 0.55);
+    dim.fillRoundedRect(-W/2, -H/2, W, H, 12);
     cont.add(dim);
-    cont.add(scene.add.text(0, 0, 'NO ENERGY', {
-      fontFamily:'Bebas Neue', fontSize: Math.round(H*0.07)+'px', color:'#ff4444', stroke:'#000', strokeThickness:4
-    }).setOrigin(0.5));
+    if (contextHand) {
+      const glow = scene.add.graphics();
+      glow.lineStyle(3, 0xff5a5a, 0.65);
+      glow.strokeRoundedRect(-W/2 + 1, -H/2 + 1, W - 2, H - 2, 12);
+      cont.add(glow);
+    } else {
+      cont.add(scene.add.text(0, 0, 'NO ENERGY', {
+        fontFamily:'Bebas Neue', fontSize: Math.round(H*0.07)+'px', color:'#ff4444', stroke:'#000', strokeThickness:4
+      }).setOrigin(0.5));
+    }
   }
   return cont;
 }
@@ -1111,17 +1161,42 @@ class GameScene extends Phaser.Scene {
   create() {
     this.cameras.main.fadeIn(400);
     this.W = this.scale.width; this.H = this.scale.height;
-    this.LANE_GAP = 14;
-    this.LANE_W = (this.W - 50 - this.LANE_GAP * 2) / 3;
-    this.LANE_X = [25 + this.LANE_W/2,
-                   25 + this.LANE_W + this.LANE_GAP + this.LANE_W/2,
-                   25 + (this.LANE_W + this.LANE_GAP)*2 + this.LANE_W/2];
-    this.HEADER_H = 160;
-    this.FIELD_Y = this.HEADER_H + 10;
-    this.FIELD_H = 860;
-    this.HAND_Y = this.HEADER_H + this.FIELD_H + 30;
-    this.HAND_H = 280;
-    this.FOOTER_Y = this.H - 70;
+
+    // ---- Layout constants (tuned for 900×1500 logical canvas on tall mobile) ----
+    // Side margin shrank 25→12 and gap shrank 14→8 to buy ~30px of card-display
+    // width per lane on small viewports.
+    this.SIDE_MARGIN = 12;
+    this.LANE_GAP = 8;
+    this.LANE_W = (this.W - this.SIDE_MARGIN * 2 - this.LANE_GAP * 2) / 3;
+    this.LANE_X = [
+      this.SIDE_MARGIN + this.LANE_W/2,
+      this.SIDE_MARGIN + this.LANE_W + this.LANE_GAP + this.LANE_W/2,
+      this.SIDE_MARGIN + (this.LANE_W + this.LANE_GAP)*2 + this.LANE_W/2
+    ];
+
+    // ---- Vertical regions, derived from real asset dimensions ----
+    // Scoreboard anchors to the top of the canvas (origin 0.5, 0) — all header
+    // positions flow from its actual display height so there's never a wasted
+    // black band above it.
+    const sbTex   = this.textures.get('scoreboard').source[0];
+    const SB_TOP  = 10;
+    const SB_W    = this.W - 20;
+    const SB_H    = SB_W * (sbTex.height / sbTex.width);
+    this.SB_TOP = SB_TOP; this.SB_W = SB_W; this.SB_H = SB_H;
+    this.SB_CENTER_Y  = SB_TOP + SB_H / 2;
+    this.ENERGY_ORB_Y = SB_TOP + SB_H + 4;          // orb tucked just under scoreboard
+    this.HEADER_BOTTOM = SB_TOP + SB_H + 60;        // scoreboard + orb cluster
+    this.FIELD_Y      = this.HEADER_BOTTOM + 10;
+
+    // Action row sits 16px from the bottom edge. Snap/Pass button is ~120px tall
+    // at width 300, so FOOTER_Y (its center) = H - 16 - 60 = H - 76.
+    this.FOOTER_Y       = this.H - 76;
+    // Hand row sits well above the action bar with breathing room for the label.
+    this.HAND_CARDS_Y   = this.FOOTER_Y - 200;
+    this.HAND_TRAY_TOP  = this.HAND_CARDS_Y - 180;
+    this.HAND_BANNER_Y  = this.HAND_TRAY_TOP + 32;
+    this.ACTION_DIVIDER_Y = this.FOOTER_Y - 70;     // thin gold line above buttons
+    this.FIELD_H        = this.HAND_TRAY_TOP - this.FIELD_Y - 12;
     this.reduced = prefersReducedMotion();
 
     this.drawBackground();
@@ -1163,28 +1238,54 @@ class GameScene extends Phaser.Scene {
 
   drawBackground() {
     const g = this.add.graphics(); g.fillStyle(0x080c14, 1); g.fillRect(0, 0, this.W, this.H);
-    const stadium = this.add.image(this.W/2, this.HEADER_H/2, 'stadium_bg');
-    stadium.setDisplaySize(this.W, this.HEADER_H + 50); stadium.setAlpha(0.4);
+    const stadium = this.add.image(this.W/2, this.HEADER_BOTTOM/2, 'stadium_bg');
+    stadium.setDisplaySize(this.W, this.HEADER_BOTTOM + 30); stadium.setAlpha(0.4);
+
+    // Hand-tray strip extends all the way to the bottom of the canvas so the
+    // action bar feels like part of the same surface (no dead black strip).
+    const trayH = this.H - this.HAND_TRAY_TOP;
+    const tray = this.add.graphics();
+    tray.fillStyle(0x101828, 1);
+    tray.fillRect(0, this.HAND_TRAY_TOP, this.W, trayH);
+    tray.lineStyle(2, 0xffb800, 0.55);
+    tray.beginPath();
+    tray.moveTo(0, this.HAND_TRAY_TOP);
+    tray.lineTo(this.W, this.HAND_TRAY_TOP);
+    tray.strokePath();
+
+    // Gold divider line above the action buttons — visually pairs CONCEDE +
+    // SNAP/PASS as a single "action bar".
+    const div = this.add.graphics();
+    div.lineStyle(1, 0xffb800, 0.4);
+    div.beginPath();
+    div.moveTo(20, this.ACTION_DIVIDER_Y);
+    div.lineTo(this.W - 20, this.ACTION_DIVIDER_Y);
+    div.strokePath();
   }
 
   buildScoreboard() {
-    const sb = this.add.image(this.W/2, 75, 'scoreboard');
-    const sbTex = this.textures.get('scoreboard').source[0];
-    sb.setDisplaySize(this.W - 20, (this.W - 20) * (sbTex.height / sbTex.width));
+    // Top-anchored scoreboard image so its top edge sits SB_TOP from canvas top
+    // regardless of the texture's natural aspect ratio.
+    const sb = this.add.image(this.W/2, this.SB_TOP, 'scoreboard').setOrigin(0.5, 0);
+    sb.setDisplaySize(this.SB_W, this.SB_H);
 
-    const youLbl = this.add.text(170, 75, 'YOU', { fontFamily:'Bebas Neue', fontSize:'24px', color:'#fff', stroke:'#000', strokeThickness:3 }).setOrigin(0.5, 1);
-    this.youScoreText = this.add.text(170, 100, '0', { fontFamily:'Bebas Neue', fontSize:'54px', color:'#fff', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
+    const sbC = this.SB_CENTER_Y;
+    const youLbl = this.add.text(170, sbC - 24, 'YOU', { fontFamily:'Bebas Neue', fontSize:'24px', color:'#fff', stroke:'#000', strokeThickness:3 }).setOrigin(0.5, 1);
+    this.youScoreText = this.add.text(170, sbC + 6, '0', { fontFamily:'Bebas Neue', fontSize:'54px', color:'#fff', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
     this.makeTooltip(youLbl, 'youScore');
     this.makeTooltip(this.youScoreText, 'youScore');
 
-    const aiLbl = this.add.text(this.W - 170, 75, G.opponent ? G.opponent.name.toUpperCase().slice(0,6) : 'CPU', { fontFamily:'Bebas Neue', fontSize:'24px', color:'#fff', stroke:'#000', strokeThickness:3 }).setOrigin(0.5, 1);
-    this.aiScoreText = this.add.text(this.W - 170, 100, '0', { fontFamily:'Bebas Neue', fontSize:'54px', color:'#fff', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
+    const aiLbl = this.add.text(this.W - 170, sbC - 24, G.opponent ? G.opponent.name.toUpperCase().slice(0,6) : 'CPU', { fontFamily:'Bebas Neue', fontSize:'24px', color:'#fff', stroke:'#000', strokeThickness:3 }).setOrigin(0.5, 1);
+    this.aiScoreText = this.add.text(this.W - 170, sbC + 6, '0', { fontFamily:'Bebas Neue', fontSize:'54px', color:'#fff', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
     this.makeTooltip(aiLbl, 'aiScore'); this.makeTooltip(this.aiScoreText, 'aiScore');
 
-    this.driveText = this.add.text(this.W/2, 60, 'DRIVE 1 / 8', { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ffb800', stroke:'#000', strokeThickness:3, letterSpacing:2 }).setOrigin(0.5);
-    this.quarterText = this.add.text(this.W/2, 100, '1ST QUARTER', { fontFamily:'Oswald', fontSize:'20px', color:'#fff', letterSpacing:4 }).setOrigin(0.5);
+    this.driveText   = this.add.text(this.W/2, sbC - 18, 'DRIVE 1 / 8',  { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ffb800', stroke:'#000', strokeThickness:3, letterSpacing:2 }).setOrigin(0.5);
+    this.quarterText = this.add.text(this.W/2, sbC + 22, '1ST QUARTER',  { fontFamily:'Oswald', fontSize:'20px', color:'#fff', letterSpacing:4 }).setOrigin(0.5);
 
-    const orbX = this.W/2; const orbY = this.HEADER_H + 6;
+    // Energy orb — centered on the seam between scoreboard and field, so its
+    // bottom edge sits cleanly below the scoreboard image and its top edge
+    // peeks into the header band without clipping into either score readout.
+    const orbX = this.W/2; const orbY = this.ENERGY_ORB_Y;
     const orbBg = this.add.circle(orbX, orbY, 38, 0xffb800, 1);
     this.energyOrbGlow = this.add.circle(orbX, orbY, 44, 0xffb800, 0.3);
     const orb = this.add.image(orbX, orbY, 'orb_frame'); orb.setDisplaySize(110, 110);
@@ -1192,16 +1293,7 @@ class GameScene extends Phaser.Scene {
     this.energyOrb = orbBg;
     orb.setInteractive({ useHandCursor:true });
     this.makeTooltip(orb, 'energy');
-
-    const quit = this.add.container(60, 135);
-    const qBg = this.add.graphics(); qBg.fillStyle(0x331010, 0.9); qBg.fillRoundedRect(-46,-16,92,28,6); qBg.lineStyle(2,0xd62828,0.8); qBg.strokeRoundedRect(-46,-16,92,28,6);
-    const qTxt = this.add.text(0, 0, '◀ QUIT', { fontFamily:'Oswald', fontSize:'15px', color:'#ff7a7a', letterSpacing:2 }).setOrigin(0.5);
-    quit.add([qBg, qTxt]); quit.setSize(92,28).setInteractive({ useHandCursor:true });
-    quit.on('pointerup', () => {
-      sfx('click');
-      this.cameras.main.fadeOut(300);
-      this.time.delayedCall(300, () => this.scene.start('MenuScene'));
-    });
+    // QUIT button removed — CONCEDE in the footer takes over.
   }
 
   makeTooltip(target, key) {
@@ -1236,8 +1328,14 @@ class GameScene extends Phaser.Scene {
       const cx = this.LANE_X[i];
       const cy = this.FIELD_Y + this.FIELD_H/2;
       const cont = this.add.container(cx, cy);
-      const bg = this.add.image(0, 0, 'endzone_green'); bg.setDisplaySize(this.LANE_W, this.FIELD_H); bg.setAlpha(0.6);
-      cont.add(bg);
+      // Two-tone field: red on CPU half (top), green on player half (bottom).
+      const halfH = this.FIELD_H / 2;
+      const bgRed = this.add.image(0, -this.FIELD_H/4, 'endzone_red');
+      bgRed.setDisplaySize(this.LANE_W, halfH); bgRed.setAlpha(0.6);
+      cont.add(bgRed);
+      const bgGreen = this.add.image(0,  this.FIELD_H/4, 'endzone_green');
+      bgGreen.setDisplaySize(this.LANE_W, halfH); bgGreen.setAlpha(0.6);
+      cont.add(bgGreen);
       const dk = this.add.graphics();
       dk.fillStyle(0x000000, 0.35); dk.fillRoundedRect(-this.LANE_W/2, -this.FIELD_H/2, this.LANE_W, this.FIELD_H, 10);
       dk.lineStyle(2, 0xffb800, 0.4); dk.strokeRoundedRect(-this.LANE_W/2, -this.FIELD_H/2, this.LANE_W, this.FIELD_H, 10);
@@ -1343,59 +1441,121 @@ class GameScene extends Phaser.Scene {
     const mod = lane.modifier; if (!mod) return;
     const iconKey = 'mod_' + mod.id;
     const cont = this.add.container(0, y);
+    // Smaller icon so the name + desc have full lane width to breathe.
     if (this.textures.exists(iconKey)) {
-      const icon = this.add.image(0, -6, iconKey); icon.setDisplaySize(78, 78); cont.add(icon);
+      const icon = this.add.image(0, -6, iconKey); icon.setDisplaySize(60, 60); cont.add(icon);
     }
-    cont.add(this.add.text(0, 40, mod.name, { fontFamily:'Bebas Neue', fontSize:'18px', color:mod.color, stroke:'#000', strokeThickness:3, letterSpacing:2 }).setOrigin(0.5));
-    cont.add(this.add.text(0, 60, mod.desc, { fontFamily:'Oswald', fontSize:'13px', color:'#fff', stroke:'#000', strokeThickness:2, wordWrap:{ width: this.LANE_W - 24 }, align:'center' }).setOrigin(0.5, 0));
+    const wrapW = this.LANE_W - 8;
+    cont.add(this.add.text(0, 32, mod.name, {
+      fontFamily:'Bebas Neue', fontSize:'18px', color:mod.color, stroke:'#000', strokeThickness:3,
+      letterSpacing:2, align:'center', wordWrap:{ width: wrapW }
+    }).setOrigin(0.5));
+    cont.add(this.add.text(0, 56, mod.desc, {
+      fontFamily:'Oswald', fontSize:'13px', color:'#fff', stroke:'#000', strokeThickness:2,
+      wordWrap:{ width: wrapW }, align:'center'
+    }).setOrigin(0.5, 0));
     parent.add(cont);
-    cont.setSize(this.LANE_W - 20, 130).setInteractive({ useHandCursor:true });
+    cont.setSize(this.LANE_W - 8, 130).setInteractive({ useHandCursor:true });
     cont.on('pointerup', () => showToast(this, mod.name + ' — ' + mod.desc, 2200, mod.color));
   }
 
   buildHandArea() {
-    this.handContainer = this.add.container(this.W/2, this.HAND_Y + this.HAND_H/2);
-    this.add.text(this.W/2, this.HAND_Y - 10, 'YOUR HAND', {
-      fontFamily:'Bebas Neue', fontSize:'28px', color:'#ffb800', stroke:'#000', strokeThickness:3, letterSpacing:6
+    // Hand cards container is positioned at the cards-row center; redrawHand lays
+    // each card relative to (0,0) inside.
+    this.handContainer = this.add.container(this.W/2, this.HAND_CARDS_Y);
+
+    // "YOUR HAND" banner — on its own row at the top of the tray, with the deck
+    // and discard badges flanking it. Cards sit ~80px below this row, so the
+    // label is clearly above the hand, not inside it.
+    this.add.text(this.W/2, this.HAND_BANNER_Y, 'YOUR HAND', {
+      fontFamily:'Bebas Neue', fontSize:'34px', color:'#ffb800',
+      stroke:'#000', strokeThickness:4, letterSpacing:6
     }).setOrigin(0.5);
 
-    this.deckBadge = this.add.image(78, this.HAND_Y + this.HAND_H/2, 'badge_deck');
-    this.deckBadge.setDisplaySize(140, 56);
+    const badgeY = this.HAND_BANNER_Y + 4;
+    this.deckBadge = this.add.image(85, badgeY, 'badge_deck');
+    this.deckBadge.setDisplaySize(130, 50);
     this.deckBadge.setInteractive({ useHandCursor:true });
     this.deckBadge.on('pointerup', () => this.showTooltip('deck'));
-    this.deckCountText = this.add.text(78, this.HAND_Y + this.HAND_H/2 - 4, '0', {
+    this.deckCountText = this.add.text(85, badgeY - 4, '0', {
       fontFamily:'Bebas Neue', fontSize:'20px', color:'#fff', stroke:'#000', strokeThickness:3
     }).setOrigin(0.5);
-    this.add.text(78, this.HAND_Y + this.HAND_H/2 + 14, 'DECK', {
+    this.add.text(85, badgeY + 18, 'DECK', {
       fontFamily:'Oswald', fontSize:'10px', color:'#aaa', letterSpacing:2
     }).setOrigin(0.5);
 
-    this.discardBadge = this.add.image(this.W - 78, this.HAND_Y + this.HAND_H/2, 'badge_discard');
-    this.discardBadge.setDisplaySize(140, 56);
+    this.discardBadge = this.add.image(this.W - 85, badgeY, 'badge_discard');
+    this.discardBadge.setDisplaySize(130, 50);
     this.discardBadge.setInteractive({ useHandCursor:true });
     this.discardBadge.on('pointerup', () => this.showTooltip('discard'));
-    this.discardCountText = this.add.text(this.W - 78, this.HAND_Y + this.HAND_H/2 - 4, '0', {
+    this.discardCountText = this.add.text(this.W - 85, badgeY - 4, '0', {
       fontFamily:'Bebas Neue', fontSize:'20px', color:'#fff', stroke:'#000', strokeThickness:3
     }).setOrigin(0.5);
-    this.add.text(this.W - 78, this.HAND_Y + this.HAND_H/2 + 14, 'DISC', {
+    this.add.text(this.W - 85, badgeY + 18, 'DISC', {
       fontFamily:'Oswald', fontSize:'10px', color:'#aaa', letterSpacing:2
     }).setOrigin(0.5);
   }
 
   buildFooter() {
-    const w = 320;
-    this.snapBtnContainer = this.add.container(this.W/2, this.FOOTER_Y);
+    // Paired action bar: CONCEDE (left) | SNAP/PASS (right). Equal widths so
+    // they read as a single unit; gold divider line above (drawn in drawBackground)
+    // visually connects them as "the action zone".
+    const btnW = 300, gap = 20;
+    const totalW = btnW * 2 + gap;
+    const leftEdge = (this.W - totalW) / 2;
+    const concedeX = leftEdge + btnW/2;
+    const snapX    = leftEdge + btnW + gap + btnW/2;
+    const snapW = btnW, concedeW = btnW;
+
+    // ---- CONCEDE (left) ----
+    this.concedeBtn = this.add.container(concedeX, this.FOOTER_Y);
+    const concedeImg = this.add.image(0, 0, 'btn_concede');
+    const cTex = this.textures.get('btn_concede').source[0];
+    const cH = concedeW * (cTex.height / cTex.width);
+    concedeImg.setDisplaySize(concedeW, cH);
+    const concedeTxt = this.add.text(0, 0, 'CONCEDE', { fontFamily:'Bebas Neue', fontSize:'36px', color:'#fff', stroke:'#000', strokeThickness:4, letterSpacing:3 }).setOrigin(0.5);
+    this.concedeBtn.add([concedeImg, concedeTxt]);
+    this.concedeBtn.setSize(concedeW, cH).setInteractive({ useHandCursor:true });
+    this.concedeBtn.on('pointerover', () => this.concedeBtn.setScale(1.05));
+    this.concedeBtn.on('pointerout',  () => this.concedeBtn.setScale(1));
+    this.concedeBtn.on('pointerdown', () => this.concedeBtn.setScale(0.96));
+    this.concedeBtn.on('pointerup',   () => { this.concedeBtn.setScale(1); this.confirmConcede(); });
+
+    // ---- SNAP / PASS (right) ----
+    this.snapBtnContainer = this.add.container(snapX, this.FOOTER_Y);
     const btnImg = this.add.image(0, 0, 'btn_snap');
     const tex = this.textures.get('btn_snap').source[0];
-    btnImg.setDisplaySize(w, w * (tex.height / tex.width));
+    const snapH = snapW * (tex.height / tex.width);
+    btnImg.setDisplaySize(snapW, snapH);
     this.snapBtnImg = btnImg;
-    this.snapBtnText = this.add.text(0, 0, 'PASS', { fontFamily:'Bebas Neue', fontSize:'52px', color:'#fff', stroke:'#000', strokeThickness:5, letterSpacing:4 }).setOrigin(0.5);
+    this.snapBtnText = this.add.text(0, 0, 'PASS', { fontFamily:'Bebas Neue', fontSize:'56px', color:'#fff', stroke:'#000', strokeThickness:5, letterSpacing:4 }).setOrigin(0.5);
     this.snapBtnContainer.add([btnImg, this.snapBtnText]);
-    this.snapBtnContainer.setSize(w, w * (tex.height / tex.width)).setInteractive({ useHandCursor:true });
+    this.snapBtnContainer.setSize(snapW, snapH).setInteractive({ useHandCursor:true });
     this.snapBtnContainer.on('pointerover', () => { if (!G.busy) this.snapBtnContainer.setScale(1.05); });
     this.snapBtnContainer.on('pointerout',  () => this.snapBtnContainer.setScale(1));
     this.snapBtnContainer.on('pointerdown', () => { if (!G.busy) this.snapBtnContainer.setScale(0.96); });
     this.snapBtnContainer.on('pointerup',   () => { this.snapBtnContainer.setScale(1); if (!G.busy) this.endDrive(); });
+  }
+
+  confirmConcede() {
+    sfx('click');
+    const W = this.W, H = this.H;
+    const cont = this.add.container(W/2, H/2).setDepth(9500);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.85); dim.fillRect(-W/2, -H/2, W, H);
+    cont.add(dim);
+    dim.setInteractive(new Phaser.Geom.Rectangle(-W/2, -H/2, W, H), Phaser.Geom.Rectangle.Contains);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.98); panel.fillRoundedRect(-280, -160, 560, 320, 16);
+    panel.lineStyle(3, 0xff5a5a, 1); panel.strokeRoundedRect(-280, -160, 560, 320, 16);
+    cont.add(panel);
+    cont.add(this.add.text(0, -100, 'CONCEDE MATCH?', { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ff5a5a', letterSpacing:3 }).setOrigin(0.5));
+    cont.add(this.add.text(0, -30, 'You will return to the main menu and the match will end.', { fontFamily:'Oswald', fontSize:'18px', color:'#e8e8e0', align:'center', wordWrap:{ width: 500 } }).setOrigin(0.5));
+    cont.add(makeAssetButton(this, -120, 90, 'KEEP PLAYING', 'btn_snap', '#fff', () => cont.destroy(), { w: 240, fontSize: 22 }));
+    cont.add(makeAssetButton(this,  120, 90, 'CONCEDE', 'btn_concede', '#fff', () => {
+      cont.destroy();
+      this.cameras.main.fadeOut(300);
+      this.time.delayedCall(300, () => this.scene.start('MenuScene'));
+    }, { w: 240, fontSize: 26 }));
   }
 
   drawSnapBtn() {
@@ -1457,7 +1617,7 @@ class GameScene extends Phaser.Scene {
         const x = startX + i * (slotW + 4);
         const y = -this.FIELD_H/2 + 130;
         const slot = this.add.graphics();
-        slot.lineStyle(2, 0xff5a5a, 0.2); slot.strokeRoundedRect(x - slotW/2, y - slotW*0.7, slotW, slotW*1.4, 6);
+        slot.lineStyle(1, 0xff5a5a, 0.06); slot.strokeRoundedRect(x - slotW/2, y - slotW*0.7, slotW, slotW*1.4, 6);
         layer.add(slot);
       }
 
@@ -1481,7 +1641,7 @@ class GameScene extends Phaser.Scene {
         const x = startX + i * (slotW + 4);
         const y = this.FIELD_H/2 - 130;
         const slot = this.add.graphics();
-        slot.lineStyle(2, 0x4aff8a, 0.2); slot.strokeRoundedRect(x - slotW/2, y - slotW*0.7, slotW, slotW*1.4, 6);
+        slot.lineStyle(1, 0x4aff8a, 0.06); slot.strokeRoundedRect(x - slotW/2, y - slotW*0.7, slotW, slotW*1.4, 6);
         layer.add(slot);
       }
     });
@@ -1519,16 +1679,21 @@ class GameScene extends Phaser.Scene {
     const energy = G.youEnergy - pendingCost();
     const cards = G.youHand;
     if (!cards.length) return;
-    const cardW = 120;
-    const usableW = this.W - 240;
-    const idealSpacing = cardW + 16;
+    // Bumped from 120 → 160 so cards stay readable on a fitted iPhone canvas
+    // (FIT mode scales the logical 900px down to ~430px CSS px, so 160 logical
+    // ≈ 76 CSS px wide — large enough to read the stat and tap reliably).
+    const cardW = 160;
+    // Badges live 85px from each side edge; reserve a comfortable strip beyond
+    // them so a 5-card spread doesn't crowd or overlap the badges.
+    const usableW = this.W - 60;
+    const idealSpacing = cardW + 8;
     const spacing = Math.min(idealSpacing, usableW / cards.length);
     const startX = -(spacing * (cards.length - 1)) / 2;
 
     cards.forEach((card, i) => {
       const x = startX + i * spacing;
       const affordable = card.cost <= energy;
-      const handCard = buildCard(this, card, cardW, { dimmed: !affordable });
+      const handCard = buildCard(this, card, cardW, { dimmed: !affordable, contextHand: true });
       handCard.x = x; handCard.y = 0;
       handCard.dataCard = card;
       this.handContainer.add(handCard);
@@ -2123,6 +2288,13 @@ class MenuScene extends Phaser.Scene {
         this.scene.start('GameScene');
       });
     }, { w: 420 });
+
+    // Dev hook: load ?auto=quick to skip the menu and jump straight into a
+    // quickplay match. Useful for screenshots and layout iteration.
+    if (typeof window !== 'undefined' && window.location.search.indexOf('auto=quick') >= 0) {
+      newGame(buildQuickPlayDeck(), buildAIDeck(2), 'quick', null);
+      this.scene.start('GameScene');
+    }
 
     // Season status text
     const existing = loadSeason();
