@@ -621,26 +621,30 @@ function applySynergies(cards) {
 }
 
 function applyLaneFieldEffects(lane) {
+  // "Live" = revealed AND not pending AND not ejected. YOUR cards now land
+  // face-up (revealed:true) but stay pending until snap, so pending must be
+  // filtered out both as a source (a pending card doesn't yet project field
+  // effects) and as a target (a pending card doesn't yet receive buffs).
   [...lane.youCards, ...lane.aiCards].forEach(c => {
-    if (!c.revealed || c.ejected) return;
+    if (!c.revealed || c.pending || c.ejected) return;
     const isYou = lane.youCards.includes(c);
     const friendlies = isYou ? lane.youCards : lane.aiCards;
     const enemies    = isYou ? lane.aiCards  : lane.youCards;
     switch (c.desc) {
       case 'fieldBuffOff':
-        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.pos === 'OL')
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.pending && !x.ejected && x.pos === 'OL')
           .forEach(x => { x._fieldOff = (x._fieldOff||0) + 5; });
         break;
       case 'fieldBuffOffAll':
-        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.side === 'off')
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.pending && !x.ejected && x.side === 'off')
           .forEach(x => { x._fieldOff = (x._fieldOff||0) + 4; });
         break;
       case 'fieldBuffDef':
-        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && (x.pos === 'CB' || x.pos === 'S'))
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.pending && !x.ejected && (x.pos === 'CB' || x.pos === 'S'))
           .forEach(x => { x._fieldDef = (x._fieldDef||0) + 3; });
         break;
       case 'fieldDebuffAll':
-        enemies.filter(x => x.revealed && !x.ejected && x.side === 'off')
+        enemies.filter(x => x.revealed && !x.pending && !x.ejected && x.side === 'off')
           .forEach(x => { x._fieldOff = (x._fieldOff||0) - 5; });
         break;
     }
@@ -648,7 +652,7 @@ function applyLaneFieldEffects(lane) {
 }
 
 function applyPerkStatBuffs(lane) {
-  const you = lane.youCards.filter(c => c.revealed && !c.ejected);
+  const you = lane.youCards.filter(c => c.revealed && !c.pending && !c.ejected);
   if (hasPerk('airItOut'))     you.filter(c => c.pos==='WR' || c.pos==='TE').forEach(c => c.curOff += 3);
   if (hasPerk('groundGame'))   you.filter(c => c.pos==='RB').forEach(c => c.curOff += 3);
   if (hasPerk('runStuffer'))   you.filter(c => c.pos==='DE' || c.pos==='DT').forEach(c => c.curDef += 3);
@@ -657,9 +661,9 @@ function applyPerkStatBuffs(lane) {
 
 function applyLaneModifier(lane) {
   if (!lane.modifier) return;
-  const all = [...lane.youCards, ...lane.aiCards].filter(c => c.revealed && !c.ejected);
-  const you = lane.youCards.filter(c => c.revealed && !c.ejected);
-  const ai  = lane.aiCards .filter(c => c.revealed && !c.ejected);
+  const all = [...lane.youCards, ...lane.aiCards].filter(c => c.revealed && !c.pending && !c.ejected);
+  const you = lane.youCards.filter(c => c.revealed && !c.pending && !c.ejected);
+  const ai  = lane.aiCards .filter(c => c.revealed && !c.pending && !c.ejected);
   switch (lane.modifier.id) {
     case 'homeTurf':
       you.filter(c => c.side==='off').forEach(c => c.curOff += 5);
@@ -712,27 +716,31 @@ function applyLaneModifier(lane) {
 }
 
 function computeLaneStats(lane) {
+  // A card is "live" (stats apply, contributes to power pill) only when
+  // revealed && !pending && !ejected. YOUR cards land face-up (revealed:true)
+  // but pending=true until snap, so we exclude them from stat computation
+  // here — buildCard falls back to card.off / card.def for display.
   [...lane.youCards, ...lane.aiCards].forEach(c => {
-    if (c.revealed) { c._fieldOff = 0; c._fieldDef = 0; }
+    if (c.revealed && !c.pending) { c._fieldOff = 0; c._fieldDef = 0; }
   });
   applyLaneFieldEffects(lane);
   // cross-lane field effects
   G.lanes.forEach(other => {
     if (other === lane) return;
     [...other.youCards, ...other.aiCards].forEach(c => {
-      if (!c.revealed || c.ejected) return;
+      if (!c.revealed || c.pending || c.ejected) return;
       const isYou = other.youCards.includes(c);
       const friendlies = isYou ? lane.youCards : lane.aiCards;
       if (c.desc === 'fieldBuffAllOff') {
-        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'off').forEach(x => { x._fieldOff = (x._fieldOff||0) + 6; });
+        friendlies.filter(x => x.revealed && !x.pending && !x.ejected && x.side === 'off').forEach(x => { x._fieldOff = (x._fieldOff||0) + 6; });
       }
       if (c.desc === 'fieldBuffAllDef') {
-        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'def').forEach(x => { x._fieldDef = (x._fieldDef||0) + 6; });
+        friendlies.filter(x => x.revealed && !x.pending && !x.ejected && x.side === 'def').forEach(x => { x._fieldDef = (x._fieldDef||0) + 6; });
       }
     });
   });
   [...lane.youCards, ...lane.aiCards].forEach(c => {
-    if (c.revealed) {
+    if (c.revealed && !c.pending) {
       c.curOff = Math.max(0, (c._baseOff ?? c.off) + (c._fieldOff||0));
       c.curDef = Math.max(0, (c._baseDef ?? c.def) + (c._fieldDef||0));
       if (c.ejected) { c.curOff = 0; c.curDef = 0; }
@@ -740,12 +748,12 @@ function computeLaneStats(lane) {
   });
   applyLaneModifier(lane);
   applyPerkStatBuffs(lane);
-  applySynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
-  applySynergies(lane.aiCards .filter(c => c.revealed && !c.ejected));
-  const youOff = lane.youCards.filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
-  const youDef = lane.youCards.filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
-  const aiOff  = lane.aiCards .filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
-  const aiDef  = lane.aiCards .filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
+  applySynergies(lane.youCards.filter(c => c.revealed && !c.pending && !c.ejected));
+  applySynergies(lane.aiCards .filter(c => c.revealed && !c.pending && !c.ejected));
+  const youOff = lane.youCards.filter(c=>c.revealed&&!c.pending&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
+  const youDef = lane.youCards.filter(c=>c.revealed&&!c.pending&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
+  const aiOff  = lane.aiCards .filter(c=>c.revealed&&!c.pending&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
+  const aiDef  = lane.aiCards .filter(c=>c.revealed&&!c.pending&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
   return { youOff, youDef, aiOff, aiDef };
 }
 
@@ -1810,7 +1818,12 @@ class GameScene extends Phaser.Scene {
     const energy = G.youEnergy - pendingCost();
     if (cost > energy) { this.showFloat('NOT ENOUGH ENERGY', '#ff5a5a'); this.returnCardToHand(go); return; }
     if (!G.youHand.find(c => c.id === card.id)) { this.returnCardToHand(go); return; }
-    const placed = { ...card, curOff: card.off, curDef: card.def, revealed:false, pending:true };
+    // YOUR cards land FACE-UP (revealed:true) but stay pending until snap.
+    // pending=true keeps the gold pulsing border + gates stat application in
+    // computeLaneStats so modifiers/synergies only kick in at snap. We do NOT
+    // pre-set curOff/curDef — buildCard's `card.curOff ?? card.off` fallback
+    // shows the base stat (the same number the player saw in hand).
+    const placed = { ...card, revealed:true, pending:true };
     lane.youCards.push(placed);
     G.pendingPlays.push({ card: placed, lane: dz.laneIdx, side:'you', effectiveCost: cost });
     G.youHand = G.youHand.filter(c => c.id !== card.id);
@@ -1860,6 +1873,10 @@ class GameScene extends Phaser.Scene {
   }
 
   // ---- Phase 1: SNAP reveal in winner-first order + ability dispatch ----
+  // YOUR cards are already face-up (revealed:true since placement) — no flip
+  // animation needed, just clear pending so the pulse stops and modifiers
+  // apply. The reveal SFX + per-card delay only fire for CPU cards, where
+  // the face-down → face-up flip is actual hidden-info disclosure.
   async revealAllPending() {
     const youFirst = G.youScore >= G.aiScore;
     const order = youFirst ? ['you','ai'] : ['ai','you'];
@@ -1872,10 +1889,13 @@ class GameScene extends Phaser.Scene {
         play.card._baseDef = play.card.def;
         await this.applyCardSnapAbility(play);
         computeLaneStats(G.lanes[play.lane]);
-        sfx('reveal');
-        this.render();
-        await this.delay(this.reduced ? 80 : 220);
+        if (side === 'ai') {
+          sfx('reveal');
+          this.render();
+          await this.delay(this.reduced ? 80 : 220);
+        }
       }
+      if (side === 'you') this.render();
     }
     G.pendingPlays = [];
     G.lanes.forEach(l => computeLaneStats(l));
