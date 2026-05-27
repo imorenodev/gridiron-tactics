@@ -1,0 +1,3967 @@
+<script>
+// ============================================================
+// UTILITIES
+// ============================================================
+function uid() { return Math.random().toString(36).slice(2,9); }
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i>0; i--) { const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+// ============================================================
+// PROCEDURAL CARD GENERATOR — generates a master pool of unique players
+// ============================================================
+const NFL_TEAMS = ['ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN','DET','GB','HOU','IND','JAX','KC','LV','LAC','LAR','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SF','SEA','TB','TEN','WAS'];
+
+const FIRST_NAMES = ['Jalen','Trey','Marcus','Devon','Tyrese','Caleb','Brock','Justin','Patrick','Lamar','Joe','Josh','Dak','Jared','Bo','Drake','Kyle','Mac','Geno','Russell','Aaron','Kirk','Baker','Sam','Will','Anthony','Rome','Malik','Najee','Travis','Mark','George','Brandon','Stefon','Tee','Ja','CeeDee','DeVonta','DK','Garrett','Maxx','Khalil','Micah','TJ','Nick','Aidan','Sauce','Pat','Derwin','Minkah','Justin','Roquan','Fred','Quinnen','Chris','Trent','Lane','Penei','Tristan','Christian','Saquon','Bijan','Jonathan','Derrick','Alvin','Aaron','Dalvin','Tony','James','Joe','Austin','Trevor','Daniel','Tua','Anthony','Bryce','Jaylen','Amon-Ra','Davante','AJ','Mike','Cooper','Tyler','Calvin','DeAndre','Chris','TJ','Travis','Mark','Kyle','Hunter','David','Tom','Jordan','Maxx','Joey','Bradley','Brian','Demarcus','Von','Roquan','Bobby','Demario','Patrick','Jamal','Budda','Jessie','Tyrann','Jamel','Marlon','Marshon','Jaire','Jalen','Stephon','Kenny'];
+
+const LAST_NAMES = ['Allen','Hurts','Mahomes','Jackson','Burrow','Herbert','Williams','Stroud','Young','Love','Prescott','Goff','Tagovailoa','Watson','Tannehill','Smith','Carr','Rodgers','Wilson','Mayfield','Murray','Maye','Daniels','Penix','Nix','Richardson','Henry','Taylor','Robinson','Conner','Mostert','Kamara','Mixon','Pollard','Singletary','Jacobs','Barkley','Cook','Pierce','Walker','Etienne','Sermon','Bigsby','Pacheco','White','Spears','Stevenson','Akers','Jackson','Hill','Jefferson','Chase','Lamb','Diggs','Adams','Higgins','Brown','Smith','Pittman','Olave','Wilson','McLaurin','Aiyuk','Kupp','Samuel','Godwin','Sutton','Waddle','Smith-Schuster','Beckham','Kelce','Andrews','Pitts','Goedert','Hockenson','Kittle','Ertz','LaPorta','Engram','Schultz','Njoku','Henry','Bowers','Watt','Garrett','Parsons','Bosa','Crosby','Mack','Jones','Hendrickson','Hutchinson','Hargrave','Donald','Heyward','Wilkins','Williams','Buckner','Sweat','Smith','Tuitt','Burns','Anderson','Hicks','Wagner','David','Lloyd','Edmunds','Werner','Mosley','White','Roquan','Campbell','Sneed','Williams','Surtain','Stingley','Sauce','Lattimore','Bradberry','Diggs','Slay','Bouye','Adams','Hooker','Hamilton','Hyde','James','Bates','Mathieu','Adams','Winfield','Fitzpatrick','Poyer','Hyde','McKinney','Howell','Cross','Sewell','Wirfs','Williams','Slater','Brown','Smith','Stanley','Thuney','Lindstrom','Nelson','Martin','Jenkins','Vera-Tucker','Becton','Mekari','Glowinski','Daley'];
+
+const TEAM_TIER = {}; // reserved for future expansion
+
+// Cost → base stat ranges (off or def power)
+const STAT_BY_COST = {
+  1: { min: 6, max: 11 },
+  2: { min: 13, max: 19 },
+  3: { min: 20, max: 28 },
+  4: { min: 28, max: 36 },
+  5: { min: 38, max: 50 },
+  6: { min: 50, max: 62 }
+};
+
+const RARITY_DISTRIBUTION = [
+  { rarity: 'common', weight: 70, statBonus: 0 },
+  { rarity: 'uncommon', weight: 20, statBonus: 3 },
+  { rarity: 'rare', weight: 8, statBonus: 7 },
+  { rarity: 'legendary', weight: 2, statBonus: 12 }
+];
+
+const ABILITY_POOL = {
+  off: [
+    { ability: 'SNAP: Draw a card', desc: 'snapDraw', minCost: 1 },
+    { ability: 'SNAP: +6 OFF to this lane', desc: 'snapBuffOffLane', minCost: 3 },
+    { ability: 'SNAP: +10 yds, push enemy back 10', desc: 'snapStealYards', minCost: 4 },
+    { ability: 'SNAP: 3-pt FG if past midfield', desc: 'snapFieldGoal', minCost: 4, posOnly: ['K'] },
+    { ability: 'SNAP: +8 OFF to all your OFF cards', desc: 'snapBuffAllOff', minCost: 5 },
+    { ability: 'FIELD: +4 OFF to all your OFF here', desc: 'fieldBuffOffAll', minCost: 3 },
+    { ability: 'FIELD: +5 OFF to OL friendlies here', desc: 'fieldBuffOff', minCost: 2, posOnly: ['OL'] },
+    { ability: 'FIELD: +6 OFF to all your OFF cards', desc: 'fieldBuffAllOff', minCost: 5 },
+    { ability: 'PAT bonus on TD in this lane', desc: '', minCost: 2, posOnly: ['K'] }
+  ],
+  def: [
+    { ability: 'SNAP: -8 enemy OFF here', desc: 'snapDebuffEnemyOff', minCost: 3 },
+    { ability: 'SNAP: Push enemy back 12 yds', desc: 'snapDefYards', minCost: 4 },
+    { ability: 'SNAP: -10 enemy OFF yds', desc: 'snapPunt', minCost: 2, posOnly: ['ST'] },
+    { ability: 'FIELD: +3 DEF to CB/S friendlies', desc: 'fieldBuffDef', minCost: 2 },
+    { ability: 'FIELD: Blocks 5 enemy yds/drive', desc: 'fieldYardBlock', minCost: 4 },
+    { ability: 'FIELD: All enemy OFF here -5', desc: 'fieldDebuffAll', minCost: 5 },
+    { ability: 'FIELD: +6 DEF to all your DEF cards', desc: 'fieldBuffAllDef', minCost: 5 }
+  ]
+};
+
+function pickWeighted(items) {
+  const total = items.reduce((s, i) => s + i.weight, 0);
+  let r = Math.random() * total;
+  for (const item of items) {
+    r -= item.weight;
+    if (r <= 0) return item;
+  }
+  return items[items.length - 1];
+}
+
+function pickOne(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function generateCard(forcedSide, forcedRarity) {
+  // Pick side
+  const side = forcedSide || (Math.random() < 0.5 ? 'off' : 'def');
+  // Pick position
+  const positions = side === 'off' ? ['QB','RB','WR','TE','OL','K'] : ['CB','S','LB','DE','DT','ST'];
+  const posWeights = side === 'off'
+    ? { QB: 18, RB: 16, WR: 22, TE: 12, OL: 18, K: 14 }
+    : { CB: 20, S: 16, LB: 20, DE: 16, DT: 14, ST: 14 };
+  const pos = pickWeighted(positions.map(p => ({ value: p, weight: posWeights[p] }))).value;
+  // Pick cost — weighted toward middle costs (curve)
+  const costWeights = [{ value: 1, weight: 18 }, { value: 2, weight: 24 }, { value: 3, weight: 22 }, { value: 4, weight: 18 }, { value: 5, weight: 12 }, { value: 6, weight: 6 }];
+  const cost = pickWeighted(costWeights).value;
+  // Pick rarity (forcedRarity overrides the weighted roll — draft packs use this)
+  let rarityInfo = forcedRarity
+    ? RARITY_DISTRIBUTION.find(r => r.rarity === forcedRarity)
+    : null;
+  if (!rarityInfo) rarityInfo = pickWeighted(RARITY_DISTRIBUTION);
+  // Stats based on cost + rarity bonus
+  const statRange = STAT_BY_COST[cost];
+  const baseStat = statRange.min + Math.floor(Math.random() * (statRange.max - statRange.min + 1)) + rarityInfo.statBonus;
+  const off = side === 'off' ? baseStat : 0;
+  const def = side === 'def' ? baseStat : 0;
+  // Pick ability — rarity affects chance of ability
+  const abilityChance = rarityInfo.rarity === 'common' ? 0.15 : 
+                         rarityInfo.rarity === 'uncommon' ? 0.35 :
+                         rarityInfo.rarity === 'rare' ? 0.7 : 1.0;
+  let ability = '', desc = '';
+  if (Math.random() < abilityChance) {
+    const pool = ABILITY_POOL[side].filter(a => 
+      cost >= a.minCost && (!a.posOnly || a.posOnly.includes(pos))
+    );
+    if (pool.length > 0) {
+      const picked = pickOne(pool);
+      ability = picked.ability;
+      desc = picked.desc;
+    }
+  }
+  // Kickers should usually have PAT
+  if (pos === 'K' && !ability) {
+    ability = 'PAT bonus on TD in this lane';
+  }
+  // Name
+  const name = pickOne(FIRST_NAMES) + ' ' + pickOne(LAST_NAMES);
+  const team = pickOne(NFL_TEAMS);
+  return {
+    id: uid(),
+    name, pos, team, cost, off, def, side, ability, desc,
+    rarity: rarityInfo.rarity
+  };
+}
+
+function generateMasterPool(size = 100) {
+  // Balanced pool: ~50/50 off/def
+  const pool = [];
+  const halfSize = Math.floor(size / 2);
+  for (let i = 0; i < halfSize; i++) pool.push(generateCard('off'));
+  for (let i = 0; i < halfSize; i++) pool.push(generateCard('def'));
+  return shuffle(pool);
+}
+
+// ============================================================
+// LANES — three thematic lanes
+// ============================================================
+const LANE_DEFS = [
+  { name: 'LEFT', flavor: 'Strong Side' },
+  { name: 'MIDDLE', flavor: 'Trenches' },
+  { name: 'RIGHT', flavor: 'Weak Side' }
+];
+
+// ============================================================
+// LANE MODIFIERS — applied to each lane at match start
+// Each match draws 3 random modifiers from this pool, one per lane.
+// ============================================================
+const LANE_MODIFIERS = [
+  // Field condition modifiers
+  { id: 'homeTurf',     icon: '🏟️', name: 'HOME TURF',     desc: 'Your OFF +5, enemy OFF -5', category: 'field' },
+  { id: 'muddyField',   icon: '🌧️', name: 'MUDDY FIELD',   desc: 'All OFF -25%, all DEF +25%', category: 'field' },
+  { id: 'windTunnel',   icon: '💨', name: 'WIND TUNNEL',   desc: 'No FGs · passers -5 OFF', category: 'field' },
+  { id: 'frozenTundra', icon: '❄️', name: 'FROZEN TUNDRA', desc: 'All abilities disabled', category: 'field' },
+  { id: 'blindingSun',  icon: '🌞', name: 'BLINDING SUN',  desc: 'WR/TE -8 OFF', category: 'field' },
+  { id: 'redZone',      icon: '🔥', name: 'RED ZONE',      desc: 'All OFF +8', category: 'field' },
+
+  // Tactical modifiers
+  { id: 'hurryUp',      icon: '⚡', name: 'HURRY-UP',      desc: 'OFF cards cost -1', category: 'tactical' },
+  { id: 'preventD',     icon: '🛡️', name: 'PREVENT D',     desc: 'DEF cards cost -1', category: 'tactical' },
+  { id: 'scouted',      icon: '📋', name: 'SCOUTED',       desc: 'First card here reveals immediately', category: 'tactical' },
+  { id: 'blitzZone',    icon: '🎯', name: 'BLITZ ZONE',    desc: 'DEF SNAP abilities trigger twice', category: 'tactical' },
+  { id: 'scramble',     icon: '🏃', name: 'SCRAMBLE',      desc: 'QBs +12 OFF', category: 'tactical' },
+
+  // Position-specific modifiers
+  { id: 'groundPound',  icon: '🏃', name: 'GROUND & POUND', desc: 'RB +10 OFF, OL +5 OFF', category: 'position' },
+  { id: 'airRaid',      icon: '✈️', name: 'AIR RAID',      desc: 'WR and TE +8 OFF', category: 'position' },
+  { id: 'trenches',     icon: '🔨', name: 'TRENCHES',      desc: 'OL +6 OFF, DT +6 DEF', category: 'position' },
+  { id: 'secondary',    icon: '🦅', name: 'SECONDARY',     desc: 'CB and S +6 DEF', category: 'position' },
+  { id: 'specialUnit',  icon: '🎯', name: 'ST UNIT',       desc: 'K and ST +15 to stat', category: 'position' },
+
+  // Wild modifiers
+  { id: 'coinFlip',     icon: '🎲', name: 'COIN FLIP',     desc: 'Each drive: 50/50 doubles or halves yards', category: 'wild' },
+  { id: 'turnover',     icon: '🔄', name: 'TURNOVER',      desc: 'No score in 3 drives = ball swaps', category: 'wild' },
+  { id: 'suddenDeath',  icon: '💀', name: 'SUDDEN DEATH',  desc: 'First to score locks the lane', category: 'wild' },
+  { id: 'playOfGame',   icon: '🎬', name: 'PLAY OF GAME',  desc: 'Highest-stat card here +20', category: 'wild' }
+];
+
+function drawLaneModifiers() {
+  return shuffle([...LANE_MODIFIERS]).slice(0, 3);
+}
+
+// ============================================================
+// CARD SYNERGIES — triggered by combos of cards in the same lane
+// Each synergy has a `match(cards)` function returning matched cards (or null)
+// and an `apply(cards)` that mutates curOff/curDef
+// ============================================================
+const SYNERGIES = [
+  // Offense synergies
+  {
+    id: 'playAction', icon: '🤝', name: 'PLAY ACTION', side: 'off',
+    match: cards => {
+      const qb = cards.find(c => c.pos === 'QB');
+      const rb = cards.find(c => c.pos === 'RB');
+      return (qb && rb) ? [qb, rb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 12)
+  },
+  {
+    id: 'spreadOffense', icon: '📡', name: 'SPREAD', side: 'off',
+    match: cards => {
+      const wrs = cards.filter(c => c.pos === 'WR');
+      return wrs.length >= 3 ? wrs : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 6)
+  },
+  {
+    id: 'protectedPocket', icon: '🛡️', name: 'POCKET', side: 'off',
+    match: cards => {
+      const qb = cards.find(c => c.pos === 'QB');
+      const ols = cards.filter(c => c.pos === 'OL');
+      return (qb && ols.length >= 2) ? [qb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 15)
+  },
+  {
+    id: 'redZoneThreat', icon: '🎯', name: 'RED ZONE', side: 'off',
+    match: cards => {
+      const te = cards.find(c => c.pos === 'TE');
+      const qb = cards.find(c => c.pos === 'QB');
+      return (te && qb) ? [te, qb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 8)
+  },
+  {
+    id: 'wildcat', icon: '🏃', name: 'WILDCAT', side: 'off',
+    match: cards => {
+      const rbs = cards.filter(c => c.pos === 'RB');
+      return rbs.length >= 2 ? rbs : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 10)
+  },
+  {
+    id: 'trickPlay', icon: '🎩', name: 'TRICK PLAY', side: 'off',
+    match: cards => {
+      const wr = cards.find(c => c.pos === 'WR');
+      const rb = cards.find(c => c.pos === 'RB');
+      const te = cards.find(c => c.pos === 'TE');
+      return (wr && rb && te) ? [wr, rb, te] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 5)
+  },
+  {
+    id: 'fieldGeneral', icon: '🎖️', name: 'FIELD GEN', side: 'off',
+    match: cards => {
+      const qb = cards.find(c => c.pos === 'QB' && c.cost >= 5);
+      const receivers = cards.filter(c => c.pos === 'WR' || c.pos === 'TE');
+      return (qb && receivers.length >= 2) ? [qb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 15)
+  },
+
+  // Defense synergies
+  {
+    id: 'zoneDefense', icon: '🦅', name: 'ZONE D', side: 'def',
+    match: cards => {
+      const cbs = cards.filter(c => c.pos === 'CB');
+      return cbs.length >= 2 ? cbs : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 5)
+  },
+  {
+    id: 'strongSafety', icon: '💪', name: 'STRONG SAFETY', side: 'def',
+    match: cards => {
+      const s = cards.find(c => c.pos === 'S');
+      const lb = cards.find(c => c.pos === 'LB');
+      return (s && lb) ? [s, lb] : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 6)
+  },
+  {
+    id: 'stackedFront', icon: '⛓️', name: 'STACKED FRONT', side: 'def',
+    match: cards => {
+      const dl = cards.filter(c => c.pos === 'DE' || c.pos === 'DT');
+      return dl.length >= 3 ? dl : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 8)
+  },
+  {
+    id: 'blitzPackage', icon: '🎯', name: 'BLITZ', side: 'def',
+    match: cards => {
+      const lb = cards.find(c => c.pos === 'LB');
+      const de = cards.find(c => c.pos === 'DE');
+      return (lb && de) ? [lb, de] : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 7)
+  },
+  {
+    id: 'secondarySupport', icon: '🤝', name: 'SECONDARY', side: 'def',
+    match: cards => {
+      const cbs = cards.filter(c => c.pos === 'CB');
+      const ss = cards.filter(c => c.pos === 'S');
+      return (cbs.length >= 2 && ss.length >= 1) ? [...cbs, ...ss] : null;
+    },
+    apply: matched => matched.forEach(c => c.curDef += 5)
+  },
+
+  // Special Teams synergies
+  {
+    id: 'kickingUnit', icon: '🏈', name: 'KICKING UNIT', side: 'st',
+    match: cards => {
+      const k = cards.find(c => c.pos === 'K');
+      const st = cards.find(c => c.pos === 'ST');
+      return (k && st) ? [k] : null;
+    },
+    apply: matched => matched.forEach(c => c.curOff += 5)  // FG range improvement handled in checkScoring
+  }
+];
+
+function detectSynergies(cards) {
+  // Returns list of active synergies for a given side's cards in a lane
+  const active = [];
+  for (const syn of SYNERGIES) {
+    const matched = syn.match(cards);
+    if (matched && matched.length > 0) {
+      active.push(syn);
+    }
+  }
+  return active;
+}
+
+function applySynergies(cards) {
+  // Mutates curOff/curDef based on synergies
+  for (const syn of SYNERGIES) {
+    const matched = syn.match(cards);
+    if (matched && matched.length > 0) {
+      syn.apply(matched);
+    }
+  }
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let state = null;
+let seasonState = null;
+
+const MAX_SLOTS = 8;
+
+// === ENERGY CARRYOVER (MAX_ENERGY_BANK) ENABLED ===
+// Maximum banked energy. Future leveling/perk rewards will increase this.
+// IMPORTANT: this constant is the single source of truth — do not hardcode 10
+// elsewhere. To add a "+1 Energy Capacity" perk later, modify only this value
+// (or expose it as a per-match override).
+const MAX_ENERGY_BANK = 10;
+
+// === DRAW/DISCARD CYCLE ENABLED ===
+// Hand size drawn at the start of each drive. Unplayed cards from the previous
+// drive are discarded; when the deck empties, the discard pile reshuffles in.
+// Future perks may increase this — keep it as the single source of truth.
+const HAND_SIZE = 5;
+
+// === LEVELING PHASE A — SUB-PHASE 1 (DATA LAYER) ===
+// ============================================================
+// PLAYER DATA — meta-progression that persists across matches.
+// Saved to localStorage under 'gridiron_player_v1'.
+// Separate from in-progress season state (gridiron_season_v1).
+// ============================================================
+
+const PLAYER_DATA_KEY = 'gridiron_player_v1';
+const PLAYER_DATA_VERSION = 1;
+
+function defaultPlayerData() {
+  return {
+    version: PLAYER_DATA_VERSION,
+    cash: 0,
+    coachLevel: 1,
+    coachXp: 0,
+    prestigeLevel: 0,
+    perksUnlocked: ['bigHand'],   // Big Hand is the starter perk, unlocked at level 1
+    perksEquipped: [],            // empty until player equips one
+    trophies: {},                 // populated in Phase B
+    stats: {
+      totalMatches: 0,
+      totalWins: 0,
+      totalLosses: 0,
+      currentWinStreak: 0,
+      longestWinStreak: 0,
+      pickSixes: 0,
+      shutouts: 0,
+      comebacks: 0
+    },
+    daily: {},                    // populated in Phase C
+    seasonPass: {},               // populated in Phase D
+    cosmeticsUnlocked: []         // populated in Phase F
+  };
+}
+
+let playerData = null;  // populated by loadPlayerData() at app start
+
+function loadPlayerData() {
+  try {
+    const raw = localStorage.getItem(PLAYER_DATA_KEY);
+    if (!raw) {
+      playerData = defaultPlayerData();
+      savePlayerData();
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    // Migration check — older versions get folded into the current shape
+    if (!parsed.version || parsed.version < PLAYER_DATA_VERSION) {
+      playerData = migratePlayerData(parsed);
+      savePlayerData();
+      return;
+    }
+    // Merge over defaults so new top-level fields appear on existing saves
+    playerData = Object.assign(defaultPlayerData(), parsed);
+    // Fill any missing nested fields (stats) with defaults too
+    playerData.stats = Object.assign(defaultPlayerData().stats, parsed.stats || {});
+  } catch (e) {
+    console.error('Failed to load player data, starting fresh:', e);
+    playerData = defaultPlayerData();
+    try { savePlayerData(); } catch (e2) { /* swallow — degrade gracefully */ }
+  }
+}
+
+function savePlayerData() {
+  try {
+    localStorage.setItem(PLAYER_DATA_KEY, JSON.stringify(playerData));
+  } catch (e) {
+    console.error('Failed to save player data:', e);
+    // Don't throw — degrade gracefully so the current session keeps working.
+  }
+}
+
+function migratePlayerData(oldData) {
+  // Phase A: just merge over defaults. Future migrations branch on version.
+  const fresh = defaultPlayerData();
+  return Object.assign(fresh, oldData, { version: PLAYER_DATA_VERSION });
+}
+
+// Triggered by the (yet-to-be-built) "Reset Progress" link in the Locker Room.
+// Three-step confirmation lives in the UI layer; this is the raw nuke.
+function clearPlayerData() {
+  try {
+    localStorage.removeItem(PLAYER_DATA_KEY);
+    playerData = defaultPlayerData();
+    savePlayerData();
+    location.reload();  // simplest way to reset all UI state
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// === LEVELING PHASE A — SUB-PHASE 2 (PERKS DEFINED) ===
+// ============================================================
+// PERKS — equippable bonuses that modify match behavior.
+// Phase A ships 7 Tier 1 perks; more added in Phase B / E.
+// ============================================================
+
+const PERK_POOL = [
+  { id: 'bigHand',       name: 'BIG HAND',        icon: '🃏', tier: 1, unlockLevel: 1,  desc: 'Hand size +1' },
+  { id: 'banker',        name: 'BANKER',          icon: '💰', tier: 1, unlockLevel: 3,  desc: 'Energy bank +2' },
+  { id: 'airItOut',      name: 'AIR IT OUT',      icon: '🏈', tier: 1, unlockLevel: 5,  desc: 'WR and TE cards +3 OFF' },
+  { id: 'groundGame',    name: 'GROUND GAME',     icon: '💪', tier: 1, unlockLevel: 7,  desc: 'RB cards +3 OFF' },
+  { id: 'runStuffer',    name: 'RUN STUFFER',     icon: '🛡️', tier: 1, unlockLevel: 9,  desc: 'DL cards +3 DEF' },
+  { id: 'coverageCoach', name: 'COVERAGE COACH',  icon: '🦅', tier: 1, unlockLevel: 11, desc: 'DB cards +3 DEF' },
+  { id: 'quickReads',    name: 'QUICK READS',     icon: '⚡', tier: 1, unlockLevel: 13, desc: '+2 extra energy on drive 1' }
+];
+
+function getPerk(perkId) {
+  return PERK_POOL.find(p => p.id === perkId);
+}
+
+function hasPerk(perkId) {
+  return !!(playerData && playerData.perksEquipped && playerData.perksEquipped.includes(perkId));
+}
+
+// Getters wrap the base constants so perks can adjust them. `side` defaults to
+// 'you' — perks are the player's, so AI callers must pass 'ai' to opt out.
+function getHandSize(side) {
+  let size = HAND_SIZE;
+  if (side !== 'ai' && hasPerk('bigHand')) size += 1;
+  return size;
+}
+
+function getMaxEnergyBank(side) {
+  let cap = MAX_ENERGY_BANK;
+  if (side !== 'ai' && hasPerk('banker')) cap += 2;
+  return cap;
+}
+
+// Applies the four stat-buff perks to YOUR revealed cards in a lane.
+// Called from computeLaneStats AFTER lane modifiers but BEFORE synergies, so
+// synergies stack on top of the perk-buffed stats (which feels right).
+function applyPerkStatBuffs(lane) {
+  const youCards = lane.youCards.filter(c => c.revealed && !c.ejected);
+  if (hasPerk('airItOut')) {
+    youCards.filter(c => c.pos === 'WR' || c.pos === 'TE').forEach(c => { c.curOff += 3; });
+  }
+  if (hasPerk('groundGame')) {
+    youCards.filter(c => c.pos === 'RB').forEach(c => { c.curOff += 3; });
+  }
+  if (hasPerk('runStuffer')) {
+    youCards.filter(c => c.pos === 'DE' || c.pos === 'DT').forEach(c => { c.curDef += 3; });
+  }
+  if (hasPerk('coverageCoach')) {
+    youCards.filter(c => c.pos === 'CB' || c.pos === 'S').forEach(c => { c.curDef += 3; });
+  }
+}
+
+// === LEVELING PHASE A — SUB-PHASE 4 (MATCH SUMMARY) ===
+// ============================================================
+// XP CURVE + LEVEL-UP + MATCH REWARDS
+// ============================================================
+const COACH_LEVEL_CAP = 50;
+
+// XP required to advance FROM (level - 1) TO `level`.
+// Returns the bucket for the level *being reached*.
+function xpRequiredForLevel(level) {
+  if (level <= 5)  return 100;
+  if (level <= 15) return 200 + (level - 5)  * 50;   // 250, 300, ..., 700
+  if (level <= 30) return 800 + (level - 15) * 100;  // 900, 1000, ..., 2300
+  if (level <= 50) return 2500 + (level - 30) * 200; // 2700, 2900, ..., 6500
+  return 7000;
+}
+
+function applyXpAndLevelUp(xpToAdd) {
+  // Returns { startLevel, startXp, startXpForNext, levelUps: [{ newLevel, perkUnlocked, cashReward }] }
+  // so the summary screen can animate the bar with full context.
+  const startLevel       = playerData.coachLevel;
+  const startXp          = playerData.coachXp;
+  const startXpForNext   = xpRequiredForLevel(startLevel + 1);
+  const levelUps = [];
+  playerData.coachXp += xpToAdd;
+  while (playerData.coachLevel < COACH_LEVEL_CAP &&
+         playerData.coachXp >= xpRequiredForLevel(playerData.coachLevel + 1)) {
+    playerData.coachXp -= xpRequiredForLevel(playerData.coachLevel + 1);
+    playerData.coachLevel++;
+    const cashReward = 100 * playerData.coachLevel;
+    playerData.cash += cashReward;
+    let perkUnlocked = null;
+    PERK_POOL.forEach(perk => {
+      if (perk.unlockLevel === playerData.coachLevel && !playerData.perksUnlocked.includes(perk.id)) {
+        playerData.perksUnlocked.push(perk.id);
+        perkUnlocked = perk;
+      }
+    });
+    levelUps.push({ newLevel: playerData.coachLevel, perkUnlocked, cashReward });
+  }
+  if (playerData.coachLevel >= COACH_LEVEL_CAP) {
+    // Cap XP at level 50 for now; Phase E will add prestige.
+    playerData.coachXp = 0;
+  }
+  savePlayerData();
+  return { startLevel, startXp, startXpForNext, levelUps };
+}
+
+function playerDataPlayedAMatchToday() {
+  const today = new Date().toISOString().slice(0, 10);
+  return !!(playerData.daily && playerData.daily.lastMatchDate === today);
+}
+
+function markPlayerPlayedToday() {
+  if (!playerData.daily) playerData.daily = {};
+  playerData.daily.lastMatchDate = new Date().toISOString().slice(0, 10);
+}
+
+// matchResult: { won, opponent, finalScore: {you, ai}, stats: { wasTrailingBy14AtHalftime } }
+function calculateMatchRewards(matchResult) {
+  const opponentTier = matchResult.opponent ? matchResult.opponent.tier : 1; // 1 for Quick Play
+  const baseXp   = matchResult.won ? 75 : 25;
+  const baseCash = matchResult.won ? 150 : 50;
+
+  let xpEarned   = baseXp * opponentTier;
+  let cashEarned = baseCash;
+
+  const breakdown = [
+    { label: matchResult.won ? 'Match Won' : 'Match Played', xp: baseXp * opponentTier, cash: baseCash }
+  ];
+  if (opponentTier > 1) {
+    // The tier multiplier is baked into the base line above; surface a hint
+    // so the player sees why their base XP is bigger than the headline number.
+    breakdown[0].label += ' (Tier ' + opponentTier + ')';
+  }
+
+  // Daily first-match bonus
+  const firstToday = !playerDataPlayedAMatchToday();
+  if (firstToday) {
+    xpEarned   += 50;
+    cashEarned += 200;
+    breakdown.push({ label: 'First Match Today', xp: 50, cash: 200 });
+  }
+  markPlayerPlayedToday();
+
+  // Perfect shutout
+  if (matchResult.won && matchResult.finalScore.ai === 0) {
+    xpEarned += 50;
+    breakdown.push({ label: 'Perfect Shutout', xp: 50, cash: 0 });
+  }
+  // Comeback win
+  if (matchResult.won && matchResult.stats.wasTrailingBy14AtHalftime) {
+    xpEarned += 50;
+    breakdown.push({ label: 'Comeback Win', xp: 50, cash: 0 });
+  }
+
+  return { xpEarned, cashEarned, breakdown };
+}
+
+// ============================================================
+// PORTRAIT GENERATOR — stylized SVG silhouettes with team colors
+// ============================================================
+// Maps NFL-style team codes to jersey colors (primary, secondary, accent)
+const TEAM_COLORS = {
+  ARI: ['#97233F', '#000', '#FFB612'], ATL: ['#A71930', '#000', '#A5ACAF'],
+  BAL: ['#241773', '#000', '#9E7C0C'], BUF: ['#00338D', '#C60C30', '#fff'],
+  CAR: ['#0085CA', '#101820', '#BFC0BF'], CHI: ['#0B162A', '#C83803', '#fff'],
+  CIN: ['#FB4F14', '#000', '#fff'], CLE: ['#FF3C00', '#311D00', '#fff'],
+  DAL: ['#003594', '#869397', '#fff'], DEN: ['#FB4F14', '#002244', '#fff'],
+  DET: ['#0076B6', '#B0B7BC', '#fff'], GB:  ['#203731', '#FFB612', '#fff'],
+  HOU: ['#03202F', '#A71930', '#fff'], IND: ['#002C5F', '#A2AAAD', '#fff'],
+  JAX: ['#101820', '#D7A22A', '#9F792C'], KC:  ['#E31837', '#FFB81C', '#fff'],
+  LV:  ['#000', '#A5ACAF', '#fff'], LAC: ['#0080C6', '#FFC20E', '#fff'],
+  LAR: ['#003594', '#FFA300', '#fff'], MIA: ['#008E97', '#FC4C02', '#fff'],
+  MIN: ['#4F2683', '#FFC62F', '#fff'], NE:  ['#002244', '#C60C30', '#B0B7BC'],
+  NO:  ['#D3BC8D', '#101820', '#fff'], NYG: ['#0B2265', '#A71930', '#A5ACAF'],
+  NYJ: ['#125740', '#000', '#fff'], PHI: ['#004C54', '#A5ACAF', '#fff'],
+  PIT: ['#FFB612', '#101820', '#fff'], SF:  ['#AA0000', '#B3995D', '#fff'],
+  SEA: ['#002244', '#69BE28', '#A5ACAF'], TB:  ['#D50A0A', '#34302B', '#FF7900'],
+  TEN: ['#0C2340', '#4B92DB', '#C8102E'], WAS: ['#5A1414', '#FFB612', '#fff']
+};
+
+function getTeamColors(team) {
+  return TEAM_COLORS[team] || ['#444', '#222', '#fff'];
+}
+
+// Deterministic random based on card uid (so portrait stays consistent for same card)
+function seedRandom(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = ((h << 5) - h) + seed.charCodeAt(i);
+    h |= 0;
+  }
+  return () => {
+    h = (h * 9301 + 49297) % 233280;
+    return h / 233280;
+  };
+}
+
+function generatePortraitSVG(card, size = 40) {
+  const [primary, secondary, accent] = getTeamColors(card.team);
+  const rng = seedRandom(card.id || card.uid || card.name);
+  // Vary skin tone slightly
+  const skinTones = ['#f4d4b8', '#e3b894', '#c8956d', '#a67c52', '#8b5a3c', '#6b4226'];
+  const skin = skinTones[Math.floor(rng() * skinTones.length)];
+  // Helmet / hair color
+  const hairTones = ['#1a1a1a', '#3a2a1a', '#5a3a2a', '#8a6a4a', '#aa8a5a'];
+  const hair = hairTones[Math.floor(rng() * hairTones.length)];
+  const jerseyNum = Math.floor(rng() * 89) + 10;
+  
+  // Variations
+  const hasFacepaint = rng() > 0.75;
+  const helmetShine = rng() > 0.5;
+  
+  return `
+<svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg-${card.uid || card.id}" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${primary}" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="${secondary}" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="helm-${card.uid || card.id}" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${primary}"/>
+      <stop offset="100%" stop-color="${secondary}"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="60" height="60" fill="url(#bg-${card.uid || card.id})"/>
+  <!-- Subtle pattern -->
+  <path d="M 0 30 L 60 30 M 0 45 L 60 45" stroke="${accent}" stroke-opacity="0.15" stroke-width="1"/>
+  <!-- Shoulders / jersey -->
+  <path d="M 5 60 Q 5 42 18 38 L 42 38 Q 55 42 55 60 Z" fill="${primary}" stroke="${secondary}" stroke-width="1"/>
+  <!-- Jersey number -->
+  <text x="30" y="56" text-anchor="middle" font-family="Bebas Neue, Arial" font-size="10" fill="${accent}" font-weight="bold">${jerseyNum}</text>
+  <!-- Neck -->
+  <rect x="25" y="33" width="10" height="8" fill="${skin}"/>
+  <!-- Head/Face -->
+  <ellipse cx="30" cy="24" rx="11" ry="13" fill="${skin}"/>
+  <!-- Helmet -->
+  <path d="M 18 22 Q 18 10 30 10 Q 42 10 42 22 L 42 28 Q 42 18 30 18 Q 18 18 18 28 Z" fill="url(#helm-${card.uid || card.id})" stroke="${secondary}" stroke-width="0.5"/>
+  <!-- Facemask -->
+  <path d="M 21 26 L 39 26 M 22 30 L 38 30" stroke="${secondary === '#000' ? '#666' : '#222'}" stroke-width="0.8" stroke-linecap="round"/>
+  <path d="M 21 26 L 21 30 M 39 26 L 39 30 M 28 26 L 28 33 M 32 26 L 32 33" stroke="${secondary === '#000' ? '#666' : '#222'}" stroke-width="0.7"/>
+  <!-- Eyes (visible through helmet) -->
+  <ellipse cx="26" cy="24" rx="1.2" ry="1.4" fill="#1a1a1a"/>
+  <ellipse cx="34" cy="24" rx="1.2" ry="1.4" fill="#1a1a1a"/>
+  ${hasFacepaint ? `<rect x="24" y="28" width="3" height="2" fill="#000" opacity="0.7"/><rect x="33" y="28" width="3" height="2" fill="#000" opacity="0.7"/>` : ''}
+  ${helmetShine ? `<path d="M 22 14 Q 26 12 30 12" stroke="${accent}" stroke-width="1.2" stroke-opacity="0.6" fill="none" stroke-linecap="round"/>` : ''}
+  <!-- Team stripe on helmet -->
+  <path d="M 30 10 L 30 18" stroke="${accent}" stroke-width="1.5" stroke-opacity="0.8"/>
+</svg>`.trim();
+}
+
+// ============================================================
+
+// ============================================================
+// SEASON STATE MANAGEMENT
+// ============================================================
+const OPPONENT_TEAMS = [
+  { name: 'Wildcats', tier: 1, flavor: 'Easy game. Don\'t get cocky.' },
+  { name: 'Stallions', tier: 2, flavor: 'A scrappy bunch with something to prove.' },
+  { name: 'Mavericks', tier: 3, flavor: 'Playoff hopefuls. Bring your A-game.' },
+  { name: 'Titans', tier: 4, flavor: 'Top-five defense in the league.' },
+  { name: 'Outlaws', tier: 5, flavor: 'They didn\'t lose all year.' },
+  { name: 'Phantoms', tier: 6, flavor: 'Conference champions. The real deal.' },
+  { name: 'Dynasty', tier: 7, flavor: 'Defending champs. This is for the ring.' }
+];
+
+function loadSeason() {
+  try {
+    const s = localStorage.getItem('gridiron_season_v1');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return null;
+}
+function saveSeason() {
+  if (!seasonState) {
+    localStorage.removeItem('gridiron_season_v1');
+    return;
+  }
+  try { localStorage.setItem('gridiron_season_v1', JSON.stringify(seasonState)); } catch(e) {}
+}
+function clearSeason() {
+  seasonState = null;
+  try { localStorage.removeItem('gridiron_season_v1'); } catch(e) {}
+}
+
+function newState(playerDeckCards, aiDeckCards) {
+  // playerDeckCards and aiDeckCards are arrays of card objects (already chosen)
+  const playerDeck = shuffle(playerDeckCards.map(c => ({ ...c, uid: uid() })));
+  const aiDeck = shuffle(aiDeckCards.map(c => ({ ...c, uid: uid() })));
+
+  // Randomized kickoff return field position per lane (15-35 yard line)
+  const modifiers = drawLaneModifiers();
+  const lanes = LANE_DEFS.map((l, i) => ({
+    ...l,
+    idx: i,
+    modifier: modifiers[i],
+    youCards: [],
+    aiCards: [],
+    youPos: kickoffReturn(),
+    aiPos: kickoffReturn(),
+    driveSinceScore: 0,
+    lockedFor: null  // for SUDDEN DEATH: 'you' | 'ai' | null
+  }));
+
+  const s = {
+    turn: 1,
+    maxTurn: 8,
+    // Energy starts at 0 conceptually; drive 1's +1 grant lands immediately so
+    // the first drive opens with 1 energy. Carryover banks unspent energy up to
+    // MAX_ENERGY_BANK each drive (see endTurn drive transition).
+    youEnergy: 1,
+    aiEnergy: 1,
+    youHand: [],
+    youDeck: playerDeck,
+    youDiscard: [],
+    aiHand: [],
+    aiDeck: aiDeck,
+    aiDiscard: [],
+    lanes,
+    youScore: 0,
+    aiScore: 0,
+    pendingPlays: [],
+    scoringLog: [],
+    busy: false,
+    gameOver: false
+  };
+  // Assign state up front so the helpers below can read it
+  state = s;
+  // Draw opening hands using the cycle helpers (handles reshuffle defensively).
+  // getHandSize() defaults to 'you' (perks apply); 'ai' opts out of player perks.
+  drawCardsToHand('you', getHandSize());
+  drawCardsToHand('ai',  getHandSize('ai'));
+  // Quick Reads perk: +2 energy on drive 1 (capped by the player's energy bank)
+  if (hasPerk('quickReads')) {
+    state.youEnergy = Math.min(getMaxEnergyBank(), state.youEnergy + 2);
+  }
+  return s;
+}
+
+// ---- Draw / discard cycle helpers ----
+// Cards keep their identity through deck → hand → discard → deck. When a card
+// is played to a lane it leaves the cycle (lane cleanup handles it on score).
+
+function drawCardsToHand(side, count) {
+  const deck    = (side === 'you') ? state.youDeck    : state.aiDeck;
+  const hand    = (side === 'you') ? state.youHand    : state.aiHand;
+  const discard = (side === 'you') ? state.youDiscard : state.aiDiscard;
+  const drawn = [];
+  for (let i = 0; i < count; i++) {
+    if (deck.length === 0) {
+      if (discard.length === 0) break;       // truly out of cards
+      reshuffleDiscardIntoDeck(side);
+    }
+    if (deck.length === 0) break;            // defensive — shouldn't happen
+    const card = deck.shift();
+    hand.push(card);
+    drawn.push(card);
+  }
+  return drawn;
+}
+
+function reshuffleDiscardIntoDeck(side) {
+  const deck    = (side === 'you') ? state.youDeck    : state.aiDeck;
+  const discard = (side === 'you') ? state.youDiscard : state.aiDiscard;
+  while (discard.length > 0) {
+    const c = discard.shift();
+    delete c._discardedOnDrive;  // clear the modal tag — it's back in the deck now
+    deck.push(c);
+  }
+  shuffle(deck);
+  if (side === 'you') showReshuffleAnimation();  // visual moment for the player only
+}
+
+function discardHand(side) {
+  const hand    = (side === 'you') ? state.youHand    : state.aiHand;
+  const discard = (side === 'you') ? state.youDiscard : state.aiDiscard;
+  const drive   = state.turn;
+  while (hand.length > 0) {
+    const c = hand.shift();
+    c._discardedOnDrive = drive;  // used by the discard-pile modal for grouping
+    discard.push(c);
+  }
+}
+
+function kickoffReturn() {
+  // Simulates a kickoff return — usually starts between the 15 and 35 yard line
+  // Occasional big return (5% chance for 40-60 yard start)
+  if (Math.random() < 0.05) return 40 + Math.floor(Math.random() * 21); // big return
+  return 15 + Math.floor(Math.random() * 21); // normal: 15-35
+}
+
+function buildAIDeck(difficulty = 1) {
+  // Procedural AI deck — quality scales with difficulty (1-7, matching opponent tier)
+  // Higher difficulty = better stat bonuses, more abilities, more rares/legendaries
+  const deckSize = 50; // matches player deck size in season mode
+  const cards = [];
+  
+  // Stat bonus per tier: tier 1 = baseline, tier 7 = +20% stats overall
+  const tierStatBonus = (difficulty - 1) * 2;
+  const tierRarityBoost = difficulty >= 4 ? 2 : difficulty >= 6 ? 4 : 0;
+  
+  // Generate 25 offense, 25 defense
+  for (let i = 0; i < 25; i++) {
+    const card = generateCard('off');
+    card.off += tierStatBonus;
+    cards.push(card);
+  }
+  for (let i = 0; i < 25; i++) {
+    const card = generateCard('def');
+    card.def += tierStatBonus;
+    cards.push(card);
+  }
+  return shuffle(cards);
+}
+
+function buildQuickPlayDeck() {
+  // For Quick Play: auto-drafted balanced 50-card deck from a fresh pool
+  const pool = generateMasterPool(120);
+  const offCards = pool.filter(c => c.side === 'off');
+  const defCards = pool.filter(c => c.side === 'def');
+  // Take 25 of each, with bias toward lower-cost cards for smoother gameplay
+  const sortedOff = [...offCards].sort((a, b) => a.cost - b.cost);
+  const sortedDef = [...defCards].sort((a, b) => a.cost - b.cost);
+  const offDeck = [];
+  const defDeck = [];
+  // Curve: more low-cost cards
+  const curve = [1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,5,5,6];
+  for (const targetCost of curve) {
+    const offCandidates = sortedOff.filter(c => c.cost === targetCost && !offDeck.includes(c));
+    if (offCandidates.length > 0) offDeck.push(pickOne(offCandidates));
+    const defCandidates = sortedDef.filter(c => c.cost === targetCost && !defDeck.includes(c));
+    if (defCandidates.length > 0) defDeck.push(pickOne(defCandidates));
+  }
+  // Fill remaining slots
+  while (offDeck.length < 25) {
+    const c = sortedOff.find(x => !offDeck.includes(x));
+    if (c) offDeck.push(c); else break;
+  }
+  while (defDeck.length < 25) {
+    const c = sortedDef.find(x => !defDeck.includes(x));
+    if (c) defDeck.push(c); else break;
+  }
+  return shuffle([...offDeck, ...defDeck]);
+}
+
+// ============================================================
+// UI
+// ============================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  // Whenever the main menu becomes active, refresh the level/cash chips and
+  // the season-status hint. updateMenuSeasonStatus only reads localStorage —
+  // cheap enough to run on every menu return.
+  if (id === 'menu' && typeof updateMenuSeasonStatus === 'function') {
+    updateMenuSeasonStatus();
+  }
+}
+
+// Escape only what would break an HTML attribute value: & and "
+// We deliberately leave < and > intact so embedded <br> and <em> survive into innerHTML.
+function escAttr(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+function showToast(msg, dur = 1800) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function showLog(msg, dur = 1500) {
+  const l = document.getElementById('playLog');
+  l.textContent = msg; l.classList.remove('show');
+  void l.offsetWidth; l.classList.add('show');
+  clearTimeout(l._timer); l._timer = setTimeout(() => l.classList.remove('show'), dur);
+}
+
+function showScoreBurst(text, kind, dur = 1800) {
+  return new Promise(resolve => {
+    const el = document.getElementById('scoreBurst');
+    el.textContent = text;
+    el.className = 'score-burst ' + kind;
+    void el.offsetWidth;
+    el.classList.add('show');
+    setTimeout(() => { el.classList.remove('show'); resolve(); }, dur);
+  });
+}
+
+function showModifierInfo(modId) {
+  const mod = LANE_MODIFIERS.find(m => m.id === modId);
+  if (!mod) return;
+  showToast(`${mod.icon} ${mod.name} — ${mod.desc}`, 2400);
+}
+
+// ============================================================
+// TOOLTIP SYSTEM — tappable contextual help for game elements
+// ============================================================
+const TOOLTIPS = {
+  youScore: {
+    title: 'YOUR SCORE',
+    body: 'Points you have scored this match. Win by having <strong>more points</strong> than the CPU after 8 drives.<br><br>🏈 TD = 6 pts (+1 PAT, +2 conversion)<br>🛡 Safety = 2 pts<br>🎯 Pick-Six = 6 pts<br>🥾 Field Goal = 3 pts'
+  },
+  aiScore: {
+    title: 'CPU SCORE',
+    body: 'Points the CPU has scored. If they finish with more points than you after 8 drives, the match ends in defeat.'
+  },
+  energyOrb: {
+    title: 'ENERGY',
+    body: 'Energy available to spend on cards.<br><br>Each drive grants <strong>energy equal to the drive number</strong> — drive 1 gives +1, drive 2 gives +2, all the way up to +8 on drive 8.<br><br><em>Unspent energy carries over</em> up to a max of ' + MAX_ENERGY_BANK + '. Spend wisely or hoard for big plays.'
+  },
+  yardageBar: {
+    title: 'FIELD POSITION',
+    body: 'Where the ball is on this lane. The 🏈 marker moves <strong>right</strong> when you gain yards, <strong>left</strong> when defense pushes you back.<br><br>🟩 Right endzone = <strong>SCORE</strong> (touchdown, 6 pts)<br>🟥 Left endzone = <strong>SAFETY</strong> (2 pts to defender)'
+  },
+  powerPillYou: {
+    title: 'YOUR NET YARDS',
+    body: 'Yards your ball will move <strong>this drive</strong> if you end turn now.<br><br>Formula: (your OFF − their DEF) ÷ 2.5, plus ability modifiers.<br><br>Glows green when positive (driving forward), red when negative (being pushed back).'
+  },
+  powerPillAi: {
+    title: 'CPU NET YARDS',
+    body: 'Yards the CPU\'s ball will move <strong>this drive</strong>.<br><br>Formula: (CPU OFF − your DEF) ÷ 2.5, plus ability modifiers.<br><br>Glows red when positive (driving toward your goal), green when negative (your defense is stuffing them).'
+  },
+  laneMedallion: {
+    title: 'LANE MODIFIER',
+    body: 'Each lane has a unique random rule for this match. Tap to read its full effect.<br><br>Categories:<br>🟦 Field condition<br>🟡 Tactical<br>🟧 Position-based<br>🟣 Wild (game-changing)'
+  },
+  deckPile: {
+    title: 'DRAW PILE',
+    body: 'Cards remaining in your deck. At the start of each drive, you draw up to <strong>' + HAND_SIZE + '</strong> cards into your hand.<br><br>When this pile empties, your <em>discard pile</em> reshuffles into a new draw pile.'
+  },
+  discardPile: {
+    title: 'DISCARD PILE',
+    body: 'Cards you held but didn\'t play. At the end of each drive, your unplayed hand goes here.<br><br>Tap to see what\'s been discarded. When the draw pile is empty, these cards shuffle back in.'
+  },
+  handCard: {
+    title: 'PLAYER CARD',
+    body: '🟧 <em>Orange border</em> = Offense (drives the ball forward)<br>🟦 <em>Blue border</em> = Defense (stops the opponent)<br><br><strong>Gold badge</strong> = energy cost<br><strong>Big number</strong> = OFF or DEF power<br><strong>★ Gold star</strong> = has special ability<br><br><strong>Drag</strong> the card onto a lane to play it.'
+  }
+};
+
+let tooltipHideTimer = null;
+
+function showTooltip(key, targetEl) {
+  // Allow per-element dynamic content via data-tooltip-title / data-tooltip-body
+  let title, body;
+  if (targetEl.dataset.tooltipTitle || targetEl.dataset.tooltipBody) {
+    title = targetEl.dataset.tooltipTitle || '';
+    body = targetEl.dataset.tooltipBody || '';
+  } else {
+    const t = TOOLTIPS[key];
+    if (!t) return;
+    title = t.title;
+    body = t.body;
+  }
+  const overlay = document.getElementById('tooltipOverlay');
+  const bubble = document.getElementById('tooltipBubble');
+  document.getElementById('tooltipTitle').textContent = title;
+  document.getElementById('tooltipBody').innerHTML = body;
+  
+  // Show first so we can measure
+  bubble.className = 'tooltip-bubble';
+  overlay.classList.add('show');
+  
+  const rect = targetEl.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const bubbleRect = bubble.getBoundingClientRect();
+  const bw = bubbleRect.width;
+  const bh = bubbleRect.height;
+  
+  // Prefer above, fall back below
+  let arrow = 'arrow-down';
+  let top = rect.top - bh - 12;
+  if (top < 8) {
+    arrow = 'arrow-up';
+    top = rect.bottom + 12;
+  }
+  if (top + bh > vh - 8) {
+    top = Math.max(8, vh - bh - 8);
+    arrow = '';
+  }
+  
+  let left = rect.left + rect.width / 2 - bw / 2;
+  if (left < 8) left = 8;
+  if (left + bw > vw - 8) left = vw - bw - 8;
+  
+  if (arrow) bubble.classList.add(arrow);
+  bubble.style.left = left + 'px';
+  bubble.style.top = top + 'px';
+  
+  clearTimeout(tooltipHideTimer);
+  tooltipHideTimer = setTimeout(hideTooltip, 4500);
+}
+
+function hideTooltip() {
+  document.getElementById('tooltipOverlay').classList.remove('show');
+  clearTimeout(tooltipHideTimer);
+}
+
+// Tap-detection for tooltip triggers — works alongside drag system
+let _tapStart = null;
+function _onTooltipPointerDown(e) {
+  const target = e.target.closest('[data-tooltip]');
+  if (!target) return;
+  // For draggable cards, only trigger tooltip if it's a tap (not a drag)
+  if (target.classList.contains('hand-card')) {
+    _tapStart = { x: e.clientX, y: e.clientY, time: Date.now(), target, key: target.dataset.tooltip };
+    return; // Let drag system also handle this pointerdown
+  }
+  // Non-draggable: show immediately on tap
+  e.stopPropagation();
+  showTooltip(target.dataset.tooltip, target);
+}
+function _onTooltipPointerUp(e) {
+  if (!_tapStart) return;
+  const dx = Math.abs(e.clientX - _tapStart.x);
+  const dy = Math.abs(e.clientY - _tapStart.y);
+  const dt = Date.now() - _tapStart.time;
+  if (dx < 8 && dy < 8 && dt < 300) {
+    showTooltip(_tapStart.key, _tapStart.target);
+  }
+  _tapStart = null;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('pointerdown', _onTooltipPointerDown, true);
+  document.addEventListener('pointerup', _onTooltipPointerUp, true);
+  document.addEventListener('pointercancel', () => { _tapStart = null; }, true);
+  const overlay = document.getElementById('tooltipOverlay');
+  if (overlay) {
+    overlay.addEventListener('pointerdown', (e) => {
+      // Tap on overlay (not the bubble itself) dismisses
+      if (e.target === overlay) hideTooltip();
+    });
+  }
+});
+
+function showHowToPlay() { document.getElementById('howModal').classList.add('show'); }
+
+// ============================================================
+// GAME FLOW
+// ============================================================
+function startGame(playerDeck, aiDeck, mode, opponent) {
+  state = newState(playerDeck, aiDeck);
+  state.mode = mode || 'quick'; // 'quick' or 'season'
+  state.opponent = opponent || null;  // used by the match-end summary for tier bonus
+  showScreen('game');
+  render();
+}
+
+function quitGame() {
+  const isSeason = state && state.mode === 'season';
+  const msg = isSeason ? 'Quit this match? It will count as a loss and end your season.' : 'Quit this game?';
+  if (confirm(msg)) {
+    if (isSeason) {
+      clearSeason();
+      updateMenuSeasonStatus();
+    }
+    showScreen('menu');
+  }
+}
+
+function render() {
+  if (!state) return;
+  document.getElementById('youScore').textContent = state.youScore;
+  document.getElementById('aiScore').textContent = state.aiScore;
+  updatePileCount('deckCount',    'deckBadge',    state.youDeck.length);
+  updatePileCount('discardCount', 'discardBadge', state.youDiscard.length);
+  document.getElementById('quarterNum').textContent = 'DRIVE ' + state.turn + ' OF 8';
+  document.getElementById('halfLabel').textContent = quarterLabel(state.turn);
+  renderEnergy();
+  renderLanes();
+  renderHand();
+}
+
+// Update a pile-count element and bump the badge if the value changed.
+function updatePileCount(countId, badgeId, value) {
+  const el = document.getElementById(countId);
+  if (!el) return;
+  const prev = el.textContent;
+  if (prev !== String(value)) {
+    el.textContent = value;
+    const badge = document.getElementById(badgeId);
+    if (badge) {
+      badge.classList.remove('bump'); void badge.offsetWidth; badge.classList.add('bump');
+      setTimeout(() => badge.classList.remove('bump'), 240);
+    }
+  }
+}
+
+function renderEnergy() {
+  const remaining = state.youEnergy - getPendingCost();
+  const orb = document.getElementById('energyOrb');
+  if (orb) {
+    orb.textContent = remaining;
+    orb.classList.toggle('depleted', remaining <= 0);
+    // Cap pulse — only when the wallet itself is at cap (not affected by pending plays)
+    orb.classList.toggle('at-cap', state.youEnergy >= getMaxEnergyBank());
+  }
+}
+
+function showCarriedToast(amount) {
+  const orb = document.getElementById('energyOrb');
+  if (!orb || amount <= 0) return;
+  const rect = orb.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'carried-toast';
+  el.textContent = '+' + amount + ' CARRIED';
+  // Center horizontally on the orb, place just above it; the keyframe animates upward.
+  el.style.left = (rect.left + rect.width / 2) + 'px';
+  el.style.top = (rect.top - 6) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 1300);
+}
+
+// ---- Draw / discard / reshuffle animations (player-only; AI is silent + instant) ----
+function animateDiscardHand() {
+  return new Promise(resolve => {
+    if (!state || state.youHand.length === 0) {
+      discardHand('you');  // nothing to animate but still move logical state
+      resolve();
+      return;
+    }
+    const reduced = prefersReducedMotion();
+    const discardBadge = document.getElementById('discardBadge');
+    const handEls = Array.from(document.querySelectorAll('#hand .hand-card'));
+    const targetRect = discardBadge ? discardBadge.getBoundingClientRect() : null;
+
+    if (reduced || !targetRect || handEls.length === 0) {
+      // No motion: just move state and re-render
+      discardHand('you');
+      playSfx('discard');
+      render();
+      setTimeout(resolve, 200);
+      return;
+    }
+
+    // Trigger arcs (staggered)
+    handEls.forEach((el, i) => {
+      setTimeout(() => {
+        if (!state) return;
+        const r = el.getBoundingClientRect();
+        const dx = (targetRect.left + targetRect.width / 2) - (r.left + r.width / 2);
+        const dy = (targetRect.top  + targetRect.height / 2) - (r.top  + r.height / 2);
+        el.classList.add('discarding-card');
+        el.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) rotate(30deg) scale(0.4)';
+        el.style.opacity = '0.0';
+        playSfx('discard');
+      }, i * 40);
+    });
+
+    // After the last card finishes its 600ms arc + 40*(n-1) stagger, commit state
+    const totalMs = 600 + 40 * Math.max(0, handEls.length - 1) + 40;
+    setTimeout(() => {
+      if (!state) { resolve(); return; }
+      discardHand('you');
+      render();  // hand renders empty; discard count bumps
+      resolve();
+    }, totalMs);
+  });
+}
+
+function animateDrawHand() {
+  return new Promise(resolve => {
+    if (!state) { resolve(); return; }
+    const reduced = prefersReducedMotion();
+    // Draw the player's hand — drawCardsToHand handles reshuffle internally and
+    // triggers the reshuffle visual via showReshuffleAnimation().
+    // getHandSize() applies the Big Hand perk if equipped.
+    const drawn = drawCardsToHand('you', getHandSize());
+    render();  // hand cards now in DOM at their natural positions
+    if (drawn.length === 0) { resolve(); return; }
+
+    const deckBadge = document.getElementById('deckBadge');
+    const startRect = deckBadge ? deckBadge.getBoundingClientRect() : null;
+    if (reduced || !startRect) {
+      drawn.forEach(() => playSfx('draw'));
+      setTimeout(resolve, 200);
+      return;
+    }
+
+    // For each drawn card, find its DOM element and animate from deck → natural slot
+    drawn.forEach((card, i) => {
+      const el = document.querySelector('#hand .hand-card[data-card-uid="' + card.uid + '"]');
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const dx = (startRect.left + startRect.width / 2) - (r.left + r.width / 2);
+      const dy = (startRect.top  + startRect.height / 2) - (r.top  + r.height / 2);
+      // Place at deck position with no transition, then transition to natural spot
+      el.style.transition = 'none';
+      el.style.transform = 'translate(' + dx.toFixed(1) + 'px, ' + dy.toFixed(1) + 'px) scale(0.4)';
+      el.style.opacity = '0.35';
+      // Force reflow so the initial transform is committed before we change it
+      void el.offsetWidth;
+      setTimeout(() => {
+        if (!el.isConnected) return;
+        el.style.transition = '';  // restore CSS class transitions
+        el.classList.add('drawing-in');
+        el.style.transform = '';
+        el.style.opacity = '';
+        playSfx('draw');
+      }, i * 80);
+      setTimeout(() => {
+        if (el.isConnected) el.classList.remove('drawing-in');
+      }, i * 80 + 420);
+    });
+
+    // Settle: brief gold glow on the hand
+    setTimeout(() => {
+      const hand = document.getElementById('hand');
+      if (hand) {
+        hand.classList.add('draw-glow');
+        setTimeout(() => hand.classList.remove('draw-glow'), 420);
+      }
+    }, drawn.length * 80 + 200);
+
+    const totalMs = drawn.length * 80 + 480;
+    setTimeout(resolve, totalMs);
+  });
+}
+
+function showReshuffleAnimation() {
+  const reduced = prefersReducedMotion();
+  const discardBadge = document.getElementById('discardBadge');
+  // Pulse the discard badge dramatically (unless reduced-motion)
+  if (discardBadge && !reduced) {
+    discardBadge.classList.remove('bump');
+    void discardBadge.offsetWidth;
+    discardBadge.classList.add('bump');
+    setTimeout(() => discardBadge.classList.remove('bump'), 400);
+  }
+  // Floating text shown in the pile-row middle slot (informational — kept for reduced-motion)
+  const txt = document.getElementById('reshuffleText');
+  if (txt) {
+    txt.textContent = 'RESHUFFLING DECK';
+    txt.classList.add('show');
+    setTimeout(() => { txt.classList.remove('show'); txt.textContent = ''; }, 1000);
+  }
+  playSfx('reshuffle');
+}
+
+// ---- Discard pile modal ----
+function openDiscardModal() {
+  if (!state) return;
+  const modal = document.getElementById('discardModal');
+  const list = document.getElementById('discardModalList');
+  const title = document.getElementById('discardModalTitle');
+  if (!modal || !list || !title) return;
+  const cards = state.youDiscard;
+  title.textContent = 'DISCARD PILE (' + cards.length + ' card' + (cards.length === 1 ? '' : 's') + ')';
+  if (cards.length === 0) {
+    list.innerHTML = '<div class="discard-modal-empty">Nothing discarded yet.</div>';
+  } else {
+    // Group by _discardedOnDrive (oldest drive first)
+    const byDrive = new Map();
+    cards.forEach(c => {
+      const d = c._discardedOnDrive || 0;
+      if (!byDrive.has(d)) byDrive.set(d, []);
+      byDrive.get(d).push(c);
+    });
+    const drives = [...byDrive.keys()].sort((a, b) => a - b);
+    list.innerHTML = drives.map(d => {
+      const cs = byDrive.get(d);
+      const header = d > 0 ? 'AFTER DRIVE ' + d : 'EARLIER';
+      return '<div class="discard-modal-drive">' + header + '</div>' +
+             '<div class="discard-modal-grid">' + cs.map(discardModalCardHTML).join('') + '</div>';
+    }).join('');
+  }
+  modal.classList.add('show');
+}
+
+function closeDiscardModal() {
+  const modal = document.getElementById('discardModal');
+  if (modal) modal.classList.remove('show');
+}
+
+function discardModalCardHTML(card) {
+  const stat = card.side === 'off' ? card.off : card.def;
+  const sideCls = card.side === 'off' ? 'off-side' : 'def-side';
+  return '<div class="discard-modal-card ' + sideCls + '">' +
+         '<div class="dm-name">' + card.name + '</div>' +
+         '<div class="dm-meta">' + card.pos + ' · ' + card.team + ' · ' + card.cost + 'E</div>' +
+         '<div class="dm-stat">' + stat + '</div>' +
+         '</div>';
+}
+
+function renderLanes() {
+  const cont = document.getElementById('lanes');
+  cont.innerHTML = '';
+  state.lanes.forEach((lane, idx) => {
+    const laneEl = document.createElement('div');
+    laneEl.className = 'lane';
+    if (lane.lockedFor === 'you') laneEl.classList.add('locked-you');
+    if (lane.lockedFor === 'ai') laneEl.classList.add('locked-ai');
+    laneEl.dataset.laneIdx = idx;
+
+    const mod = lane.modifier;
+    const stats = computeLaneStats(lane);
+    const youSynergies = detectSynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
+    const aiSynergies = detectSynergies(lane.aiCards.filter(c => c.revealed && !c.ejected));
+
+    // Net yards each side will gain this drive (matches scoring engine math).
+    // Use the breakdown helper so the pill value and the tooltip stay in lockstep.
+    const youBreakdown = breakdownPowerPill(lane, 'you', stats);
+    const aiBreakdown  = breakdownPowerPill(lane, 'ai',  stats);
+    const youNet = youBreakdown.net;
+    const aiNet  = aiBreakdown.net;
+    const youSign = youNet >= 0 ? '+' : '';
+    const aiSign  = aiNet  >= 0 ? '+' : '';
+    const youTipTitle = 'YOUR NET YARDS: ' + youSign + youNet;
+    const aiTipTitle  = 'CPU NET YARDS: '  + aiSign  + aiNet;
+    const youTipBody  = buildPowerPillTooltipBody(youBreakdown, 'you');
+    const aiTipBody   = buildPowerPillTooltipBody(aiBreakdown,  'ai');
+
+    laneEl.innerHTML = `
+      <div class="lane-side ai-side">
+        <div class="slot-row" id="ai-slots-${idx}"></div>
+        ${aiSynergies.length ? `<div class="lane-synergies">${aiSynergies.map(s => `<span class="synergy-badge ai">${s.icon} ${s.name}</span>`).join('')}</div>` : ''}
+        <div class="yardage-bar ai-bar" data-tooltip="yardageBar">
+          <div class="endzone left ${lane.aiPos <= 15 ? 'threatened' : ''}"><span class="endzone-label">SAFETY</span></div>
+          <div class="endzone right ${lane.aiPos >= 85 ? 'threatened' : ''}"><span class="endzone-label">SCORE</span></div>
+          <div class="yardage-fill ai" style="width: ${(lane.aiPos / 100) * 80}%;"></div>
+          <div class="ball-marker" style="left: ${10 + (lane.aiPos / 100) * 80}%;"></div>
+          <span class="drive-direction left">←</span>
+          <span class="drive-direction right">→</span>
+          <div class="yardage-text">
+            <span class="yd-label">CPU</span>
+            <span class="yd-num">${formatYardLine(lane.aiPos)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="lane-medallion-row">
+        <div class="lane-power-pill ai ${aiNet > 0 ? 'winning' : ''} ${aiNet < 0 ? 'losing' : ''}"
+             data-tooltip="powerPillAi"
+             data-tooltip-title="${escAttr(aiTipTitle)}"
+             data-tooltip-body="${escAttr(aiTipBody)}">${aiNet > 0 ? '+' : ''}${aiNet}</div>
+        <div class="pill-middle">
+          ${mod ? `
+            <div class="lane-medallion cat-${mod.category}" data-tooltip="laneMedallion"
+                 data-tooltip-title="${escAttr(mod.icon + ' ' + mod.name)}"
+                 data-tooltip-body="${escAttr(mod.desc + '<br><br><em>' + (mod.category[0].toUpperCase() + mod.category.slice(1)) + ' modifier</em> — each lane has a unique random rule this match.')}">
+              <div class="medallion-icon modifier-icon mod-${mod.id}"></div>
+              <div class="medallion-name">${mod.name}</div>
+              <div class="medallion-desc">${mod.desc}</div>
+            </div>
+          ` : ''}
+        </div>
+        <div class="lane-power-pill you ${youNet > 0 ? 'winning' : ''} ${youNet < 0 ? 'losing' : ''}"
+             data-tooltip="powerPillYou"
+             data-tooltip-title="${escAttr(youTipTitle)}"
+             data-tooltip-body="${escAttr(youTipBody)}">${youNet > 0 ? '+' : ''}${youNet}</div>
+      </div>
+      <div class="lane-side you-side">
+        <div class="yardage-bar you-bar" data-tooltip="yardageBar">
+          <div class="endzone left ${lane.youPos <= 15 ? 'threatened' : ''}"><span class="endzone-label">SAFETY</span></div>
+          <div class="endzone right ${lane.youPos >= 85 ? 'threatened' : ''}"><span class="endzone-label">SCORE</span></div>
+          <div class="yardage-fill" style="width: ${(lane.youPos / 100) * 80}%;"></div>
+          <div class="ball-marker" style="left: ${10 + (lane.youPos / 100) * 80}%;"></div>
+          <span class="drive-direction left">←</span>
+          <span class="drive-direction right">→</span>
+          <div class="yardage-text">
+            <span class="yd-label">YOU</span>
+            <span class="yd-num">${formatYardLine(lane.youPos)}</span>
+          </div>
+        </div>
+        ${youSynergies.length ? `<div class="lane-synergies">${youSynergies.map(s => `<span class="synergy-badge you">${s.icon} ${s.name}</span>`).join('')}</div>` : ''}
+        <div class="slot-row" id="you-slots-${idx}"></div>
+      </div>
+    `;
+    cont.appendChild(laneEl);
+
+    const aiSlots = laneEl.querySelector(`#ai-slots-${idx}`);
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      const card = lane.aiCards[i];
+      if (card) slot.appendChild(buildFieldCard(card, 'ai', !card.revealed));
+      else slot.classList.add('empty');
+      aiSlots.appendChild(slot);
+    }
+    const youSlots = laneEl.querySelector(`#you-slots-${idx}`);
+    for (let i = 0; i < MAX_SLOTS; i++) {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      const card = lane.youCards[i];
+      if (card) slot.appendChild(buildFieldCard(card, 'you', false));
+      else slot.classList.add('empty');
+      youSlots.appendChild(slot);
+    }
+  });
+}
+
+// Format yard position as football yard line (0-50 = your side, 50-100 = their side)
+function formatYardLine(pos) {
+  if (pos >= 100) return 'TD!';
+  if (pos <= 0) return 'SAFETY';
+  if (pos === 50) return '50';
+  if (pos < 50) return 'OWN ' + pos;
+  return 'OPP ' + (100 - pos);
+}
+
+// Map drive number (1-8) to its corresponding quarter label (1, 2 → 1ST, etc.)
+function quarterLabel(drive) {
+  const q = Math.ceil(drive / 2);
+  const labels = { 1: '1ST QUARTER', 2: '2ND QUARTER', 3: '3RD QUARTER', 4: '4TH QUARTER' };
+  return labels[q] || '1ST QUARTER';
+}
+
+// === ASSET PHASE 5: CARD FRAMES + PORTRAITS ===
+// Maps a card to a real PNG portrait ID (under src/assets/ui/26_portraits/),
+// or null to fall back to the procedural SVG portrait. Today only one
+// portrait exists (qb_black_navy.png); expand this mapping as more are
+// generated.
+function getPortraitIdForCard(card) {
+  if (card.pos === 'QB') return 'qb_black_navy';
+  return null;
+}
+
+// Returns markup for the portrait layer. Uses a real PNG if mapped, with an
+// onerror fallback that swaps in the procedural SVG so the card is never empty.
+function getPortraitMarkup(card, size) {
+  const portraitId = getPortraitIdForCard(card);
+  if (portraitId) {
+    const fallbackSvg = generatePortraitSVG(card, size)
+      .replace(/'/g, '&#39;')
+      .replace(/\n/g, ' ');
+    return `<img src="src/assets/ui/26_portraits/${portraitId}.png" alt="" `
+      + `onerror="this.outerHTML='${fallbackSvg}'" `
+      + `style="width:100%;height:100%;object-fit:cover;display:block;">`;
+  }
+  return generatePortraitSVG(card, size);
+}
+
+function buildFieldCard(card, side, hidden) {
+  const el = document.createElement('div');
+  const sideClass = card.side === 'off' ? 'off-card' : 'def-card';
+  el.className = 'field-card ' + side + ' ' + sideClass + (hidden ? ' hidden-card' : '');
+  if (hidden) return el;
+
+  const statValue = card.side === 'off' ? card.curOff : card.curDef;
+  const statClass = card.side === 'off' ? 'off' : 'def';
+  const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
+  const rarity = card.rarity || 'common';
+  const frameAsset = `${rarity}_${card.side}`;
+
+  el.innerHTML = `
+    <div class="fc-portrait">${getPortraitMarkup(card, 100)}</div>
+    <div class="fc-frame fc-frame-${frameAsset}"></div>
+    <div class="fc-overlay">
+      <div class="fc-top">
+        <span class="fc-cost">${card.cost}</span>
+        <span class="fc-pos">${card.pos}</span>
+      </div>
+      <div class="fc-name">${lastName}</div>
+      <div class="fc-stats ${statClass}">${card.ejected ? '—' : statValue}</div>
+    </div>
+    <div class="fc-badges">
+      ${card.flagged ? '<div class="fc-badge flag">!</div>' : ''}
+      ${card.ejected ? '<div class="fc-badge ejected">X</div>' : ''}
+    </div>
+    ${card.ability ? '<div class="fc-ability-star"></div>' : ''}
+  `;
+  return el;
+}
+
+function renderHand() {
+  const hand = document.getElementById('hand');
+  hand.innerHTML = '';
+  state.youHand.forEach(card => {
+    const remaining = state.youEnergy - getPendingCost();
+    const guaranteed = card.cost <= remaining;
+    const maybe = !guaranteed && (card.cost - 1) <= remaining && hasDiscountLane(card);
+    const affordable = guaranteed || maybe;
+    const sideClass = card.side === 'off' ? 'off-card' : 'def-card';
+    const statValue = card.side === 'off' ? card.off : card.def;
+    const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
+    const el = document.createElement('div');
+    const rarity = card.rarity || 'common';
+    const frameAsset = `${rarity}_${card.side}`;
+    el.className = 'hand-card ' + sideClass + ' ' + (affordable ? 'affordable' : 'unaffordable');
+    el.dataset.cardUid = card.uid;
+    el.dataset.tooltip = 'handCard';
+    el.innerHTML = `
+      <div class="hc-portrait">${getPortraitMarkup(card, 80)}</div>
+      <div class="hc-frame fc-frame-${frameAsset}"></div>
+      <div class="hc-cost">${card.cost}</div>
+      <div class="hc-pos-badge">${card.pos}</div>
+      <div class="hc-overlay">
+        <div class="hc-name">${lastName}</div>
+        <div class="hc-stat-block">
+          <div class="hc-stat-num">${statValue}</div>
+        </div>
+      </div>
+      ${card.ability ? '<div class="hc-ability-star" title="' + (card.ability||'').replace(/"/g,'&quot;') + '"></div>' : ''}
+    `;
+    if (affordable && !state.busy) {
+      // Deferred drag: prepareDrag waits for movement to decide between scroll
+      // (mostly horizontal) and drag (vertical / diagonal-up). See gesture
+      // discrimination block below.
+      el.addEventListener('pointerdown', e => prepareDrag(e, card, el));
+    }
+    hand.appendChild(el);
+  });
+
+  const btn = document.getElementById('playBtn');
+  if (state.busy) { btn.disabled = true; btn.textContent = '...'; }
+  else {
+    btn.disabled = false;
+    if (state.pendingPlays.length > 0) {
+      btn.textContent = 'SNAP!';
+      btn.classList.add('ready');
+    } else {
+      // Check if any card is playable
+      const remaining = state.youEnergy - getPendingCost();
+      const anyPlayable = state.youHand.some(c => c.cost <= remaining);
+      btn.textContent = anyPlayable ? 'PASS' : 'END DRIVE';
+      btn.classList.remove('ready');
+    }
+  }
+
+  updateHandScrollShadows();
+}
+
+// Edge-fade affordances: toggle gradients based on scroll position so the
+// player can see there's more hand to scroll to.
+function updateHandScrollShadows() {
+  const wrapper = document.getElementById('handWrapper');
+  const hand    = document.getElementById('hand');
+  if (!wrapper || !hand) return;
+  const scrollLeft = hand.scrollLeft;
+  const maxScroll  = hand.scrollWidth - hand.clientWidth;
+  wrapper.classList.toggle('scroll-left',  scrollLeft > 4);
+  wrapper.classList.toggle('scroll-right', scrollLeft < maxScroll - 4);
+}
+
+function getPendingCost() {
+  return state.pendingPlays.filter(p => p.side === 'you').reduce((s,p) => s + (p.card._effectiveCost ?? p.card.cost), 0);
+}
+
+// ============================================================
+// DRAG & DROP — with gesture discrimination so the hand can scroll
+// ============================================================
+let dragState = null;
+
+// === SCROLLABLE HAND + GESTURE DISCRIMINATION ===
+// Defer the drag commit until we've seen enough pointer movement to tell
+// whether the user is trying to scroll the hand (mostly horizontal) or play
+// a card (vertical or diagonal up). Tap-with-no-movement falls through to
+// the existing tooltip system.
+let pendingDrag = null;
+const DRAG_THRESHOLD_PX = 8;
+
+function prepareDrag(e, card, sourceEl) {
+  if (state.busy) return;
+  // Don't preventDefault — let the browser potentially start a horizontal scroll.
+  pendingDrag = {
+    card, sourceEl, pointerId: e.pointerId,
+    startX: e.clientX, startY: e.clientY
+  };
+  sourceEl.addEventListener('pointermove',   onPrepareDragMove);
+  sourceEl.addEventListener('pointerup',     onPrepareDragEnd);
+  sourceEl.addEventListener('pointercancel', onPrepareDragEnd);
+}
+
+function onPrepareDragMove(e) {
+  if (!pendingDrag || pendingDrag.pointerId !== e.pointerId) return;
+  const dx  = e.clientX - pendingDrag.startX;
+  const dy  = e.clientY - pendingDrag.startY;
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < DRAG_THRESHOLD_PX) return;
+
+  // Mostly horizontal AND not moving up (cards live below the lanes — any
+  // upward motion is a clear drag-to-play intent).
+  const mostlyHorizontal = adx > ady * 1.5 && dy >= 0;
+
+  // Decision is final — tear down prepare listeners
+  pendingDrag.sourceEl.removeEventListener('pointermove',   onPrepareDragMove);
+  pendingDrag.sourceEl.removeEventListener('pointerup',     onPrepareDragEnd);
+  pendingDrag.sourceEl.removeEventListener('pointercancel', onPrepareDragEnd);
+
+  if (mostlyHorizontal) {
+    // Scroll intent — let the browser handle it. Do nothing.
+    pendingDrag = null;
+    return;
+  }
+
+  // Drag intent — commit, then immediately position the ghost at current pointer
+  const pd = pendingDrag;
+  pendingDrag = null;
+  startDrag(e, pd.card, pd.sourceEl);
+  onDragMove(e);
+}
+
+function onPrepareDragEnd(e) {
+  if (!pendingDrag) return;
+  pendingDrag.sourceEl.removeEventListener('pointermove',   onPrepareDragMove);
+  pendingDrag.sourceEl.removeEventListener('pointerup',     onPrepareDragEnd);
+  pendingDrag.sourceEl.removeEventListener('pointercancel', onPrepareDragEnd);
+  pendingDrag = null;
+}
+
+function startDrag(e, card, sourceEl) {
+  if (state.busy) return;
+  e.preventDefault();
+  const ghost = document.createElement('div');
+  ghost.className = 'drag-ghost';
+  ghost.innerHTML = sourceEl.innerHTML;
+  ghost.style.left = e.clientX + 'px';
+  ghost.style.top = e.clientY + 'px';
+  document.body.appendChild(ghost);
+  sourceEl.classList.add('dragging-source');
+  dragState = { card, sourceEl, ghost, pointerId: e.pointerId, currentLane: null };
+  try { sourceEl.setPointerCapture(e.pointerId); } catch(err) {}
+  sourceEl.addEventListener('pointermove', onDragMove);
+  sourceEl.addEventListener('pointerup', onDragEnd);
+  sourceEl.addEventListener('pointercancel', onDragEnd);
+}
+
+function onDragMove(e) {
+  if (!dragState) return;
+  e.preventDefault();
+  dragState.ghost.style.left = e.clientX + 'px';
+  dragState.ghost.style.top = e.clientY + 'px';
+  dragState.ghost.style.pointerEvents = 'none';
+  const el = document.elementFromPoint(e.clientX, e.clientY);
+  const laneEl = el ? el.closest('.lane') : null;
+  document.querySelectorAll('.lane').forEach(z => z.classList.remove('drag-over','drag-full'));
+  if (laneEl) {
+    const idx = parseInt(laneEl.dataset.laneIdx, 10);
+    const lane = state.lanes[idx];
+    if (lane.youCards.length >= MAX_SLOTS) laneEl.classList.add('drag-full');
+    else laneEl.classList.add('drag-over');
+    dragState.currentLane = idx;
+  } else dragState.currentLane = null;
+}
+
+function onDragEnd(e) {
+  if (!dragState) return;
+  e.preventDefault();
+  const ds = dragState; dragState = null;
+  ds.sourceEl.removeEventListener('pointermove', onDragMove);
+  ds.sourceEl.removeEventListener('pointerup', onDragEnd);
+  ds.sourceEl.removeEventListener('pointercancel', onDragEnd);
+  try { ds.sourceEl.releasePointerCapture(ds.pointerId); } catch(err) {}
+  document.querySelectorAll('.lane').forEach(z => z.classList.remove('drag-over','drag-full'));
+
+  let dropped = false;
+  if (ds.currentLane !== null) {
+    const lane = state.lanes[ds.currentLane];
+    if (lane.youCards.length < MAX_SLOTS) {
+      const laneEl = document.querySelector(`.lane[data-lane-idx="${ds.currentLane}"]`);
+      const youSlots = laneEl.querySelector(`#you-slots-${ds.currentLane}`);
+      const targetSlot = youSlots.children[lane.youCards.length];
+      if (targetSlot) {
+        const rect = targetSlot.getBoundingClientRect();
+        ds.ghost.classList.add('snapping');
+        ds.ghost.style.left = (rect.left + rect.width/2) + 'px';
+        ds.ghost.style.top = (rect.top + rect.height/2) + 'px';
+        ds.ghost.style.transform = 'translate(-50%, -50%) scale(0.5)';
+        ds.ghost.style.opacity = '0.4';
+        // Commit placement SYNCHRONOUSLY. Previously this was deferred 180ms
+        // inside a setTimeout to let the ghost snap-animate first, but during
+        // that window the dimmed source card stayed draggable — a quick player
+        // could re-drag the same card into a second lane and the second drop
+        // would silently bail (the card was no longer in state.youHand), so
+        // the second card appeared to vanish. Committing immediately wipes
+        // the source DOM via render() and closes the race entirely. The ghost
+        // still snap-animates as eye candy and is removed after 180ms.
+        placeCardInLane(ds.card, ds.currentLane);
+        setTimeout(() => ds.ghost.remove(), 180);
+        dropped = true;
+      }
+    } else showToast('Lane is full');
+  }
+  if (!dropped) {
+    const srcRect = ds.sourceEl.getBoundingClientRect();
+    ds.ghost.classList.add('snapping');
+    ds.ghost.style.left = (srcRect.left + srcRect.width/2) + 'px';
+    ds.ghost.style.top = (srcRect.top + srcRect.height/2) + 'px';
+    ds.ghost.style.transform = 'translate(-50%, -50%) scale(0.8)';
+    ds.ghost.style.opacity = '0';
+    setTimeout(() => { ds.ghost.remove(); ds.sourceEl.classList.remove('dragging-source'); }, 200);
+  }
+}
+
+function effectiveCost(card, laneIdx) {
+  // Some lane modifiers reduce card cost in that lane
+  const lane = state.lanes[laneIdx];
+  if (!lane || !lane.modifier) return card.cost;
+  if (lane.modifier.id === 'hurryUp' && card.side === 'off') return Math.max(1, card.cost - 1);
+  if (lane.modifier.id === 'preventD' && card.side === 'def') return Math.max(1, card.cost - 1);
+  return card.cost;
+}
+
+function hasDiscountLane(card) {
+  // Returns true if any lane gives this card a cost discount
+  return state.lanes.some(l => effectiveCost(card, l.idx) < card.cost);
+}
+
+function placeCardInLane(card, laneIdx) {
+  const lane = state.lanes[laneIdx];
+  if (lane.youCards.length >= MAX_SLOTS) return showToast('Lane is full');
+  const cost = effectiveCost(card, laneIdx);
+  const remaining = state.youEnergy - getPendingCost();
+  if (cost > remaining) return showToast('Not enough energy');
+  if (!state.youHand.find(c => c.uid === card.uid)) return;
+  const placed = { ...card, _effectiveCost: cost, curOff: card.off, curDef: card.def, revealed: false, pending: true };
+  lane.youCards.push(placed);
+  state.pendingPlays.push({ card: placed, lane: laneIdx, side: 'you' });
+  state.youHand = state.youHand.filter(c => c.uid !== card.uid);
+  render();
+}
+
+// ============================================================
+// LANE STATS — computes current OFF/DEF for each card with field effects
+// ============================================================
+// === POWER PILL BREAKDOWN TOOLTIPS ===
+// Modifier IDs that don't change OFF/DEF totals (cost discounts, reveal timing,
+// ability trigger counts). These are skipped in the breakdown tooltip since
+// they don't move the displayed math. All other lane modifiers are surfaced.
+const MOD_IDS_NO_STAT_IMPACT = new Set(['hurryUp', 'preventD', 'scouted', 'blitzZone']);
+
+function breakdownPowerPill(lane, side, precomputedStats) {
+  const stats = precomputedStats || computeLaneStats(lane);
+  const myOff    = side === 'you' ? stats.youOff : stats.aiOff;
+  const theirDef = side === 'you' ? stats.aiDef  : stats.youDef;
+
+  const SCALE = 2.5;
+  const gain = Math.floor(myOff    / SCALE);
+  const loss = Math.floor(theirDef / SCALE);
+  let net = gain - loss;
+
+  // Lockdown CB yard-block: -5 to OUR net per opposing CB with fieldYardBlock
+  let yardBlockPenalty = 0;
+  const opposingCards = side === 'you' ? lane.aiCards : lane.youCards;
+  opposingCards.forEach(c => {
+    if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) yardBlockPenalty += 5;
+  });
+  net -= yardBlockPenalty;
+
+  const bonuses = [];
+  // Lane modifier — include if it touches stat math, or any wild modifier
+  if (lane.modifier && !MOD_IDS_NO_STAT_IMPACT.has(lane.modifier.id)) {
+    bonuses.push({ icon: lane.modifier.icon, name: lane.modifier.name });
+  }
+  // Our active synergies (all sides — they're informative even if def-side
+  // synergies don't directly affect our own net)
+  const myCards = side === 'you' ? lane.youCards : lane.aiCards;
+  detectSynergies(myCards.filter(c => c.revealed && !c.ejected))
+    .forEach(syn => bonuses.push({ icon: syn.icon, name: syn.name }));
+  // Opposing DEF synergies (they buff their defense, reducing OUR net)
+  const oppCards = side === 'you' ? lane.aiCards : lane.youCards;
+  detectSynergies(oppCards.filter(c => c.revealed && !c.ejected))
+    .filter(s => s.side === 'def')
+    .forEach(syn => bonuses.push({ icon: syn.icon, name: 'Opp ' + syn.name }));
+
+  return { net, myOff, theirDef, gain, loss, yardBlockPenalty, bonuses };
+}
+
+function buildPowerPillTooltipBody(breakdown, side) {
+  const sideLabel = side === 'you' ? 'Your' : 'Their';
+  const oppLabel  = side === 'you' ? 'Their' : 'Your';
+  const sign = breakdown.net >= 0 ? '+' : '';
+  let body = '';
+  body += '<strong>' + sideLabel + ' OFF</strong> · ' + breakdown.myOff + '<br>';
+  body += '<strong>' + oppLabel  + ' DEF</strong> · ' + breakdown.theirDef + '<br>';
+  if (breakdown.bonuses.length > 0) {
+    body += '<br><em>Active bonuses:</em><br>';
+    breakdown.bonuses.forEach(b => { body += b.icon + ' ' + b.name + '<br>'; });
+  }
+  body += '<br><strong>Math:</strong> ⌊' + breakdown.myOff + '÷2.5⌋ − ⌊' + breakdown.theirDef + '÷2.5⌋';
+  if (breakdown.yardBlockPenalty > 0) body += ' − ' + breakdown.yardBlockPenalty;
+  body += '<br>= ' + breakdown.gain + ' − ' + breakdown.loss;
+  if (breakdown.yardBlockPenalty > 0) {
+    body += ' − ' + breakdown.yardBlockPenalty + ' <em>(Lockdown CB)</em>';
+  }
+  body += ' = <strong>' + sign + breakdown.net + '</strong> yards/drive';
+  return body;
+}
+
+function computeLaneStats(lane) {
+  // Reset all curOff/curDef to base
+  [...lane.youCards, ...lane.aiCards].forEach(c => {
+    if (c.revealed) {
+      // curOff and curDef were modified by snap abilities — those persist
+      // Field effects: clear and reapply
+      c._fieldOff = 0; c._fieldDef = 0;
+    }
+  });
+
+  // Apply per-lane FIELD effects
+  applyLaneFieldEffects(lane);
+
+  // Apply cross-lane FIELD effects from cards in other lanes that affect all
+  state.lanes.forEach(other => {
+    if (other === lane) return;
+    [...other.youCards, ...other.aiCards].forEach(c => {
+      if (!c.revealed || c.ejected) return;
+      const isYou = other.youCards.includes(c);
+      const friendlies = isYou ? lane.youCards : lane.aiCards;
+      if (c.desc === 'fieldBuffAllOff') {
+        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'off').forEach(x => { x._fieldOff = (x._fieldOff||0) + 6; });
+      }
+      if (c.desc === 'fieldBuffAllDef') {
+        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'def').forEach(x => { x._fieldDef = (x._fieldDef||0) + 6; });
+      }
+    });
+  });
+
+  // Recompute curOff/curDef including field
+  [...lane.youCards, ...lane.aiCards].forEach(c => {
+    if (c.revealed) {
+      c.curOff = Math.max(0, c._baseOff + (c._fieldOff || 0));
+      c.curDef = Math.max(0, c._baseDef + (c._fieldDef || 0));
+      if (c.ejected) { c.curOff = 0; c.curDef = 0; }
+    }
+  });
+
+  // Apply lane modifier effects to all revealed cards in lane
+  applyLaneModifier(lane);
+
+  // Apply equipped perk stat buffs (your cards only, BEFORE synergies stack)
+  applyPerkStatBuffs(lane);
+
+  // Apply card synergies (each side independently)
+  applySynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
+  applySynergies(lane.aiCards.filter(c => c.revealed && !c.ejected));
+
+  // Totals
+  const youOff = lane.youCards.filter(c => c.revealed && !c.ejected).reduce((s,c) => s + c.curOff, 0);
+  const youDef = lane.youCards.filter(c => c.revealed && !c.ejected).reduce((s,c) => s + c.curDef, 0);
+  const aiOff = lane.aiCards.filter(c => c.revealed && !c.ejected).reduce((s,c) => s + c.curOff, 0);
+  const aiDef = lane.aiCards.filter(c => c.revealed && !c.ejected).reduce((s,c) => s + c.curDef, 0);
+  return { youOff, youDef, aiOff, aiDef };
+}
+
+function applyLaneModifier(lane) {
+  if (!lane.modifier) return;
+  const all = [...lane.youCards, ...lane.aiCards].filter(c => c.revealed && !c.ejected);
+  const youCards = lane.youCards.filter(c => c.revealed && !c.ejected);
+  const aiCards = lane.aiCards.filter(c => c.revealed && !c.ejected);
+  
+  switch(lane.modifier.id) {
+    case 'homeTurf':
+      youCards.filter(c => c.side === 'off').forEach(c => c.curOff += 5);
+      aiCards.filter(c => c.side === 'off').forEach(c => c.curOff = Math.max(0, c.curOff - 5));
+      break;
+    case 'muddyField':
+      all.forEach(c => {
+        c.curOff = Math.floor(c.curOff * 0.75);
+        c.curDef = Math.floor(c.curDef * 1.25);
+      });
+      break;
+    case 'windTunnel':
+      all.filter(c => c.pos === 'QB' || c.pos === 'WR').forEach(c => c.curOff = Math.max(0, c.curOff - 5));
+      break;
+    case 'frozenTundra':
+      // Disable abilities by stripping desc (handled in snap reveal — we mark cards)
+      all.forEach(c => c._abilitiesDisabled = true);
+      break;
+    case 'blindingSun':
+      all.filter(c => c.pos === 'WR' || c.pos === 'TE').forEach(c => c.curOff = Math.max(0, c.curOff - 8));
+      break;
+    case 'redZone':
+      all.filter(c => c.side === 'off').forEach(c => c.curOff += 8);
+      break;
+    case 'scramble':
+      all.filter(c => c.pos === 'QB').forEach(c => c.curOff += 12);
+      break;
+    case 'groundPound':
+      all.filter(c => c.pos === 'RB').forEach(c => c.curOff += 10);
+      all.filter(c => c.pos === 'OL').forEach(c => c.curOff += 5);
+      break;
+    case 'airRaid':
+      all.filter(c => c.pos === 'WR' || c.pos === 'TE').forEach(c => c.curOff += 8);
+      break;
+    case 'trenches':
+      all.filter(c => c.pos === 'OL').forEach(c => c.curOff += 6);
+      all.filter(c => c.pos === 'DT').forEach(c => c.curDef += 6);
+      break;
+    case 'secondary':
+      all.filter(c => c.pos === 'CB' || c.pos === 'S').forEach(c => c.curDef += 6);
+      break;
+    case 'specialUnit':
+      all.filter(c => c.pos === 'K').forEach(c => c.curOff += 15);
+      all.filter(c => c.pos === 'ST').forEach(c => c.curDef += 15);
+      break;
+    case 'playOfGame':
+      // Highest-stat card in lane gets +20
+      if (all.length > 0) {
+        let highest = all[0];
+        let highestStat = highest.side === 'off' ? highest.curOff : highest.curDef;
+        all.forEach(c => {
+          const stat = c.side === 'off' ? c.curOff : c.curDef;
+          if (stat > highestStat) { highest = c; highestStat = stat; }
+        });
+        if (highest.side === 'off') highest.curOff += 20;
+        else highest.curDef += 20;
+      }
+      break;
+    // coinFlip, suddenDeath, turnover are handled in scoring/process, not here
+    // hurryUp, preventD are handled at card placement (cost reduction)
+    // scouted, blitzZone are handled at reveal time
+  }
+}
+
+function applyLaneFieldEffects(lane) {
+  [...lane.youCards, ...lane.aiCards].forEach(c => {
+    if (!c.revealed || c.ejected) return;
+    const isYou = lane.youCards.includes(c);
+    const friendlies = isYou ? lane.youCards : lane.aiCards;
+    const enemies = isYou ? lane.aiCards : lane.youCards;
+    switch(c.desc) {
+      case 'fieldBuffOff':
+        // Veteran Guard: +5 OFF to other OL friendlies here
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.pos === 'OL')
+          .forEach(x => { x._fieldOff = (x._fieldOff||0) + 5; });
+        break;
+      case 'fieldBuffOffAll':
+        // Iron Center: +4 OFF to all OFF friendlies here
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.side === 'off')
+          .forEach(x => { x._fieldOff = (x._fieldOff||0) + 4; });
+        break;
+      case 'fieldBuffDef':
+        // Shutdown CB: +3 DEF to CB/S friendlies here
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && (x.pos === 'CB' || x.pos === 'S'))
+          .forEach(x => { x._fieldDef = (x._fieldDef||0) + 3; });
+        break;
+      case 'fieldDebuffAll':
+        // Defensive POY: -5 to all enemy OFF here
+        enemies.filter(x => x.revealed && !x.ejected && x.side === 'off')
+          .forEach(x => { x._fieldOff = (x._fieldOff||0) - 5; });
+        break;
+    }
+  });
+}
+
+// ============================================================
+// END DRIVE / REVEAL / SCORE
+// ============================================================
+async function endTurn() {
+  if (state.busy) return;
+  state.busy = true;
+
+  aiMakePlays();
+  render();
+  await sleep(400);
+
+  // Flash
+  const flash = document.getElementById('revealFlash');
+  flash.classList.remove('flash'); void flash.offsetWidth; flash.classList.add('flash');
+  showLog('SNAP!', 900);
+  await sleep(700);
+
+  // Reveal cards
+  await revealAllPending();
+  render();
+  await sleep(500);
+
+  // Calculate yardage gained this drive and apply scoring
+  await processYardageAndScoring();
+  render();
+  await sleep(500);
+
+  // Halftime snapshot — drives 1-4 are the first half. If the player ends
+  // drive 4 trailing by 14+, a comeback win pays a summary-screen bonus.
+  if (state.turn === 4 && state._wasTrailingBy14 === undefined) {
+    state._wasTrailingBy14 = (state.aiScore - state.youScore) >= 14;
+  }
+
+  // End-of-game check
+  if (state.turn >= state.maxTurn) {
+    await sleep(400);
+    endGame();
+    return;
+  }
+
+  // === DRAW/DISCARD CYCLE ENABLED ===
+  // After scoring, before the new drive starts: discard unplayed hand → draw a
+  // fresh hand. The draw/discard happens BEFORE energy grant so the player sees
+  // their new hand alongside the new energy total when drive N+1 opens.
+  await animateDiscardHand();   // visual: hand cards arc to discard badge
+  // AI's discard/draw is silent and instant (hand isn't visible to the player)
+  discardHand('ai');
+  drawCardsToHand('ai', getHandSize('ai'));
+  await animateDrawHand();      // visual: cards arc from deck badge to hand
+  if (!state) return;           // user conceded mid-animation
+
+  // === ENERGY GAIN: ESCALATING + CARRYOVER ===
+  // Drive N grants +N energy (drive 1 = +1, drive 8 = +8). Unspent energy carries
+  // over, capped at getMaxEnergyBank() (base + Banker perk if equipped).
+  // state.turn is incremented BEFORE the grant, so it already represents the
+  // drive about to be played.
+  state.turn++;
+  const youCarried = state.youEnergy; // anything > 0 here was unspent last drive
+  const gain = state.turn;
+  state.youEnergy = Math.min(getMaxEnergyBank(),      state.youEnergy + gain);
+  state.aiEnergy  = Math.min(getMaxEnergyBank('ai'),  state.aiEnergy  + gain);
+
+  state.busy = false;
+  render();
+  // After render so the orb is in its new spot, show the carryover hint.
+  if (youCarried > 0) showCarriedToast(youCarried);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ============================================================
+// REVEAL & ABILITIES
+// ============================================================
+async function revealAllPending() {
+  // Winner reveals first (by total points)
+  const youFirst = state.youScore >= state.aiScore;
+  const order = youFirst ? ['you','ai'] : ['ai','you'];
+
+  for (const side of order) {
+    const plays = state.pendingPlays.filter(p => p.side === side);
+    for (const play of plays) {
+      play.card.revealed = true;
+      play.card.pending = false;
+      play.card._baseOff = play.card.off;
+      play.card._baseDef = play.card.def;
+      applyCardSnapAbility(play);
+      // Recompute lane stats so other cards reflect changes
+      computeLaneStats(state.lanes[play.lane]);
+      render();
+      await sleep(280);
+    }
+  }
+  state.pendingPlays = [];
+  // Final pass to apply field effects across lanes
+  state.lanes.forEach(l => computeLaneStats(l));
+}
+
+function applyCardSnapAbility(play) {
+  const card = play.card;
+  const lane = state.lanes[play.lane];
+  const side = play.side;
+  const friendlies = side === 'you' ? 'youCards' : 'aiCards';
+  const enemies = side === 'you' ? 'aiCards' : 'youCards';
+
+  // FROZEN TUNDRA: abilities disabled in this lane
+  if (lane.modifier && lane.modifier.id === 'frozenTundra') return;
+
+  // BLITZ ZONE: DEF cards' SNAP abilities trigger twice
+  const triggerCount = (lane.modifier && lane.modifier.id === 'blitzZone' && card.side === 'def') ? 2 : 1;
+
+  for (let trig = 0; trig < triggerCount; trig++) {
+
+  switch(card.desc) {
+    case 'snapDraw':
+      // Uses the cycle helper so it reshuffles the discard pile if the deck is empty
+      drawCardsToHand(side, 1);
+      break;
+    case 'snapBuffOffLane':
+      lane[friendlies].filter(c => c.uid !== card.uid && c.revealed && !c.ejected && c.side === 'off')
+        .forEach(c => { c._baseOff = (c._baseOff || c.off) + 6; });
+      break;
+    case 'snapDebuffEnemyOff':
+      lane[enemies].filter(c => c.revealed && !c.ejected && c.side === 'off')
+        .forEach(c => { c._baseOff = Math.max(0, (c._baseOff || c.off) - 8); });
+      break;
+    case 'snapStealYards':
+      // Game-Changing TE: push them back 10 yards AND advance yourself 10
+      if (side === 'you') {
+        lane.aiPos = Math.max(0, lane.aiPos - 10);
+        lane.youPos = Math.min(100, lane.youPos + 10);
+      } else {
+        lane.youPos = Math.max(0, lane.youPos - 10);
+        lane.aiPos = Math.min(100, lane.aiPos + 10);
+      }
+      break;
+    case 'snapDefYards':
+      // Speed Rusher: push enemy back 12 yards
+      if (side === 'you') {
+        lane.aiPos = Math.max(0, lane.aiPos - 12);
+      } else {
+        lane.youPos = Math.max(0, lane.youPos - 12);
+      }
+      break;
+    case 'snapPunt':
+      // Punter: push enemy back 10 yards
+      if (side === 'you') {
+        lane.aiPos = Math.max(0, lane.aiPos - 10);
+      } else {
+        lane.youPos = Math.max(0, lane.youPos - 10);
+      }
+      break;
+    case 'snapFieldGoal':
+      // Clutch Kicker: 3-pt FG if you're past midfield (50+)
+      // WIND TUNNEL: FGs disabled
+      if (lane.modifier && lane.modifier.id === 'windTunnel') break;
+      const myPos = side === 'you' ? lane.youPos : lane.aiPos;
+      // KICKING UNIT synergy: FG range improves to 35+
+      const hasKickingUnit = (side === 'you' ? lane.youCards : lane.aiCards)
+        .some(c => c.revealed && !c.ejected && c.pos === 'ST');
+      const fgThreshold = hasKickingUnit ? 35 : 50;
+      if (myPos >= fgThreshold) {
+        if (side === 'you') state.youScore += 3;
+        else state.aiScore += 3;
+        state.scoringLog.push({ team: side, type: 'FG', points: 3, lane: lane.name, drive: state.turn });
+        showScoreBurst('FIELD GOAL +3', 'fg', 1400);
+        resetLaneAfterScore(lane);
+      }
+      break;
+    case 'snapBuffAllOff':
+      state.lanes.forEach(l => l[friendlies].filter(c => c.uid !== card.uid && c.revealed && !c.ejected && c.side === 'off')
+        .forEach(c => { c._baseOff = (c._baseOff || c.off) + 8; }));
+      break;
+  }
+
+  } // end blitz-zone retrigger loop
+}
+
+// ============================================================
+// SCORING — the big payoff
+// ============================================================
+async function processYardageAndScoring() {
+  for (let i = 0; i < state.lanes.length; i++) {
+    const lane = state.lanes[i];
+    // SUDDEN DEATH lock — once locked, no further movement
+    if (lane.lockedFor) continue;
+
+    const stats = computeLaneStats(lane);
+
+    const SCALE = 2.5;
+    const yourGain = Math.floor(stats.youOff / SCALE);
+    const yourLoss = Math.floor(stats.aiDef / SCALE);
+    let yourDelta = yourGain - yourLoss;
+
+    const aiGain = Math.floor(stats.aiOff / SCALE);
+    const aiLoss = Math.floor(stats.youDef / SCALE);
+    let aiDelta = aiGain - aiLoss;
+
+    // Apply yard-block ability (Lockdown CB)
+    lane.youCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) aiDelta -= 5; });
+    lane.aiCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) yourDelta -= 5; });
+
+    // COIN FLIP modifier: 50/50 chance to double or halve net yardage this drive
+    if (lane.modifier && lane.modifier.id === 'coinFlip') {
+      const doubled = Math.random() < 0.5;
+      if (doubled) {
+        yourDelta *= 2;
+        aiDelta *= 2;
+        showLog('🎲 COIN FLIP: DOUBLED!', 900);
+      } else {
+        yourDelta = Math.floor(yourDelta / 2);
+        aiDelta = Math.floor(aiDelta / 2);
+        showLog('🎲 COIN FLIP: HALVED!', 900);
+      }
+      await sleep(500);
+    }
+
+    if (yourDelta !== 0 || aiDelta !== 0) {
+      lane.youPos = lane.youPos + yourDelta;
+      lane.aiPos = lane.aiPos + aiDelta;
+      render();
+      await sleep(700);
+    }
+
+    // TURNOVER modifier: track drives since score
+    if (lane.modifier && lane.modifier.id === 'turnover') {
+      lane.driveSinceScore = (lane.driveSinceScore || 0) + 1;
+      if (lane.driveSinceScore >= 3) {
+        // Swap field positions (ball turns over)
+        const tmp = lane.youPos;
+        lane.youPos = 100 - lane.aiPos;
+        lane.aiPos = 100 - tmp;
+        lane.driveSinceScore = 0;
+        showLog('🔄 TURNOVER ON DOWNS', 1400);
+        render();
+        await sleep(1400);
+      }
+    }
+
+    // Check scoring in this lane
+    const scored = await checkScoring(lane);
+    if (scored && lane.modifier && lane.modifier.id === 'suddenDeath') {
+      lane.lockedFor = scored;
+      showLog('💀 LANE LOCKED!', 1200);
+      await sleep(1200);
+    }
+    if (scored) lane.driveSinceScore = 0;
+  }
+}
+
+function resetLaneAfterScore(lane) {
+  // After any score, both teams kickoff fresh:
+  // - All cards cleared from both sides
+  // - Both ball positions randomized (new kickoff returns)
+  lane.youCards = [];
+  lane.aiCards = [];
+  lane.youPos = kickoffReturn();
+  lane.aiPos = kickoffReturn();
+}
+
+async function checkScoring(lane) {
+  let scorer = null;
+  // YOUR TOUCHDOWN — your ball crossed 100
+  if (lane.youPos >= 100) {
+    lane.youPos = 100;
+    render();
+    await sleep(400);
+    await scoreTouchdown('you', lane);
+    resetLaneAfterScore(lane);
+    render();
+    await sleep(500);
+    scorer = 'you';
+  }
+  // AI TOUCHDOWN
+  if (lane.aiPos >= 100) {
+    lane.aiPos = 100;
+    render();
+    await sleep(400);
+    await scoreTouchdown('ai', lane);
+    resetLaneAfterScore(lane);
+    render();
+    await sleep(500);
+    scorer = 'ai';
+  }
+  // YOUR SAFETY/PICK-6 — you pushed THEIR ball into their own endzone
+  if (lane.aiPos <= 0) {
+    lane.aiPos = 0;
+    render();
+    await sleep(400);
+    await scoreDefense('you', lane);
+    resetLaneAfterScore(lane);
+    render();
+    await sleep(500);
+    scorer = 'you';
+  }
+  // AI SAFETY/PICK-6
+  if (lane.youPos <= 0) {
+    lane.youPos = 0;
+    render();
+    await sleep(400);
+    await scoreDefense('ai', lane);
+    resetLaneAfterScore(lane);
+    render();
+    await sleep(500);
+    scorer = 'ai';
+  }
+  return scorer;
+}
+
+async function scoreTouchdown(side, lane) {
+  let pts = 6;
+  let label = 'TOUCHDOWN';
+  if (side === 'you') state.youScore += 6;
+  else state.aiScore += 6;
+  state.scoringLog.push({ team: side, type: 'TD', points: 6, lane: lane.name, drive: state.turn });
+
+  showLog(`${side === 'you' ? 'YOU' : 'CPU'}: ${lane.name} LANE`, 1200);
+  await showScoreBurst('TOUCHDOWN', 'touchdown', 1800);
+
+  // PAT check — Kicker in this lane?
+  const kicker = (side === 'you' ? lane.youCards : lane.aiCards).find(c => c.pos === 'K' && c.revealed && !c.ejected);
+  if (kicker) {
+    if (side === 'you') state.youScore += 1; else state.aiScore += 1;
+    state.scoringLog.push({ team: side, type: 'PAT', points: 1, lane: lane.name, drive: state.turn });
+    await showScoreBurst('PAT GOOD +1', 'fg', 1200);
+  }
+  render();
+
+  // 2-pt conversion — only player gets to choose; AI auto-decides
+  const yourCardsInLane = side === 'you' ? lane.youCards : lane.aiCards;
+  const enemyCardsInLane = side === 'you' ? lane.aiCards : lane.youCards;
+  const yourOffCount = yourCardsInLane.filter(c => c.revealed && !c.ejected && c.side === 'off').length;
+  const enemyDefCount = enemyCardsInLane.filter(c => c.revealed && !c.ejected && c.side === 'def').length;
+  const canGoForTwo = yourOffCount > enemyDefCount;
+
+  if (side === 'you' && canGoForTwo && !kicker) {
+    // Offer 2-pt conversion
+    await showConversionChoice(lane);
+  } else if (side === 'ai' && canGoForTwo && !kicker) {
+    // AI decides: 50% chance to attempt. Attempt is a coin flip — AI calls
+    // randomly, so 50% to match = 25% overall (vs old 2d6's ~29%, close enough).
+    if (Math.random() < 0.5) {
+      if (Math.random() < 0.5) {
+        state.aiScore += 2;
+        state.scoringLog.push({ team: 'ai', type: '2PT', points: 2, lane: lane.name, drive: state.turn });
+        await showScoreBurst('CPU 2-PT!', 'safety', 1400);
+      } else {
+        showLog('CPU 2-PT FAILED', 1200);
+        await sleep(1200);
+      }
+    }
+  }
+  render();
+}
+
+async function scoreDefense(side, lane) {
+  // Check for pick-6 condition: 4+ DBs (CB or S) in lane
+  const myCards = side === 'you' ? lane.youCards : lane.aiCards;
+  const dbCount = myCards.filter(c => c.revealed && !c.ejected && (c.pos === 'CB' || c.pos === 'S')).length;
+
+  if (dbCount >= 4) {
+    // PICK SIX!
+    if (side === 'you') state.youScore += 6; else state.aiScore += 6;
+    state.scoringLog.push({ team: side, type: 'PICK-6', points: 6, lane: lane.name, drive: state.turn });
+    showLog(`${side === 'you' ? 'YOU' : 'CPU'}: ${lane.name} LANE`, 1200);
+    await showScoreBurst('PICK SIX +6', 'pick6', 2000);
+  } else {
+    // SAFETY
+    if (side === 'you') state.youScore += 2; else state.aiScore += 2;
+    state.scoringLog.push({ team: side, type: 'SAFETY', points: 2, lane: lane.name, drive: state.turn });
+    showLog(`${side === 'you' ? 'YOU' : 'CPU'}: ${lane.name} LANE`, 1200);
+    await showScoreBurst('SAFETY +2', 'safety', 1800);
+  }
+  render();
+}
+
+async function showConversionChoice(lane) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('conversionModal');
+    const body = document.getElementById('conversionBody');
+    document.getElementById('coinArea').style.display = 'none';
+    document.getElementById('conversionButtons').style.display = 'flex';
+    document.getElementById('conversionTitle').textContent = 'GO FOR 2?';
+    body.innerHTML = '<p>You have more OFF cards than they have DEF in this lane.</p><p>Call HEADS or TAILS and match the flip to score!</p>';
+    modal.classList.add('show');
+    // Defensive — clear any lingering resolver from a previous conversion (shouldn't
+    // happen since the modal blocks input, but cheap to be safe).
+    if (window._conversionResolve) { window._conversionResolve(); }
+    window._conversionResolve = resolve;
+    window._conversionLane = lane;
+  });
+}
+
+function kickPAT() {
+  document.getElementById('conversionModal').classList.remove('show');
+  if (window._conversionResolve) { window._conversionResolve(); window._conversionResolve = null; }
+}
+
+// === COIN FLIP CONVERSION (REPLACES 2D6) ===
+// goForTwo: opens the coin area with the CALL IT prompt and waits for the
+// player to tap HEADS or TAILS. The actual flip happens in callCoin().
+async function goForTwo() {
+  document.getElementById('conversionButtons').style.display = 'none';
+  document.getElementById('coinArea').style.display = 'block';
+  document.getElementById('coinPrompt').style.display = 'block';
+  document.getElementById('coinChoiceButtons').style.display = 'flex';
+  document.getElementById('coinContainer').style.display = 'none';
+  document.getElementById('coinResult').textContent = '';
+  document.getElementById('coinResult').style.color = '#ffb800';
+  // Reset coin rotation in case this is a second conversion in the same match
+  const coinEl = document.getElementById('coinElement');
+  coinEl.classList.remove('flipping-heads', 'flipping-tails');
+  // Re-enable both call buttons (they get disabled after a tap)
+  document.querySelectorAll('.coin-call-btn').forEach(b => { b.disabled = false; });
+}
+
+async function callCoin(playerCall) {
+  // Lock both buttons against double-tap so the second call doesn't fire mid-flip
+  const callBtns = document.querySelectorAll('.coin-call-btn');
+  if (callBtns[0] && callBtns[0].disabled) return;
+  callBtns.forEach(b => { b.disabled = true; });
+
+  document.getElementById('coinPrompt').style.display = 'none';
+  document.getElementById('coinChoiceButtons').style.display = 'none';
+  document.getElementById('coinContainer').style.display = 'flex';
+
+  // 50/50 result
+  const result = Math.random() < 0.5 ? 'heads' : 'tails';
+  const coinEl = document.getElementById('coinElement');
+  const reduced = prefersReducedMotion();
+
+  await sleep(150);  // tiny beat so the player sees the coin before it flips
+  coinEl.classList.add('flipping-' + result);
+  playSfx('coinFlip');
+  await sleep(reduced ? 200 : 1500);  // wait for CSS transition (1.4s) + a beat
+
+  const matched = (playerCall === result);
+  const resultEl = document.getElementById('coinResult');
+  if (matched) {
+    resultEl.textContent = result.toUpperCase() + ' — CONVERTED!';
+    resultEl.style.color = '#4aff8a';
+    state.youScore += 2;
+    const lane = window._conversionLane;
+    state.scoringLog.push({ team: 'you', type: '2PT', points: 2, lane: lane.name, drive: state.turn });
+    playSfx('confirm');
+    render();
+    await sleep(1400);
+    await showScoreBurst('2-PT CONVERSION!', 'touchdown', 1600);
+  } else {
+    resultEl.textContent = result.toUpperCase() + ' — NO GOOD';
+    resultEl.style.color = '#ff4a4a';
+    playSfx('discard');
+    await sleep(1800);
+  }
+
+  document.getElementById('conversionModal').classList.remove('show');
+  if (window._conversionResolve) { window._conversionResolve(); window._conversionResolve = null; }
+}
+
+// ============================================================
+// AI LOGIC
+// ============================================================
+function aiMakePlays() {
+  let energy = state.aiEnergy;
+  const playable = [...state.aiHand].sort((a,b) => (b.off + b.def) - (a.off + a.def));
+
+  for (const card of playable) {
+    if (card.cost > energy) continue;
+    let bestLane = -1, bestScore = -Infinity;
+    for (let i = 0; i < 3; i++) {
+      const lane = state.lanes[i];
+      if (lane.aiCards.length >= MAX_SLOTS) continue;
+      const stats = computeLaneStats(lane);
+      let score = 0;
+      
+      if (card.side === 'off') {
+        score = card.off;
+        // Bonus if close to TD (deep in opponent territory)
+        if (lane.aiPos >= 70) score += 18;
+        else if (lane.aiPos >= 50) score += 8;
+        // Bonus if your defense is weak here (less pushback)
+        if (stats.youDef < card.off / 2) score += 6;
+        // Kicker should go where AI is past midfield (for PAT/FG)
+        if (card.pos === 'K' && lane.aiPos >= 50) score += 14;
+      } else {
+        // Defensive card — put where YOU are threatening
+        score = card.def;
+        if (lane.youPos >= 70) score += 22; // urgent — about to score
+        else if (lane.youPos >= 50) score += 10;
+        // If AI ball is near their own endzone, defense helps avoid safety
+        if (lane.aiPos <= 30) score += 6;
+        // DB stacking for pick-6 (push them past 0)
+        if ((card.pos === 'CB' || card.pos === 'S') && lane.aiPos <= 50) {
+          const dbsHere = lane.aiCards.filter(c => c.pos === 'CB' || c.pos === 'S').length;
+          score += dbsHere * 5;
+        }
+      }
+      score += Math.random() * 3;
+      if (score > bestScore) { bestScore = score; bestLane = i; }
+    }
+    if (bestLane >= 0) {
+      const placed = { ...card, curOff: card.off, curDef: card.def, revealed: false, pending: true };
+      state.lanes[bestLane].aiCards.push(placed);
+      state.pendingPlays.push({ card: placed, lane: bestLane, side: 'ai' });
+      state.aiHand = state.aiHand.filter(c => c.uid !== card.uid);
+      energy -= card.cost;
+    }
+  }
+  state.aiEnergy = energy;
+}
+
+// ============================================================
+// END GAME
+// ============================================================
+function endGame() {
+  state.gameOver = true;
+
+  const won  = state.youScore >  state.aiScore;
+  const lost = state.aiScore >  state.youScore;
+  const result = won ? 'win' : (lost ? 'loss' : 'tie');
+
+  // Season bookkeeping — same logic that used to live in the old result screen.
+  // We capture the routing decision into _summaryReturn so the post-summary
+  // CONTINUE button knows where to send the player.
+  let seasonOngoing = false;
+  let championship  = false;
+  if (state.mode === 'season' && seasonState) {
+    if (result === 'win') {
+      seasonState.wins++;
+      seasonState.week++;
+      if (seasonState.wins >= 7) {
+        championship = true;
+        clearSeason();
+      } else {
+        seasonOngoing = true;
+        saveSeason();
+      }
+    } else if (result === 'loss') {
+      clearSeason();
+    } else {
+      // Tie: no progress, season remains
+      seasonOngoing = true;
+      saveSeason();
+    }
+    updateMenuSeasonStatus();
+  }
+  _summaryReturn = { mode: state.mode, seasonOngoing, championship };
+
+  // Lifetime stats — updated regardless of mode
+  playerData.stats.totalMatches++;
+  if (won) {
+    playerData.stats.totalWins++;
+    playerData.stats.currentWinStreak++;
+    playerData.stats.longestWinStreak = Math.max(playerData.stats.longestWinStreak, playerData.stats.currentWinStreak);
+    if (state.aiScore === 0) playerData.stats.shutouts++;
+    if (state._wasTrailingBy14) playerData.stats.comebacks++;
+  } else if (lost) {
+    playerData.stats.totalLosses++;
+    playerData.stats.currentWinStreak = 0;
+  }
+
+  // Compute rewards + apply XP / level-ups (mutates playerData, saves at the end)
+  const matchResult = {
+    won,
+    opponent: state.opponent || null,
+    finalScore: { you: state.youScore, ai: state.aiScore },
+    stats: { wasTrailingBy14AtHalftime: !!state._wasTrailingBy14 }
+  };
+  const rewards   = calculateMatchRewards(matchResult);
+  playerData.cash += rewards.cashEarned;
+  const levelInfo = applyXpAndLevelUp(rewards.xpEarned);
+  savePlayerData();
+
+  showMatchSummary(matchResult, rewards, levelInfo);
+}
+
+
+// ============================================================
+// QUICK PLAY
+// ============================================================
+function startQuickPlay() {
+  const playerDeck = buildQuickPlayDeck();
+  const aiDeck = buildAIDeck(2); // Quick play AI = moderate difficulty
+  startGame(playerDeck, aiDeck, 'quick');
+}
+
+// ============================================================
+// DRAFT — Pack-Rip (10 packs × 6 cards [3 OFF + 3 DEF], pick 2 each; 30 starter)
+// === PHASE 1 COMPLETE ===
+// === PHASE 1 TWEAKS APPLIED ===  (3+3 packs, fan→spread, pick-by-tap + 600ms grace)
+// === PHASE 2 COMPLETE — playtest before continuing to Phase 3 ===
+// ============================================================
+const CARDS_PER_PACK = 6;  // 3 OFF + 3 DEF
+const PACK_PICK_SECONDS = 12;
+const FINAL_PACK_PICK_SECONDS = 15;
+const GRACE_PERIOD_MS = 600;
+
+// Per-pack rarity distribution. Index = packNum (1-based). Each row sums to 100.
+const PACK_RARITY_TABLE = [
+  null, // index 0 unused
+  { common: 80, uncommon: 18, rare: 2,  legendary: 0  }, // 1
+  { common: 75, uncommon: 22, rare: 3,  legendary: 0  }, // 2
+  { common: 70, uncommon: 25, rare: 5,  legendary: 0  }, // 3
+  { common: 60, uncommon: 30, rare: 9,  legendary: 1  }, // 4
+  { common: 50, uncommon: 35, rare: 13, legendary: 2  }, // 5
+  { common: 40, uncommon: 38, rare: 18, legendary: 4  }, // 6
+  { common: 30, uncommon: 40, rare: 24, legendary: 6  }, // 7
+  { common: 20, uncommon: 40, rare: 30, legendary: 10 }, // 8
+  { common: 10, uncommon: 38, rare: 38, legendary: 14 }, // 9
+  { common: 0,  uncommon: 30, rare: 50, legendary: 20 }  // 10 (FINAL PICK)
+];
+
+function rollRarity(dist) {
+  const r = Math.floor(Math.random() * 100);
+  let acc = 0;
+  acc += dist.common;    if (r < acc) return 'common';
+  acc += dist.uncommon;  if (r < acc) return 'uncommon';
+  acc += dist.rare;      if (r < acc) return 'rare';
+  return 'legendary';
+}
+
+function prefersReducedMotion() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+let draftState = null;
+
+// ---- Web Audio synth helpers (Phase 1) ----
+let _audioCtx = null;
+function getAudioCtx() {
+  if (!_audioCtx) {
+    try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { return null; }
+  }
+  if (_audioCtx && _audioCtx.state === 'suspended') {
+    try { _audioCtx.resume(); } catch (e) {}
+  }
+  return _audioCtx;
+}
+
+function playSfx(type) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  try {
+    if (type === 'flip') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(900, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.11);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.14);
+    } else if (type === 'flipQuiet') {
+      // 0.4x volume of normal flip — used during fast-forward auto-pick
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(900, now);
+      osc.frequency.exponentialRampToValueAtTime(220, now + 0.11);
+      gain.gain.setValueAtTime(0.064, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.14);
+    } else if (type === 'rareFlash') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(1760, now + 0.18);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.23);
+    } else if (type === 'legendaryHit') {
+      // 4-note ascending arpeggio (slot-machine win)
+      const notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach((freq, i) => {
+        const t = now + i * 0.07;
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.13, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.29);
+      });
+    } else if (type === 'tick') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(880, now);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.06);
+    } else if (type === 'tickUrgent') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1320, now);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.09);
+    } else if (type === 'pick') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.exponentialRampToValueAtTime(990, now + 0.08);
+      gain.gain.setValueAtTime(0.14, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.14);
+    } else if (type === 'confirm') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.14);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.21);
+    } else if (type === 'discard') {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(240, now);
+      osc.frequency.exponentialRampToValueAtTime(110, now + 0.22);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.25);
+    } else if (type === 'draw') {
+      // Soft brief blip when a card lands in hand
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.06);
+      gain.gain.setValueAtTime(0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.11);
+    } else if (type === 'reshuffle') {
+      // Descending swish + brief noise burst — discard pile folding back in
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(180, now + 0.45);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now); osc.stop(now + 0.51);
+      // Brief noise burst at the start for "shuffle" texture
+      const bufSize = Math.floor(ctx.sampleRate * 0.18);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.09, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      src.connect(noiseGain).connect(ctx.destination);
+      src.start(now);
+    } else if (type === 'finalIntro') {
+      // 3-note descending minor arpeggio — deeper than legendaryHit
+      const notes = [880.00, 659.25, 440.00]; // A5, E5, A4
+      notes.forEach((freq, i) => {
+        const t = now + i * 0.18;
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.17, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.41);
+      });
+      // Sub-bass thump under the arpeggio
+      const sub = ctx.createOscillator(), subGain = ctx.createGain();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(110, now);
+      sub.frequency.exponentialRampToValueAtTime(55, now + 0.6);
+      subGain.gain.setValueAtTime(0.18, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+      sub.connect(subGain).connect(ctx.destination);
+      sub.start(now); sub.stop(now + 0.71);
+    } else if (type === 'levelUp') {
+      // 3-note ascending arpeggio (C, E, G — major triad ~400ms)
+      const notes = [523.25, 659.25, 783.99];
+      notes.forEach((freq, i) => {
+        const t = now + i * 0.11;
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.18, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.29);
+      });
+    } else if (type === 'perkUnlock') {
+      // 5-note triumphant flourish (~600ms) — C E G C E ascending
+      const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+      notes.forEach((freq, i) => {
+        const t = now + i * 0.10;
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(0.14, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.31);
+      });
+    } else if (type === 'coinFlip') {
+      // Ascending sine sweep (~200ms) for the spin, then a brief clink near the end
+      const spin = ctx.createOscillator(), spinGain = ctx.createGain();
+      spin.type = 'sine';
+      spin.frequency.setValueAtTime(420, now);
+      spin.frequency.exponentialRampToValueAtTime(900, now + 0.2);
+      spinGain.gain.setValueAtTime(0.12, now);
+      spinGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      spin.connect(spinGain).connect(ctx.destination);
+      spin.start(now); spin.stop(now + 0.23);
+      // High-frequency clink — short noise burst with a fast decay
+      const clinkStart = now + 1.35;
+      const bufSize = Math.floor(ctx.sampleRate * 0.05);
+      const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+      const src = ctx.createBufferSource(); src.buffer = buf;
+      const clinkGain = ctx.createGain();
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'highpass'; filt.frequency.value = 4000;
+      clinkGain.gain.setValueAtTime(0.18, clinkStart);
+      clinkGain.gain.exponentialRampToValueAtTime(0.001, clinkStart + 0.06);
+      src.connect(filt).connect(clinkGain).connect(ctx.destination);
+      src.start(clinkStart);
+    }
+  } catch (e) { /* swallow audio errors during animations */ }
+}
+
+// ---- Starter deck (30 commons: 15 OFF + 15 DEF, balanced positions) ----
+const STARTER_POSITION_PLAN = {
+  off: ['QB','QB','RB','RB','RB','WR','WR','WR','WR','TE','TE','OL','OL','OL','K'],
+  def: ['CB','CB','CB','S','S','LB','LB','LB','DE','DE','DT','DT','ST','ST','ST']
+};
+
+function generateStarterCard(side, pos) {
+  // Force common rarity, gentle cost curve weighted low/mid
+  const costWeights = [
+    { value: 1, weight: 22 }, { value: 2, weight: 28 }, { value: 3, weight: 26 },
+    { value: 4, weight: 16 }, { value: 5, weight: 6 },  { value: 6, weight: 2 }
+  ];
+  const cost = pickWeighted(costWeights).value;
+  const statRange = STAT_BY_COST[cost];
+  const baseStat = statRange.min + Math.floor(Math.random() * (statRange.max - statRange.min + 1));
+  const off = side === 'off' ? baseStat : 0;
+  const def = side === 'def' ? baseStat : 0;
+  let ability = '', desc = '';
+  if (Math.random() < 0.12) {
+    const apool = ABILITY_POOL[side].filter(a => cost >= a.minCost && (!a.posOnly || a.posOnly.includes(pos)));
+    if (apool.length > 0) {
+      const picked = pickOne(apool);
+      ability = picked.ability; desc = picked.desc;
+    }
+  }
+  if (pos === 'K' && !ability) ability = 'PAT bonus on TD in this lane';
+  const name = pickOne(FIRST_NAMES) + ' ' + pickOne(LAST_NAMES);
+  const team = pickOne(NFL_TEAMS);
+  return {
+    id: uid(), name, pos, team, cost, off, def, side, ability, desc,
+    rarity: 'common'
+  };
+}
+
+function generateStarterDeck() {
+  const cards = [];
+  STARTER_POSITION_PLAN.off.forEach(pos => cards.push(generateStarterCard('off', pos)));
+  STARTER_POSITION_PLAN.def.forEach(pos => cards.push(generateStarterCard('def', pos)));
+  return cards;
+}
+
+// ---- Pack generation: always 3 OFF + 3 DEF, per-pack escalating rarity ----
+function generateDraftPack(packNum) {
+  const dist = PACK_RARITY_TABLE[packNum] || PACK_RARITY_TABLE[1];
+  const cards = [];
+  // 3 OFF cards, rarity rolled independently per card
+  for (let i = 0; i < 3; i++) cards.push(generateCard('off', rollRarity(dist)));
+  // 3 DEF cards, rarity rolled independently per card
+  for (let i = 0; i < 3; i++) cards.push(generateCard('def', rollRarity(dist)));
+  cards.forEach(c => { c._revealed = false; });
+  return cards;
+}
+
+// ---- Draft lifecycle ----
+function startSeasonDraft() {
+  const existing = loadSeason();
+  if (existing && existing.wins < 7) {
+    if (!confirm('You have a season in progress. Start a new draft and abandon it?')) return;
+    clearSeason();
+  }
+  // Kick the AudioContext awake on this user gesture so the first flip plays
+  getAudioCtx();
+  draftState = {
+    packNum: 1,
+    totalPacks: 10,
+    currentPack: [],
+    pickedOff: null,
+    pickedDef: null,
+    history: [],
+    roster: generateStarterDeck(), // 30 commons (15/15) granted up front
+    timeLeft: PACK_PICK_SECONDS,
+    timerInterval: null,
+    graceTimer: null,
+    layoutMode: 'fan', // 'fan' during reveal, 'spread' after
+    busy: false,
+    autoPickedThisPack: false
+  };
+  showScreen('draft');
+  startPack();
+}
+
+function cancelDraft() {
+  if (!confirm('Cancel the draft and lose your picks?')) return;
+  clearDraftTimer();
+  cancelGraceTimer();
+  draftState = null;
+  showScreen('menu');
+}
+
+function clearDraftTimer() {
+  if (draftState && draftState.timerInterval) {
+    clearInterval(draftState.timerInterval);
+    draftState.timerInterval = null;
+  }
+}
+
+function cancelGraceTimer() {
+  if (draftState && draftState.graceTimer) {
+    clearTimeout(draftState.graceTimer);
+    draftState.graceTimer = null;
+  }
+}
+
+async function startPack() {
+  if (!draftState) return;
+  draftState.busy = true;
+  draftState.pickedOff = null;
+  draftState.pickedDef = null;
+  draftState.autoPickedThisPack = false;
+  draftState.layoutMode = 'fan';
+  const isFinal = draftState.packNum >= draftState.totalPacks;
+  draftState.timeLeft = isFinal ? FINAL_PACK_PICK_SECONDS : PACK_PICK_SECONDS;
+  draftState.currentPack = generateDraftPack(draftState.packNum);
+  renderDraft();
+
+  // FINAL PICK intro overlay (banner + dim + chord) before the reveal sequence
+  if (isFinal) {
+    await playFinalPackIntro();
+    if (!draftState) return;
+  }
+
+  await sleep(500);
+  if (!draftState) return;
+  for (let i = 0; i < draftState.currentPack.length; i++) {
+    if (!draftState) return;
+    revealPackCard(i);
+    await sleep(350);
+  }
+  if (!draftState) return;
+  // After all flips, spread the cards into 2 rows of 3 so the player can read them
+  await sleep(250);
+  if (!draftState) return;
+  draftState.layoutMode = 'spread';
+  const arena = document.getElementById('packArena');
+  if (arena) arena.classList.add('spread');
+  applyCardLayout();
+  await sleep(450);
+  if (!draftState) return;
+  draftState.busy = false;
+  // Imperatively flip the AUTO-PICK button's disabled attribute. We used to
+  // renderDraft() here, but that wipes the arena DOM and the new cards re-run
+  // the fan→spread transition from center, causing a visible "double expand".
+  // The button is the only thing whose state changes when busy flips false.
+  const skipBtn = document.querySelector('#draft .pack-skip-btn');
+  if (skipBtn) skipBtn.disabled = false;
+  startPackTimer();
+}
+
+async function playFinalPackIntro() {
+  const reduced = prefersReducedMotion();
+  const banner = document.createElement('div');
+  banner.className = 'final-pack-banner' + (reduced ? ' reduced' : '');
+  banner.textContent = 'FINAL PACK';
+  const dim = document.createElement('div');
+  dim.className = 'final-pack-dim';
+  document.body.appendChild(dim);
+  document.body.appendChild(banner);
+  playSfx('finalIntro');
+  await sleep(1000);
+  if (banner.parentNode) banner.parentNode.removeChild(banner);
+  if (dim.parentNode) dim.parentNode.removeChild(dim);
+}
+
+function revealPackCard(idx) {
+  if (!draftState || !draftState.currentPack[idx]) return;
+  const card = draftState.currentPack[idx];
+  card._revealed = true;
+  const el = document.querySelector('[data-pack-idx="' + idx + '"]');
+  if (el) {
+    el.classList.add('revealed');
+    if (card.rarity === 'rare') {
+      el.classList.add('flipping-rare');
+      setTimeout(() => el && el.classList.remove('flipping-rare'), 800);
+    } else if (card.rarity === 'legendary') {
+      el.classList.add('flipping-legendary');
+      setTimeout(() => el && el.classList.remove('flipping-legendary'), 1100);
+    }
+  }
+  if (card.rarity === 'legendary') {
+    document.body.classList.add('body-shake');
+    setTimeout(() => document.body.classList.remove('body-shake'), 320);
+    playSfx('legendaryHit');
+  } else if (card.rarity === 'rare') {
+    playSfx('rareFlash');
+  } else {
+    playSfx('flip');
+  }
+}
+
+function startPackTimer() {
+  clearDraftTimer();
+  updateTimerUI();
+  draftState.timerInterval = setInterval(() => {
+    if (!draftState) { clearDraftTimer(); return; }
+    // Pause timer while a tooltip is open
+    const overlay = document.getElementById('tooltipOverlay');
+    if (overlay && overlay.classList.contains('show')) return;
+    draftState.timeLeft--;
+    if (draftState.timeLeft > 1 && draftState.timeLeft <= 4) playSfx('tick');
+    else if (draftState.timeLeft === 1) playSfx('tickUrgent');
+    updateTimerUI();
+    if (draftState.timeLeft <= 0) {
+      clearDraftTimer();
+      // If the player already has both picks but kept swapping past the timer,
+      // just accept the current state instead of re-rolling auto-picks.
+      if (draftState.pickedOff && draftState.pickedDef) {
+        cancelGraceTimer();
+        confirmPackPicks(true);
+      } else {
+        autoPickRemaining();
+      }
+    }
+  }, 1000);
+}
+
+function updateTimerUI() {
+  const t = document.getElementById('packTimer');
+  if (!t || !draftState) return;
+  t.textContent = Math.max(0, draftState.timeLeft);
+  t.classList.remove('warn', 'urgent');
+  if (draftState.timeLeft <= 2) t.classList.add('urgent');
+  else if (draftState.timeLeft <= 4) t.classList.add('warn');
+}
+
+async function autoPickRemaining() {
+  if (!draftState) return;
+  draftState.busy = true;
+  draftState.autoPickedThisPack = true;
+  cancelGraceTimer();
+  if (!draftState.pickedOff) {
+    const cand = draftState.currentPack
+      .filter(c => c.side === 'off')
+      .sort((a, b) => b.off - a.off);
+    if (cand[0]) draftState.pickedOff = cand[0];
+  }
+  if (!draftState.pickedDef) {
+    const cand = draftState.currentPack
+      .filter(c => c.side === 'def')
+      .sort((a, b) => b.def - a.def);
+    if (cand[0]) draftState.pickedDef = cand[0];
+  }
+  renderDraft();
+  showToast('AUTO-PICKED', 1000);
+  await sleep(900);
+  if (!draftState) return;
+  confirmPackPicks(true);
+}
+
+function tapPackCard(idx) {
+  if (!draftState || draftState.busy) return;
+  if (draftState.layoutMode !== 'spread') return; // wait for spread before picking
+  const card = draftState.currentPack[idx];
+  if (!card || !card._revealed) return;
+  // Selecting the already-picked card is a no-op (use a same-side card to swap)
+  if (card === draftState.pickedOff || card === draftState.pickedDef) return;
+
+  if (card.side === 'off') draftState.pickedOff = card;
+  else                     draftState.pickedDef = card;
+  playSfx('pick');
+
+  // Any pick change cancels an in-flight grace timer; restart only when both filled
+  cancelGraceTimer();
+  renderDraft();
+  if (draftState.pickedOff && draftState.pickedDef) startGraceTimer();
+}
+
+function startGraceTimer() {
+  cancelGraceTimer();
+  draftState.graceTimer = setTimeout(() => {
+    if (!draftState) return;
+    draftState.graceTimer = null;
+    confirmPackPicks(false);
+  }, GRACE_PERIOD_MS);
+}
+
+// Legacy alias kept for compatibility with old call sites
+function selectDraftCard(card, side) {
+  if (!draftState) return;
+  if (side === 'off') draftState.pickedOff = card;
+  else draftState.pickedDef = card;
+  renderDraft();
+}
+
+async function confirmPackPicks(fromAuto) {
+  if (!draftState) return;
+  if (!draftState.pickedOff || !draftState.pickedDef) return;
+  clearDraftTimer();
+  cancelGraceTimer();
+  draftState.busy = true;
+
+  // Record history + add to roster (clean transient flag)
+  const off = draftState.pickedOff;
+  const def = draftState.pickedDef;
+  delete off._revealed;
+  delete def._revealed;
+  draftState.roster.push(off);
+  draftState.roster.push(def);
+  draftState.history.push({ packNum: draftState.packNum, picks: [off, def] });
+
+  // Animate: picked cards fly up toward deck, others slide down + gray
+  const cards = document.querySelectorAll('#packArena .pack-card');
+  cards.forEach(el => {
+    const idx = parseInt(el.dataset.packIdx, 10);
+    const c = draftState.currentPack[idx];
+    if (c === off || c === def) el.classList.add('flying-to-deck');
+    else el.classList.add('discarding');
+  });
+  playSfx('discard');
+  if (!fromAuto) playSfx('confirm');
+  await sleep(600);
+  if (!draftState) return;
+
+  draftState.packNum++;
+  if (draftState.packNum > draftState.totalPacks) {
+    finishDraft();
+  } else {
+    startPack();
+  }
+}
+
+// Legacy name kept since other call sites may still reference it
+function confirmDraftPicks() { confirmPackPicks(false); }
+
+// ---- Render ----
+function renderDraft() {
+  if (!draftState) return;
+  const screen = document.getElementById('draft');
+  if (!screen) return;
+  const isFinal = draftState.packNum >= draftState.totalPacks;
+  const haveBoth = draftState.pickedOff && draftState.pickedDef;
+  const graceActive = !!(haveBoth && draftState.graceTimer);
+  const headerHTML = isFinal
+    ? '<div class="pack-title"><span class="final-pick-title">FINAL PICK</span></div>'
+    : '<div class="pack-title">PACK <span class="pack-num">' + draftState.packNum + '</span> / ' + draftState.totalPacks + '</div>';
+  const arenaCls = [
+    'pack-arena',
+    draftState.layoutMode === 'spread' ? 'spread' : 'fan',
+    isFinal ? 'final-pack' : ''
+  ].filter(Boolean).join(' ');
+  // === AUTO-PICK REMAINING ADDED === (button hidden on final pack)
+  const skipBtnHTML = isFinal ? '' :
+    '<button class="pack-skip-btn" ' + (draftState.busy ? 'disabled' : '') +
+    ' onclick="openSkipDraftModal()">⏩ AUTO-PICK</button>';
+  screen.innerHTML = `
+    <div class="pack-header">
+      ${headerHTML}
+      <div class="pack-header-right">
+        ${skipBtnHTML}
+        <button class="pack-exit" onclick="cancelDraft()">EXIT</button>
+      </div>
+    </div>
+    <div class="pack-streaks" id="packStreaks"></div>
+    <div class="pack-timer-wrap">
+      <div class="pack-timer" id="packTimer">${draftState.timeLeft}</div>
+    </div>
+    <div class="${arenaCls}" id="packArena">
+      <div class="pack-row-label off-row" id="packRowLabelOff">🟧 OFFENSE — PICK ONE</div>
+      <div class="pack-row-label def-row" id="packRowLabelDef">🟦 DEFENSE — PICK ONE</div>
+      ${draftState.currentPack.map((card, i) => renderPackCardHTML(card, i)).join('')}
+    </div>
+    <div class="pack-lock-status ${graceActive ? 'show' : ''}" id="packLockStatus">
+      LOCKING IN<span class="lock-dot">.</span><span class="lock-dot">.</span><span class="lock-dot">.</span>
+    </div>
+  `;
+  updateTimerUI();
+  applyCardLayout();
+}
+
+function renderPackCardHTML(card, idx) {
+  const picked = (card === draftState.pickedOff || card === draftState.pickedDef);
+  // A card is faded if its side has a pick AND it isn't the picked one
+  const sidePicked = card.side === 'off' ? draftState.pickedOff : draftState.pickedDef;
+  const faded = (sidePicked && !picked);
+  const revealed = card._revealed ? 'revealed' : '';
+  const sideCls = card.side === 'off' ? 'off-side' : 'def-side';
+  const cls = [
+    'pack-card', 'rarity-' + card.rarity, sideCls,
+    picked ? 'picked' : '',
+    faded ? 'faded' : '',
+    revealed
+  ].filter(Boolean).join(' ');
+  return `
+    <div class="${cls}" data-pack-idx="${idx}" onclick="tapPackCard(${idx})">
+      <div class="card-inner">
+        <div class="card-back">?</div>
+        <div class="card-front">${packCardFrontHTML(card)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function packCardFrontHTML(card) {
+  const statValue = card.side === 'off' ? card.off : card.def;
+  return `
+    <div class="pc-portrait">${generatePortraitSVG(card, 80)}</div>
+    <div class="pc-header">
+      <span class="pc-cost">${card.cost}</span>
+      <span class="pc-pos">${card.pos}</span>
+    </div>
+    <div class="pc-name">${card.name}</div>
+    <div class="pc-team">${card.team}</div>
+    <div class="pc-stat">${statValue}</div>
+    <div class="pc-ability">${card.ability || ''}</div>
+  `;
+}
+
+// Position cards based on draftState.layoutMode. CSS transitions handle the animation.
+function applyCardLayout() {
+  if (!draftState) return;
+  const arena = document.getElementById('packArena');
+  if (!arena) return;
+  const cards = arena.querySelectorAll('.pack-card');
+  if (cards.length === 0) return;
+
+  const W = arena.clientWidth || window.innerWidth;
+  const H = arena.clientHeight || 340;
+
+  if (draftState.layoutMode === 'fan') {
+    // Fanned layout — all 6 cards overlapping at center, slight rotation
+    const cardW = 98;
+    const maxSpread = Math.max(0, Math.min(W, 360) - cardW - 24);
+    cards.forEach((el, i) => {
+      const pct = cards.length > 1 ? (i / (cards.length - 1)) - 0.5 : 0;
+      const x = pct * maxSpread;
+      const angle = pct * 14;
+      const lift = -Math.abs(pct) * 6;
+      el.style.transform = 'translate(' + x.toFixed(1) + 'px, ' + lift.toFixed(1) + 'px) rotate(' + angle.toFixed(1) + 'deg)';
+    });
+    // Hide row labels (CSS does this via class) — also position them out of the way
+    const offLbl = document.getElementById('packRowLabelOff');
+    const defLbl = document.getElementById('packRowLabelDef');
+    if (offLbl) offLbl.style.top = '-100px';
+    if (defLbl) defLbl.style.top = '-100px';
+    return;
+  }
+
+  // Spread layout — 2 rows × 3 columns. Cards are absolute-positioned via translate.
+  const cardW = 98, cardH = 150;
+  const gapX = 10;
+  const gapY = 38; // vertical gap between rows (leaves room for the row label between them)
+  const totalRowW = cardW * 3 + gapX * 2;
+  // Column center offsets relative to arena center (W/2)
+  const colCenters = [
+    (-totalRowW / 2) + (cardW / 2),
+    0,
+    ( totalRowW / 2) - (cardW / 2)
+  ];
+  // Row center Y offsets relative to arena center (H/2)
+  const rowHalf = (cardH + gapY / 2) / 2;
+  const rowYs = { off: -rowHalf, def: +rowHalf };
+
+  // OFF and DEF row indices among siblings (each side has up to 3 cards)
+  let offCol = 0, defCol = 0;
+  cards.forEach(el => {
+    const idx = parseInt(el.dataset.packIdx, 10);
+    const card = draftState.currentPack[idx];
+    if (!card) return;
+    const col = card.side === 'off' ? offCol++ : defCol++;
+    const x = colCenters[Math.min(col, 2)];
+    const y = rowYs[card.side];
+    el.style.transform = 'translate(' + x.toFixed(1) + 'px, ' + y.toFixed(1) + 'px) rotate(0deg)';
+  });
+
+  // Position row labels (centered horizontally; vertically just above each row)
+  const offLbl = document.getElementById('packRowLabelOff');
+  const defLbl = document.getElementById('packRowLabelDef');
+  if (offLbl) {
+    // OFF row center is at H/2 + rowYs.off; label sits just above it
+    offLbl.style.top = (H / 2 + rowYs.off - cardH / 2 - 18) + 'px';
+  }
+  if (defLbl) {
+    defLbl.style.top = (H / 2 + rowYs.def - cardH / 2 - 18) + 'px';
+  }
+}
+
+function finishDraft() {
+  // Roster is complete (30 starter + 20 picks = 50 cards). Start a new season.
+  clearDraftTimer();
+  cancelGraceTimer();
+  seasonState = {
+    roster: draftState.roster,
+    wins: 0,
+    week: 1
+  };
+  saveSeason();
+  draftState = null;
+  enterSeason();
+}
+
+// ---- AUTO-PICK REMAINING (Phase 3) ----
+const RARITY_RANK = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
+
+function bestAutoPickFromSide(cards) {
+  if (!cards || cards.length === 0) return null;
+  return [...cards].sort((a, b) => {
+    const r = RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity];
+    if (r !== 0) return r;
+    const aStat = a.side === 'off' ? a.off : a.def;
+    const bStat = b.side === 'off' ? b.off : b.def;
+    return bStat - aStat;
+  })[0];
+}
+
+function openSkipDraftModal() {
+  if (!draftState || draftState.busy) return;
+  if (draftState.packNum >= draftState.totalPacks) return; // button shouldn't be visible here anyway
+  const modal = document.getElementById('draftSkipModal');
+  if (modal) modal.classList.add('show');
+}
+
+function closeSkipDraftModal() {
+  const modal = document.getElementById('draftSkipModal');
+  if (modal) modal.classList.remove('show');
+}
+
+function confirmSkipDraft() {
+  closeSkipDraftModal();
+  runAutoPickFastForward();
+}
+
+// Move the current pack's picks into the roster and advance packNum.
+function finalizeCurrentPackPicks() {
+  if (!draftState) return;
+  if (!draftState.pickedOff || !draftState.pickedDef) return;
+  const off = draftState.pickedOff;
+  const def = draftState.pickedDef;
+  delete off._revealed; delete def._revealed;
+  draftState.roster.push(off);
+  draftState.roster.push(def);
+  draftState.history.push({ packNum: draftState.packNum, picks: [off, def] });
+  draftState.pickedOff = null;
+  draftState.pickedDef = null;
+  draftState.packNum++;
+}
+
+async function runAutoPickFastForward() {
+  if (!draftState || draftState.busy) return;
+  clearDraftTimer();
+  cancelGraceTimer();
+  draftState.busy = true;
+
+  // Honor any existing picks; auto-fill any missing side on the current pack.
+  if (!draftState.pickedOff) {
+    draftState.pickedOff = bestAutoPickFromSide(draftState.currentPack.filter(c => c.side === 'off'));
+  }
+  if (!draftState.pickedDef) {
+    draftState.pickedDef = bestAutoPickFromSide(draftState.currentPack.filter(c => c.side === 'def'));
+  }
+
+  const reduced = prefersReducedMotion();
+  if (reduced) {
+    // Reduced-motion: skip animation. Audio still plays for rare/legendary.
+    const remaining = draftState.totalPacks - draftState.packNum + 1;
+    finalizeCurrentPackPicks();
+    while (draftState && draftState.packNum <= draftState.totalPacks) {
+      const pack = generateDraftPack(draftState.packNum);
+      const offBest = bestAutoPickFromSide(pack.filter(c => c.side === 'off'));
+      const defBest = bestAutoPickFromSide(pack.filter(c => c.side === 'def'));
+      [offBest, defBest].forEach(c => {
+        if (!c) return;
+        if (c.rarity === 'legendary') playSfx('legendaryHit');
+        else if (c.rarity === 'rare')  playSfx('rareFlash');
+        delete c._revealed;
+        draftState.roster.push(c);
+      });
+      draftState.history.push({ packNum: draftState.packNum, picks: [offBest, defBest].filter(Boolean) });
+      draftState.packNum++;
+    }
+    showToast('AUTO-PICKED ' + remaining + ' PACK' + (remaining !== 1 ? 'S' : ''), 1400);
+    await sleep(400);
+    if (!draftState) return;
+    finishDraft();
+    return;
+  }
+
+  // Animated fast-forward: close out current pack, then run compressed packs.
+  await fastForwardClosePack();
+  if (!draftState) return;
+  while (draftState && draftState.packNum <= draftState.totalPacks) {
+    await runFastForwardPack(draftState.packNum);
+    if (!draftState) return;
+  }
+  if (!draftState) return;
+  await sleep(400);
+  finishDraft();
+}
+
+async function fastForwardClosePack() {
+  // Show the chosen picks on the current pack, then animate confirm.
+  renderDraft();
+  await sleep(340);
+  if (!draftState) return;
+  const cards = document.querySelectorAll('#packArena .pack-card');
+  cards.forEach(el => {
+    const idx = parseInt(el.dataset.packIdx, 10);
+    const c = draftState.currentPack[idx];
+    if (c === draftState.pickedOff || c === draftState.pickedDef) el.classList.add('flying-to-deck');
+    else el.classList.add('discarding');
+  });
+  await sleep(340);
+  if (!draftState) return;
+  finalizeCurrentPackPicks();
+}
+
+async function runFastForwardPack(packNum) {
+  if (!draftState) return;
+  const isFinal = packNum >= draftState.totalPacks;
+  draftState.layoutMode = 'fan';
+  draftState.currentPack = generateDraftPack(packNum);
+  draftState.currentPack.forEach(c => { c._revealed = false; });
+
+  // Decide picks up front
+  const offBest = bestAutoPickFromSide(draftState.currentPack.filter(c => c.side === 'off'));
+  const defBest = bestAutoPickFromSide(draftState.currentPack.filter(c => c.side === 'def'));
+  // Render initially with picks hidden so the gold halo doesn't appear pre-reveal
+  draftState.pickedOff = null;
+  draftState.pickedDef = null;
+
+  if (isFinal) {
+    await playFinalPackIntroCompressed();
+    if (!draftState) return;
+  }
+
+  renderDraft();
+  await sleep(180); // compressed fan-in (slowed another 1.5x so picks are readable)
+  if (!draftState) return;
+
+  // Flip stagger ~200ms; rare/legendary keep full-volume sound, commons use quiet flip
+  for (let i = 0; i < draftState.currentPack.length; i++) {
+    if (!draftState) return;
+    revealPackCardFast(i);
+    await sleep(200);
+  }
+
+  // Spread + brief settle (compressed)
+  draftState.layoutMode = 'spread';
+  const arena = document.getElementById('packArena');
+  if (arena) arena.classList.add('spread');
+  applyCardLayout();
+  await sleep(225);
+  if (!draftState) return;
+
+  // Reveal the picks (gold halo + same-side fade) — held long enough to see
+  draftState.pickedOff = offBest;
+  draftState.pickedDef = defBest;
+  renderDraft();
+  await sleep(340);
+  if (!draftState) return;
+
+  // Confirm-transition: picks fly off, others drop down
+  const cards = document.querySelectorAll('#packArena .pack-card');
+  cards.forEach(el => {
+    const idx = parseInt(el.dataset.packIdx, 10);
+    const c = draftState.currentPack[idx];
+    if (c === draftState.pickedOff || c === draftState.pickedDef) el.classList.add('flying-to-deck');
+    else el.classList.add('discarding');
+  });
+  await sleep(340);
+  if (!draftState) return;
+  finalizeCurrentPackPicks();
+}
+
+function revealPackCardFast(idx) {
+  if (!draftState || !draftState.currentPack[idx]) return;
+  const card = draftState.currentPack[idx];
+  card._revealed = true;
+  const el = document.querySelector('[data-pack-idx="' + idx + '"]');
+  if (el) el.classList.add('revealed');
+  if (card.rarity === 'legendary') {
+    document.body.classList.add('body-shake');
+    setTimeout(() => document.body.classList.remove('body-shake'), 320);
+    playSfx('legendaryHit'); // preserved moment — full volume
+  } else if (card.rarity === 'rare') {
+    playSfx('rareFlash'); // preserved moment — full volume
+  } else {
+    playSfx('flipQuiet'); // 0.4x of normal flip volume
+  }
+}
+
+async function playFinalPackIntroCompressed() {
+  const reduced = prefersReducedMotion();
+  if (reduced) {
+    playSfx('finalIntro');
+    return;
+  }
+  const banner = document.createElement('div');
+  banner.className = 'final-pack-banner ff';
+  banner.textContent = 'FINAL PACK';
+  const dim = document.createElement('div');
+  dim.className = 'final-pack-dim ff';
+  document.body.appendChild(dim);
+  document.body.appendChild(banner);
+  playSfx('finalIntro'); // sound stays full volume — once-per-run moment
+  await sleep(900);
+  if (banner.parentNode) banner.parentNode.removeChild(banner);
+  if (dim.parentNode)    dim.parentNode.removeChild(dim);
+}
+
+// ============================================================
+// SEASON HUB
+// ============================================================
+function enterSeason() {
+  showScreen('season');
+  renderSeason();
+}
+
+function renderSeason() {
+  document.getElementById('seasonWeek').textContent = seasonState.week;
+  // Trophies
+  const trophies = document.getElementById('seasonTrophies');
+  trophies.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const t = document.createElement('div');
+    t.className = 'season-trophy' + (i < seasonState.wins ? ' won' : '') + (i === seasonState.wins ? ' next' : '');
+    t.textContent = i < seasonState.wins ? '🏆' : '·';
+    trophies.appendChild(t);
+  }
+  // Current opponent
+  const opp = OPPONENT_TEAMS[Math.min(seasonState.wins, OPPONENT_TEAMS.length - 1)];
+  document.getElementById('seasonOpponentName').textContent = opp.name;
+  document.getElementById('seasonOpponentTier').textContent = '⭐'.repeat(opp.tier);
+  document.getElementById('seasonOpponentFlavor').textContent = opp.flavor;
+}
+
+function playSeasonMatch() {
+  const opp = OPPONENT_TEAMS[Math.min(seasonState.wins, OPPONENT_TEAMS.length - 1)];
+  const aiDeck = buildAIDeck(opp.tier);
+  startGame(seasonState.roster, aiDeck, 'season', opp);
+}
+
+function continueSeason() {
+  if (!seasonState) seasonState = loadSeason();
+  if (!seasonState) { updateMenuSeasonStatus(); return; }
+  enterSeason();
+}
+
+function updateMenuSeasonStatus() {
+  const existing = loadSeason();
+  if (existing && existing.wins < 7) {
+    seasonState = existing;
+    document.getElementById('seasonStatus').style.display = 'block';
+    document.getElementById('seasonStatus').textContent = `SEASON IN PROGRESS · WEEK ${existing.week} · ${existing.wins}/7 WINS`;
+    document.getElementById('continueSeasonBtn').style.display = '';
+  } else {
+    seasonState = null;
+    document.getElementById('seasonStatus').style.display = 'none';
+    document.getElementById('continueSeasonBtn').style.display = 'none';
+  }
+  updateMenuPlayerStats();
+}
+
+function updateMenuPlayerStats() {
+  if (!playerData) return;
+  const lvl  = document.getElementById('menuCoachLevel');
+  const cash = document.getElementById('menuCashDisplay');
+  if (lvl)  lvl.textContent  = playerData.coachLevel;
+  if (cash) cash.textContent = playerData.cash.toLocaleString();
+}
+
+// ============================================================
+// ROSTER VIEW
+// ============================================================
+function showRoster() {
+  if (!seasonState) return;
+  const off = seasonState.roster.filter(c => c.side === 'off');
+  const def = seasonState.roster.filter(c => c.side === 'def');
+  document.getElementById('rosterOffCount').textContent = off.length;
+  document.getElementById('rosterDefCount').textContent = def.length;
+  const list = document.getElementById('rosterList');
+  list.innerHTML = '';
+  const sorted = [...seasonState.roster].sort((a, b) => {
+    if (a.side !== b.side) return a.side === 'off' ? -1 : 1;
+    return a.cost - b.cost;
+  });
+  sorted.forEach(card => {
+    const el = document.createElement('div');
+    el.className = 'builder-card';
+    const statValue = card.side === 'off' ? card.off : card.def;
+    const statClass = card.side === 'off' ? 'off' : 'def';
+    el.innerHTML = `
+      <div class="builder-card-cost">${card.cost}</div>
+      <div class="builder-card-info">
+        <div class="builder-card-name">${card.name}</div>
+        <div class="builder-card-meta">${card.pos} · ${card.team} · ${card.rarity.toUpperCase()}</div>
+        ${card.ability ? `<div class="builder-card-ability">${card.ability}</div>` : ''}
+      </div>
+      <div class="builder-card-stats">
+        <span class="${statClass}">${statValue}</span>
+      </div>
+    `;
+    list.appendChild(el);
+  });
+  showScreen('roster');
+}
+
+// ============================================================
+// LOCKER ROOM — perk loadout management
+// ============================================================
+const PERK_SWAP_COST = 25;
+
+function openLockerRoom() {
+  renderLockerRoom();
+  showScreen('lockerRoom');
+}
+
+function renderLockerRoom() {
+  document.getElementById('lockerCashDisplay').textContent = playerData.cash.toLocaleString();
+  renderEquippedSlots();
+  renderPerkPool();
+}
+
+function renderEquippedSlots() {
+  const cont = document.getElementById('equippedSlots');
+  cont.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const perkId = playerData.perksEquipped[i];
+    const slot = document.createElement('div');
+    slot.className = 'equipped-slot';
+    if (perkId) {
+      const perk = getPerk(perkId);
+      slot.classList.add('filled');
+      slot.innerHTML = `
+        <div class="perk-icon">${perk.icon}</div>
+        <div class="perk-name">${perk.name}</div>
+        <div class="perk-desc">${perk.desc}</div>
+        <button class="unequip-btn" onclick="unequipPerk('${perkId}')">UNEQUIP</button>
+      `;
+    } else {
+      slot.classList.add('empty');
+      slot.innerHTML = `<div class="empty-label">EMPTY</div>`;
+    }
+    cont.appendChild(slot);
+  }
+}
+
+function renderPerkPool() {
+  const cont = document.getElementById('perkPoolGrid');
+  cont.innerHTML = '';
+  PERK_POOL.forEach(perk => {
+    const unlocked = playerData.perksUnlocked.includes(perk.id);
+    const equipped = playerData.perksEquipped.includes(perk.id);
+    const card = document.createElement('div');
+    card.className = 'perk-card' + (unlocked ? '' : ' locked') + (equipped ? ' equipped' : '');
+    card.innerHTML = `
+      <div class="perk-card-icon">${perk.icon}</div>
+      <div class="perk-card-name">${perk.name}</div>
+      <div class="perk-card-desc">${perk.desc}</div>
+      ${equipped ? '<div class="equipped-badge">EQUIPPED</div>' : ''}
+      ${unlocked ? '' : `<div class="lock-overlay">UNLOCK AT LV ${perk.unlockLevel}</div>`}
+    `;
+    if (unlocked && !equipped) {
+      card.addEventListener('click', () => tryEquipPerk(perk.id));
+    }
+    cont.appendChild(card);
+  });
+}
+
+function tryEquipPerk(perkId) {
+  if (!playerData.perksUnlocked.includes(perkId)) return;
+  if (playerData.perksEquipped.includes(perkId)) return;
+  if (playerData.perksEquipped.length < 3) {
+    playerData.perksEquipped.push(perkId);
+    savePlayerData();
+    renderLockerRoom();
+    return;
+  }
+  // All 3 slots are full — show swap modal
+  showSwapPerkModal(perkId);
+}
+
+function showSwapPerkModal(newPerkId) {
+  const newPerk = getPerk(newPerkId);
+  if (!newPerk) return;
+  const canAfford = playerData.cash >= PERK_SWAP_COST;
+  document.getElementById('swapPerkTitle').textContent = 'SWAP IN ' + newPerk.name + '?';
+  document.getElementById('swapPerkBody').innerHTML = canAfford
+    ? `Loadout is full. Swap costs <strong>$${PERK_SWAP_COST}</strong>. Choose which equipped perk to replace with <strong>${newPerk.icon} ${newPerk.name}</strong>.`
+    : `Loadout is full and swaps cost <strong>$${PERK_SWAP_COST}</strong>. You have <strong>$${playerData.cash.toLocaleString()}</strong>. Unequip a perk first (free) or earn more cash.`;
+  const opts = document.getElementById('swapPerkOptions');
+  opts.innerHTML = '';
+  playerData.perksEquipped.forEach(equippedId => {
+    const equippedPerk = getPerk(equippedId);
+    const btn = document.createElement('button');
+    btn.className = 'menu-btn secondary';
+    btn.style.width = '100%';
+    btn.disabled = !canAfford;
+    btn.textContent = `Replace ${equippedPerk.icon} ${equippedPerk.name}`;
+    btn.onclick = () => confirmSwapPerk(equippedId, newPerkId);
+    opts.appendChild(btn);
+  });
+  document.getElementById('swapPerkModal').classList.add('show');
+}
+
+function confirmSwapPerk(oldPerkId, newPerkId) {
+  if (playerData.cash < PERK_SWAP_COST) return;
+  playerData.cash -= PERK_SWAP_COST;
+  const idx = playerData.perksEquipped.indexOf(oldPerkId);
+  if (idx >= 0) playerData.perksEquipped[idx] = newPerkId;
+  savePlayerData();
+  closeSwapPerkModal();
+  renderLockerRoom();
+}
+
+function closeSwapPerkModal() {
+  document.getElementById('swapPerkModal').classList.remove('show');
+}
+
+function unequipPerk(perkId) {
+  playerData.perksEquipped = playerData.perksEquipped.filter(p => p !== perkId);
+  savePlayerData();
+  renderLockerRoom();
+}
+
+function switchLockerTab(tab) {
+  // Phase A: only 'loadout' is active. Others are disabled at the button level.
+  if (tab !== 'loadout') return;
+  document.querySelectorAll('.locker-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.locker-tab-content').forEach(c => c.classList.toggle('active', c.id === tab + 'Tab'));
+}
+
+// Three-step confirmation so the nuke can't fire accidentally.
+function confirmClearProgress() {
+  if (!confirm('Reset ALL player progress? Cash, Coach Level, perks unlocked — everything goes back to zero.')) return;
+  if (!confirm('Really sure? This cannot be undone.')) return;
+  const typed = prompt('Type DELETE to confirm:');
+  if (typed !== 'DELETE') return;
+  clearPlayerData();
+}
+
+// ============================================================
+// MATCH SUMMARY — post-match dopamine screen
+// ============================================================
+// Routing context stashed at endGame time so returnFromSummary knows where
+// to send the player after they tap CONTINUE. We capture this BEFORE the
+// summary screen replaces the live match state.
+let _summaryReturn = null;
+
+function showMatchSummary(matchResult, rewards, levelInfo) {
+  // Populate static fields up front; the sequence below fades each in on cue.
+  const resultEl = document.getElementById('summaryResult');
+  const result = matchResult.won ? 'win' : (matchResult.finalScore.you === matchResult.finalScore.ai ? 'tie' : 'loss');
+  resultEl.className = 'summary-result ' + result;
+  resultEl.textContent = result === 'win' ? 'VICTORY' : result === 'loss' ? 'DEFEAT' : 'TIE GAME';
+
+  document.getElementById('summaryScore').innerHTML =
+    '<span class="you-score">YOU ' + matchResult.finalScore.you + '</span> — ' +
+    '<span class="ai-score">CPU ' + matchResult.finalScore.ai + '</span>';
+  document.getElementById('summaryOpponent').textContent =
+    matchResult.opponent ? 'vs. ' + matchResult.opponent.name : 'QUICK PLAY';
+
+  document.getElementById('xpEarnedDisplay').textContent   = '+0';
+  document.getElementById('cashEarnedDisplay').textContent = '+$0';
+
+  // Reset visibility classes from any previous summary
+  ['summaryResult','summaryScore','summaryOpponent','xpRow','cashRow'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+  document.getElementById('rewardBreakdown').innerHTML = '';
+  const continueBtn = document.getElementById('summaryContinueBtn');
+  continueBtn.classList.remove('show');
+  const banner = document.getElementById('perkUnlockBanner');
+  banner.style.display = 'none';
+  banner.classList.remove('show');
+
+  // Championship banner only on the final season win
+  const champion = document.getElementById('championshipBanner');
+  champion.style.display = _summaryReturn && _summaryReturn.championship ? 'block' : 'none';
+
+  // Level display starts at the PRE-match level/xp so the bar can fill into the new total
+  document.getElementById('summaryLevelNum').textContent = levelInfo.startLevel;
+  const xpBar = document.getElementById('xpBarFill');
+  const xpText = document.getElementById('xpBarText');
+  xpBar.classList.remove('flash');
+  xpBar.style.width = ((levelInfo.startXp / levelInfo.startXpForNext) * 100).toFixed(1) + '%';
+  xpText.textContent = levelInfo.startXp + ' / ' + levelInfo.startXpForNext;
+  updateNextPerkHint(levelInfo.startLevel);
+
+  showScreen('matchSummary');
+  runSummarySequence(rewards, levelInfo);
+}
+
+function updateNextPerkHint(currentLevel) {
+  const hint = document.getElementById('nextPerkHint');
+  const nextPerk = PERK_POOL.find(p => p.unlockLevel > currentLevel);
+  if (nextPerk) {
+    hint.innerHTML = 'Next: <span class="hint-perk">' + nextPerk.icon + ' ' + nextPerk.name + '</span> at Lv ' + nextPerk.unlockLevel;
+  } else {
+    hint.textContent = currentLevel >= COACH_LEVEL_CAP ? 'MAX LEVEL' : 'All Tier 1 perks unlocked';
+  }
+}
+
+async function runSummarySequence(rewards, levelInfo) {
+  const reduced = prefersReducedMotion();
+
+  // t=0: result banner
+  await sleep(reduced ? 10 : 30);
+  document.getElementById('summaryResult').classList.add('show');
+
+  // t≈500: score + opponent
+  await sleep(reduced ? 100 : 470);
+  document.getElementById('summaryScore').classList.add('show');
+  document.getElementById('summaryOpponent').classList.add('show');
+
+  // t≈900: XP row appears, number ticks up
+  await sleep(reduced ? 100 : 400);
+  document.getElementById('xpRow').classList.add('show');
+  await tickValue('xpEarnedDisplay', 0, rewards.xpEarned, reduced ? 200 : 800, v => '+' + v);
+
+  // t≈1700: Cash row appears, ticks up
+  document.getElementById('cashRow').classList.add('show');
+  await tickValue('cashEarnedDisplay', 0, rewards.cashEarned, reduced ? 200 : 800, v => '+$' + v.toLocaleString());
+
+  // Reward breakdown lines staggered
+  const breakdownEl = document.getElementById('rewardBreakdown');
+  rewards.breakdown.forEach(line => {
+    const div = document.createElement('div');
+    div.className = 'reward-breakdown-line';
+    const xp   = line.xp   ? '<span class="bk-xp">+'  + line.xp   + ' XP</span>'   : '';
+    const cash = line.cash ? '<span class="bk-cash">+$' + line.cash + '</span>'   : '';
+    div.innerHTML = '<span>' + line.label + '</span><span>' + xp + cash + '</span>';
+    breakdownEl.appendChild(div);
+  });
+  const lines = breakdownEl.querySelectorAll('.reward-breakdown-line');
+  for (let i = 0; i < lines.length; i++) {
+    await sleep(reduced ? 30 : 180);
+    lines[i].classList.add('show');
+  }
+
+  // XP bar fill — animates from startXp to (startXp + xpEarned), pausing for each level-up
+  await sleep(reduced ? 60 : 240);
+  await animateXpBar(levelInfo, rewards.xpEarned, reduced);
+
+  // First-time perk unlock banner (the most recent one in this batch wins display)
+  const unlockedPerk = [...levelInfo.levelUps].reverse().map(l => l.perkUnlocked).find(Boolean);
+  if (unlockedPerk) {
+    const banner = document.getElementById('perkUnlockBanner');
+    document.getElementById('pubIcon').textContent = unlockedPerk.icon;
+    document.getElementById('pubName').textContent = unlockedPerk.name;
+    document.getElementById('pubDesc').textContent = unlockedPerk.desc;
+    banner.style.display = 'block';
+    void banner.offsetWidth;
+    banner.classList.add('show');
+    playSfx('perkUnlock');
+    await sleep(reduced ? 80 : 320);
+  }
+
+  // Continue button slides up
+  document.getElementById('summaryContinueBtn').classList.add('show');
+}
+
+function tickValue(elId, from, to, ms, fmt) {
+  return new Promise(resolve => {
+    const el = document.getElementById(elId);
+    if (!el) { resolve(); return; }
+    if (from === to) { el.textContent = fmt(to); resolve(); return; }
+    const startT = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - startT) / ms);
+      const val = Math.round(from + (to - from) * t);
+      el.textContent = fmt(val);
+      if (t < 1) {
+        // Light tick at ~10Hz so the count audibly accelerates
+        if (Math.floor(t * (ms / 100)) % 2 === 0) playSfx('tick');
+        requestAnimationFrame(step);
+      } else {
+        el.textContent = fmt(to);
+        resolve();
+      }
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+async function animateXpBar(levelInfo, totalXpEarned, reduced) {
+  const xpBar  = document.getElementById('xpBarFill');
+  const xpText = document.getElementById('xpBarText');
+  const levelNum = document.getElementById('summaryLevelNum');
+
+  // Walk the bar across each level boundary contained in this XP gain.
+  let curLevel = levelInfo.startLevel;
+  let curXp    = levelInfo.startXp;
+  let xpRemaining = totalXpEarned;
+
+  // Single segment ends either at the next level boundary or at curXp+xpRemaining
+  while (xpRemaining > 0) {
+    const needed = xpRequiredForLevel(curLevel + 1) - curXp;
+    if (curLevel >= COACH_LEVEL_CAP) break;
+    if (xpRemaining < needed) {
+      // Fill partially within current level — final segment
+      curXp += xpRemaining;
+      xpRemaining = 0;
+      const pct = (curXp / xpRequiredForLevel(curLevel + 1)) * 100;
+      xpBar.style.width = pct.toFixed(1) + '%';
+      xpText.textContent = curXp + ' / ' + xpRequiredForLevel(curLevel + 1);
+      await sleep(reduced ? 220 : 1050);
+    } else {
+      // Fill to 100%, level up, then continue with leftover XP
+      xpRemaining -= needed;
+      xpBar.style.width = '100%';
+      xpText.textContent = xpRequiredForLevel(curLevel + 1) + ' / ' + xpRequiredForLevel(curLevel + 1);
+      await sleep(reduced ? 200 : 1050);
+      // Level up moment
+      xpBar.classList.add('flash');
+      playSfx('levelUp');
+      curLevel++;
+      levelNum.textContent = curLevel;
+      updateNextPerkHint(curLevel);
+      await sleep(reduced ? 100 : 360);
+      xpBar.classList.remove('flash');
+      // Reset bar to 0 for next level
+      curXp = 0;
+      xpBar.style.transition = 'none';
+      xpBar.style.width = '0%';
+      void xpBar.offsetWidth;
+      xpBar.style.transition = '';
+      xpText.textContent = '0 / ' + xpRequiredForLevel(curLevel + 1);
+      await sleep(reduced ? 60 : 200);
+    }
+  }
+}
+
+function returnFromSummary() {
+  const ret = _summaryReturn;
+  _summaryReturn = null;
+  if (!ret) { showScreen('menu'); updateMenuSeasonStatus(); return; }
+  // Season match: route to the season hub if it's still in progress; otherwise menu
+  if (ret.mode === 'season') {
+    if (ret.seasonOngoing) {
+      enterSeason();
+    } else {
+      showScreen('menu');
+      updateMenuSeasonStatus();
+    }
+  } else {
+    showScreen('menu');
+    updateMenuSeasonStatus();
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  loadPlayerData();
+  updateMenuSeasonStatus();
+  // Edge-fade shadows on the hand update as the player swipe-scrolls
+  const hand = document.getElementById('hand');
+  if (hand) hand.addEventListener('scroll', updateHandScrollShadows);
+});
+
+</script>

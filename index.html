@@ -1,0 +1,3047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>GRIDIRON TACTICS</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    background: #050810;
+    color: #e8e8e0;
+    font-family: 'Oswald', sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+  }
+  #game-container {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(ellipse at top, #182040 0%, transparent 60%),
+      radial-gradient(ellipse at bottom, #2a1410 0%, transparent 60%),
+      #050810;
+  }
+  #game-container canvas {
+    display: block;
+    box-shadow: 0 0 80px rgba(255, 184, 0, 0.18);
+  }
+  #loading-overlay {
+    position: fixed; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: #050810; color: #ffb800; z-index: 10000;
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 8px; font-size: 28px;
+    transition: opacity 0.6s;
+  }
+  #loading-bar {
+    width: 60vw; max-width: 400px; height: 6px;
+    background: rgba(255,184,0,0.15); border-radius: 3px;
+    margin-top: 24px; overflow: hidden;
+  }
+  #loading-fill {
+    height: 100%; width: 0%; background: #ffb800;
+    transition: width 0.2s;
+  }
+</style>
+</head>
+<body>
+<div id="game-container"></div>
+<div id="loading-overlay">
+  <div>LOADING</div>
+  <div id="loading-bar"><div id="loading-fill"></div></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
+<script>
+// ============================================================
+// GRIDIRON TACTICS — Phaser Edition (full feature port)
+// ============================================================
+const GAME_W = 900;
+const GAME_H = 1500;
+const LANE_COUNT = 3;
+const MAX_SLOTS = 8;
+const MAX_DRIVES = 8;
+const HAND_SIZE = 5;
+const MAX_ENERGY_BANK = 10;
+const DECK_SIZE = 30;
+const ASSET_BASE = 'assets/ui/';
+const PLAYER_DATA_KEY = 'gridiron_player_v1';
+const PLAYER_DATA_VERSION = 1;
+const SEASON_KEY = 'gridiron_season_v1';
+const COACH_LEVEL_CAP = 50;
+const PERK_SWAP_COST = 25;
+
+// ---------- DATA ----------
+const NFL_TEAMS = ['ARI','ATL','BAL','BUF','CAR','CHI','CIN','CLE','DAL','DEN','DET','GB','HOU','IND','JAX','KC','LV','LAC','LAR','MIA','MIN','NE','NO','NYG','NYJ','PHI','PIT','SF','SEA','TB','TEN','WAS'];
+const FIRST_NAMES = ['Jalen','Trey','Marcus','Devon','Tyrese','Caleb','Brock','Justin','Patrick','Lamar','Joe','Josh','Dak','Jared','Bo','Drake','Kyle','Mac','Aaron','Kirk','Baker','Sam','Travis','Mark','George','Brandon','Stefon','Tee','Ja','Garrett','Maxx','Khalil','Micah','Nick','Aidan','Sauce','Pat','Derwin','Minkah','Roquan','Fred','Quinnen','Chris','Trent','Lane','Tristan','Christian','Saquon','Bijan','Jonathan','Derrick','Alvin','Tony','James','Austin','Trevor','Daniel','Tua','Anthony','Bryce','Davante','AJ','Mike','Cooper','Tyler','Calvin','DeAndre','Hunter','Joey','Bradley','Brian','Demarcus','Von','Bobby','Jamal','Budda','Jessie','Tyrann','Marlon','Marshon','Jaire','Stephon','Kenny'];
+const LAST_NAMES = ['Allen','Hurts','Mahomes','Jackson','Burrow','Herbert','Williams','Stroud','Young','Love','Prescott','Goff','Watson','Smith','Carr','Rodgers','Wilson','Mayfield','Murray','Daniels','Henry','Taylor','Robinson','Conner','Mostert','Kamara','Mixon','Pollard','Jacobs','Barkley','Cook','Pierce','Walker','Etienne','Pacheco','White','Stevenson','Hill','Jefferson','Chase','Lamb','Diggs','Adams','Higgins','Brown','Pittman','Olave','McLaurin','Aiyuk','Kupp','Samuel','Godwin','Sutton','Waddle','Beckham','Kelce','Andrews','Pitts','Hockenson','Kittle','LaPorta','Engram','Bowers','Watt','Garrett','Parsons','Bosa','Crosby','Mack','Hendrickson','Hutchinson','Donald','Heyward','Wilkins','Buckner','Sweat','Burns','Anderson','Wagner','David','Lloyd','Edmunds','Mosley','Campbell','Sneed','Surtain','Stingley','Lattimore','Slay','Hooker','Hamilton','James','Bates','Mathieu','Winfield','Fitzpatrick','Poyer'];
+const POSITIONS_OFF = ['QB','RB','WR','TE','OL','K'];
+const POSITIONS_DEF = ['CB','S','LB','DE','DT','ST'];
+
+const STAT_BY_COST = {
+  1: { min: 6,  max: 11 },
+  2: { min: 13, max: 19 },
+  3: { min: 20, max: 28 },
+  4: { min: 28, max: 36 },
+  5: { min: 38, max: 50 },
+  6: { min: 50, max: 62 }
+};
+const RARITY_DISTRIBUTION = [
+  { rarity: 'common',    weight: 70, statBonus: 0 },
+  { rarity: 'uncommon',  weight: 20, statBonus: 3 },
+  { rarity: 'rare',      weight: 8,  statBonus: 7 },
+  { rarity: 'legendary', weight: 2,  statBonus: 12 }
+];
+const RARITY_RANK = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
+
+const ABILITY_POOL = {
+  off: [
+    { ability: 'SNAP: Draw a card',              desc: 'snapDraw',         minCost: 1 },
+    { ability: 'SNAP: +6 OFF to this lane',      desc: 'snapBuffOffLane',  minCost: 3 },
+    { ability: 'SNAP: +10 yds, push back 10',    desc: 'snapStealYards',   minCost: 4 },
+    { ability: 'SNAP: 3-pt FG if past midfield', desc: 'snapFieldGoal',    minCost: 4, posOnly: ['K'] },
+    { ability: 'SNAP: +8 OFF to all OFF cards',  desc: 'snapBuffAllOff',   minCost: 5 },
+    { ability: 'FIELD: +4 OFF to OFF here',      desc: 'fieldBuffOffAll',  minCost: 3 },
+    { ability: 'FIELD: +5 OFF to OL here',       desc: 'fieldBuffOff',     minCost: 2, posOnly: ['OL'] },
+    { ability: 'FIELD: +6 OFF all your OFF',     desc: 'fieldBuffAllOff',  minCost: 5 },
+    { ability: 'PAT bonus on TD in this lane',   desc: '',                 minCost: 2, posOnly: ['K'] }
+  ],
+  def: [
+    { ability: 'SNAP: -8 enemy OFF here',        desc: 'snapDebuffEnemyOff', minCost: 3 },
+    { ability: 'SNAP: Push enemy back 12 yds',   desc: 'snapDefYards',       minCost: 4 },
+    { ability: 'SNAP: -10 enemy OFF yds',        desc: 'snapPunt',           minCost: 2, posOnly: ['ST'] },
+    { ability: 'FIELD: +3 DEF to CB/S here',     desc: 'fieldBuffDef',       minCost: 2 },
+    { ability: 'FIELD: Blocks 5 enemy yds/drive',desc: 'fieldYardBlock',     minCost: 4 },
+    { ability: 'FIELD: All enemy OFF here -5',   desc: 'fieldDebuffAll',     minCost: 5 },
+    { ability: 'FIELD: +6 DEF all your DEF',     desc: 'fieldBuffAllDef',    minCost: 5 }
+  ]
+};
+
+const LANE_DEFS = [
+  { name: 'LEFT',   flavor: 'Strong Side' },
+  { name: 'MIDDLE', flavor: 'Trenches' },
+  { name: 'RIGHT',  flavor: 'Weak Side' }
+];
+
+const LANE_MODIFIERS = [
+  { id:'homeTurf',     name:'HOME TURF',     desc:'Your OFF +5, enemy OFF -5',      color:'#4aff8a' },
+  { id:'muddyField',   name:'MUDDY FIELD',   desc:'All OFF -25%, all DEF +25%',     color:'#b08a5a' },
+  { id:'windTunnel',   name:'WIND TUNNEL',   desc:'No FGs · QB/WR -5 OFF',          color:'#88ddff' },
+  { id:'frozenTundra', name:'FROZEN TUNDRA', desc:'All abilities disabled',         color:'#aaeeff' },
+  { id:'blindingSun',  name:'BLINDING SUN',  desc:'WR/TE -8 OFF',                   color:'#ffdd44' },
+  { id:'redZone',      name:'RED ZONE',      desc:'All OFF +8',                     color:'#ff5a3a' },
+  { id:'hurryUp',      name:'HURRY-UP',      desc:'OFF cards cost -1',              color:'#ffff66' },
+  { id:'preventD',     name:'PREVENT D',     desc:'DEF cards cost -1',              color:'#66ffff' },
+  { id:'blitzZone',    name:'BLITZ ZONE',    desc:'DEF SNAP abilities trigger 2x',  color:'#ff77aa' },
+  { id:'scramble',     name:'SCRAMBLE',      desc:'QBs +12 OFF',                    color:'#ffaa44' },
+  { id:'groundPound',  name:'GROUND POUND',  desc:'RB +10, OL +5 OFF',              color:'#d8a060' },
+  { id:'airRaid',      name:'AIR RAID',      desc:'WR/TE +8 OFF',                   color:'#5acaff' },
+  { id:'trenches',     name:'TRENCHES',      desc:'OL +6 OFF, DT +6 DEF',           color:'#c8c8c8' },
+  { id:'secondary',    name:'SECONDARY',     desc:'CB/S +6 DEF',                    color:'#88ddff' },
+  { id:'specialUnit',  name:'ST UNIT',       desc:'K/ST +15 to stat',               color:'#ffd060' },
+  { id:'coinFlip',     name:'COIN FLIP',     desc:'Each drive: 2x or 1/2 yards',    color:'#dd99ff' },
+  { id:'playOfGame',   name:'PLAY OF GAME',  desc:'Highest-stat card here +20',     color:'#ff66ff' }
+];
+
+const SYNERGIES = [
+  { id:'playAction',      icon:'🤝', name:'PLAY ACTION',   side:'off',
+    match: c => { const qb=c.find(x=>x.pos==='QB'), rb=c.find(x=>x.pos==='RB'); return (qb&&rb)?[qb,rb]:null; },
+    apply: m => m.forEach(c => c.curOff += 12) },
+  { id:'spreadOffense',   icon:'📡', name:'SPREAD',        side:'off',
+    match: c => { const w=c.filter(x=>x.pos==='WR'); return w.length>=3?w:null; },
+    apply: m => m.forEach(c => c.curOff += 6) },
+  { id:'protectedPocket', icon:'🛡️', name:'POCKET',        side:'off',
+    match: c => { const qb=c.find(x=>x.pos==='QB'), ol=c.filter(x=>x.pos==='OL'); return (qb&&ol.length>=2)?[qb]:null; },
+    apply: m => m.forEach(c => c.curOff += 15) },
+  { id:'redZoneThreat',   icon:'🎯', name:'RED ZONE',      side:'off',
+    match: c => { const te=c.find(x=>x.pos==='TE'), qb=c.find(x=>x.pos==='QB'); return (te&&qb)?[te,qb]:null; },
+    apply: m => m.forEach(c => c.curOff += 8) },
+  { id:'wildcat',         icon:'🏃', name:'WILDCAT',       side:'off',
+    match: c => { const r=c.filter(x=>x.pos==='RB'); return r.length>=2?r:null; },
+    apply: m => m.forEach(c => c.curOff += 10) },
+  { id:'trickPlay',       icon:'🎩', name:'TRICK PLAY',    side:'off',
+    match: c => { const wr=c.find(x=>x.pos==='WR'),rb=c.find(x=>x.pos==='RB'),te=c.find(x=>x.pos==='TE'); return (wr&&rb&&te)?[wr,rb,te]:null; },
+    apply: m => m.forEach(c => c.curOff += 5) },
+  { id:'fieldGeneral',    icon:'🎖️', name:'FIELD GEN',     side:'off',
+    match: c => { const qb=c.find(x=>x.pos==='QB'&&x.cost>=5), r=c.filter(x=>x.pos==='WR'||x.pos==='TE'); return (qb&&r.length>=2)?[qb]:null; },
+    apply: m => m.forEach(c => c.curOff += 15) },
+  { id:'zoneDefense',     icon:'🦅', name:'ZONE D',        side:'def',
+    match: c => { const cb=c.filter(x=>x.pos==='CB'); return cb.length>=2?cb:null; },
+    apply: m => m.forEach(c => c.curDef += 5) },
+  { id:'strongSafety',    icon:'💪', name:'STRONG SAFETY', side:'def',
+    match: c => { const s=c.find(x=>x.pos==='S'),lb=c.find(x=>x.pos==='LB'); return (s&&lb)?[s,lb]:null; },
+    apply: m => m.forEach(c => c.curDef += 6) },
+  { id:'stackedFront',    icon:'⛓️', name:'STACKED FRONT', side:'def',
+    match: c => { const dl=c.filter(x=>x.pos==='DE'||x.pos==='DT'); return dl.length>=3?dl:null; },
+    apply: m => m.forEach(c => c.curDef += 8) },
+  { id:'blitzPackage',    icon:'🎯', name:'BLITZ',         side:'def',
+    match: c => { const lb=c.find(x=>x.pos==='LB'),de=c.find(x=>x.pos==='DE'); return (lb&&de)?[lb,de]:null; },
+    apply: m => m.forEach(c => c.curDef += 7) },
+  { id:'secondarySupport',icon:'🤝', name:'SECONDARY',     side:'def',
+    match: c => { const cb=c.filter(x=>x.pos==='CB'),ss=c.filter(x=>x.pos==='S'); return (cb.length>=2&&ss.length>=1)?[...cb,...ss]:null; },
+    apply: m => m.forEach(c => c.curDef += 5) },
+  { id:'kickingUnit',     icon:'🏈', name:'KICKING UNIT',  side:'st',
+    match: c => { const k=c.find(x=>x.pos==='K'),st=c.find(x=>x.pos==='ST'); return (k&&st)?[k]:null; },
+    apply: m => m.forEach(c => c.curOff += 5) }
+];
+
+const PERK_POOL = [
+  { id:'bigHand',       name:'BIG HAND',       icon:'🃏', tier:1, unlockLevel:1,  desc:'Hand size +1' },
+  { id:'banker',        name:'BANKER',         icon:'💰', tier:1, unlockLevel:3,  desc:'Energy bank +2' },
+  { id:'airItOut',      name:'AIR IT OUT',     icon:'🏈', tier:1, unlockLevel:5,  desc:'WR/TE cards +3 OFF' },
+  { id:'groundGame',    name:'GROUND GAME',    icon:'💪', tier:1, unlockLevel:7,  desc:'RB cards +3 OFF' },
+  { id:'runStuffer',    name:'RUN STUFFER',    icon:'🛡️', tier:1, unlockLevel:9,  desc:'DL cards +3 DEF' },
+  { id:'coverageCoach', name:'COVERAGE COACH', icon:'🦅', tier:1, unlockLevel:11, desc:'DB cards +3 DEF' },
+  { id:'quickReads',    name:'QUICK READS',    icon:'⚡', tier:1, unlockLevel:13, desc:'+2 energy on drive 1' }
+];
+
+const OPPONENT_TEAMS = [
+  { name:'Wildcats', tier:1, flavor:"Easy game. Don't get cocky." },
+  { name:'Stallions',tier:2, flavor:'A scrappy bunch with something to prove.' },
+  { name:'Mavericks',tier:3, flavor:'Playoff hopefuls. Bring your A-game.' },
+  { name:'Titans',   tier:4, flavor:'Top-five defense in the league.' },
+  { name:'Outlaws',  tier:5, flavor:"They didn't lose all year." },
+  { name:'Phantoms', tier:6, flavor:'Conference champions. The real deal.' },
+  { name:'Dynasty',  tier:7, flavor:'Defending champs. This is for the ring.' }
+];
+
+const STARTER_POSITION_PLAN = {
+  off: ['QB','QB','RB','RB','RB','WR','WR','WR','WR','TE','TE','OL','OL','OL','K'],
+  def: ['CB','CB','CB','S','S','LB','LB','LB','DE','DE','DT','DT','ST','ST','ST']
+};
+
+const PACK_RARITY_TABLE = [
+  null,
+  { common: 80, uncommon: 18, rare: 2,  legendary: 0  },
+  { common: 75, uncommon: 22, rare: 3,  legendary: 0  },
+  { common: 70, uncommon: 25, rare: 5,  legendary: 0  },
+  { common: 60, uncommon: 30, rare: 9,  legendary: 1  },
+  { common: 50, uncommon: 35, rare: 13, legendary: 2  },
+  { common: 40, uncommon: 38, rare: 18, legendary: 4  },
+  { common: 30, uncommon: 40, rare: 24, legendary: 6  },
+  { common: 20, uncommon: 40, rare: 30, legendary: 10 },
+  { common: 10, uncommon: 38, rare: 38, legendary: 14 },
+  { common: 0,  uncommon: 30, rare: 50, legendary: 20 }
+];
+
+const TOOLTIPS = {
+  youScore:  { title:'YOUR SCORE',  body:'Points scored this match. Win by outscoring CPU after 8 drives.\nTD=6 (+1 PAT, +2 conv)\nSafety=2  Pick-6=6  FG=3' },
+  aiScore:   { title:'CPU SCORE',   body:'CPU points. If they finish higher after 8 drives, you lose.' },
+  energy:    { title:'ENERGY',      body:'Spend to play cards.\nEach drive grants +N energy where N is the drive number.\nUnspent energy banks up to ' + MAX_ENERGY_BANK + '.' },
+  modifier:  { title:'LANE MODIFIER', body:'A unique rule that applies to this lane the whole match.' },
+  powerPill: { title:'NET YARDS',   body:'Yards your ball will move this drive if you SNAP now.\n(your OFF − their DEF) ÷ 2.5 + ability mods.' },
+  deck:      { title:'DRAW PILE',   body:'Cards left in deck. Each drive draws up to your hand size. When empty, discard reshuffles in.' },
+  discard:   { title:'DISCARD PILE',body:'Unplayed cards from previous drives. Reshuffle in when deck empties.' }
+};
+
+// ============================================================
+// UTILS
+// ============================================================
+function uid() { return Math.random().toString(36).slice(2,9); }
+function pickOne(a) { return a[Math.floor(Math.random()*a.length)]; }
+function shuffle(a) { const x=[...a]; for (let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]];} return x; }
+function randInt(min, max) { return Math.floor(Math.random()*(max-min+1))+min; }
+function pickWeighted(items) {
+  const total = items.reduce((s,i)=>s+i.weight,0);
+  let r = Math.random()*total;
+  for (const it of items) { r -= it.weight; if (r<=0) return it; }
+  return items[items.length-1];
+}
+function prefersReducedMotion() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+function rollRarity(dist) {
+  const r = Math.floor(Math.random()*100); let acc=0;
+  acc += dist.common;   if (r<acc) return 'common';
+  acc += dist.uncommon; if (r<acc) return 'uncommon';
+  acc += dist.rare;     if (r<acc) return 'rare';
+  return 'legendary';
+}
+
+// ============================================================
+// CARD GENERATION
+// ============================================================
+function generateCard(forcedSide, forcedRarity) {
+  const side = forcedSide || (Math.random()<0.5 ? 'off' : 'def');
+  const positions = side==='off' ? POSITIONS_OFF : POSITIONS_DEF;
+  const posWeights = side==='off'
+    ? { QB:18, RB:16, WR:22, TE:12, OL:18, K:14 }
+    : { CB:20, S:16, LB:20, DE:16, DT:14, ST:14 };
+  const pos = pickWeighted(positions.map(p => ({ value:p, weight:posWeights[p] }))).value;
+  const costWeights = [{value:1,weight:18},{value:2,weight:24},{value:3,weight:22},{value:4,weight:18},{value:5,weight:12},{value:6,weight:6}];
+  const cost = pickWeighted(costWeights).value;
+  let rInfo = forcedRarity ? RARITY_DISTRIBUTION.find(r=>r.rarity===forcedRarity) : null;
+  if (!rInfo) rInfo = pickWeighted(RARITY_DISTRIBUTION);
+  const sr = STAT_BY_COST[cost];
+  const baseStat = randInt(sr.min, sr.max) + rInfo.statBonus;
+  const off = side==='off' ? baseStat : 0;
+  const def = side==='def' ? baseStat : 0;
+  const chance = rInfo.rarity==='common' ? 0.15 : rInfo.rarity==='uncommon' ? 0.35 : rInfo.rarity==='rare' ? 0.7 : 1.0;
+  let ability = '', desc = '';
+  if (Math.random() < chance) {
+    const pool = ABILITY_POOL[side].filter(a => cost >= a.minCost && (!a.posOnly || a.posOnly.includes(pos)));
+    if (pool.length) { const p = pickOne(pool); ability = p.ability; desc = p.desc; }
+  }
+  if (pos==='K' && !ability) ability = 'PAT bonus on TD in this lane';
+  return {
+    id: uid(),
+    name: pickOne(FIRST_NAMES) + ' ' + pickOne(LAST_NAMES),
+    pos, team: pickOne(NFL_TEAMS),
+    cost, off, def, side, ability, desc,
+    rarity: rInfo.rarity,
+    hasAbility: !!ability
+  };
+}
+
+function generateStarterCard(side, pos) {
+  const cw = [{value:1,weight:22},{value:2,weight:28},{value:3,weight:26},{value:4,weight:16},{value:5,weight:6},{value:6,weight:2}];
+  const cost = pickWeighted(cw).value;
+  const sr = STAT_BY_COST[cost];
+  const baseStat = randInt(sr.min, sr.max);
+  let ability = '', desc = '';
+  if (Math.random() < 0.12) {
+    const pool = ABILITY_POOL[side].filter(a => cost >= a.minCost && (!a.posOnly || a.posOnly.includes(pos)));
+    if (pool.length) { const p = pickOne(pool); ability = p.ability; desc = p.desc; }
+  }
+  if (pos==='K' && !ability) ability = 'PAT bonus on TD in this lane';
+  return {
+    id: uid(),
+    name: pickOne(FIRST_NAMES) + ' ' + pickOne(LAST_NAMES),
+    pos, team: pickOne(NFL_TEAMS),
+    cost,
+    off: side==='off' ? baseStat : 0,
+    def: side==='def' ? baseStat : 0,
+    side, ability, desc,
+    rarity:'common',
+    hasAbility: !!ability
+  };
+}
+
+function generateStarterDeck() {
+  const c = [];
+  STARTER_POSITION_PLAN.off.forEach(p => c.push(generateStarterCard('off', p)));
+  STARTER_POSITION_PLAN.def.forEach(p => c.push(generateStarterCard('def', p)));
+  return c;
+}
+
+function generateDraftPack(packNum) {
+  const dist = PACK_RARITY_TABLE[packNum] || PACK_RARITY_TABLE[1];
+  const cards = [];
+  for (let i=0;i<3;i++) cards.push(generateCard('off', rollRarity(dist)));
+  for (let i=0;i<3;i++) cards.push(generateCard('def', rollRarity(dist)));
+  return cards;
+}
+
+function generateMasterPool(size = 100) {
+  const pool = [];
+  const half = Math.floor(size/2);
+  for (let i=0;i<half;i++) pool.push(generateCard('off'));
+  for (let i=0;i<half;i++) pool.push(generateCard('def'));
+  return shuffle(pool);
+}
+
+function buildQuickPlayDeck() {
+  const pool = generateMasterPool(120);
+  const offCards = pool.filter(c => c.side==='off').sort((a,b)=>a.cost-b.cost);
+  const defCards = pool.filter(c => c.side==='def').sort((a,b)=>a.cost-b.cost);
+  const offDeck = [], defDeck = [];
+  const curve = [1,1,1,1,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,5,5,6];
+  for (const tc of curve) {
+    const oc = offCards.filter(c => c.cost===tc && !offDeck.includes(c)); if (oc.length) offDeck.push(pickOne(oc));
+    const dc = defCards.filter(c => c.cost===tc && !defDeck.includes(c)); if (dc.length) defDeck.push(pickOne(dc));
+  }
+  while (offDeck.length < 25) { const c = offCards.find(x=>!offDeck.includes(x)); if (c) offDeck.push(c); else break; }
+  while (defDeck.length < 25) { const c = defCards.find(x=>!defDeck.includes(x)); if (c) defDeck.push(c); else break; }
+  return shuffle([...offDeck, ...defDeck]);
+}
+
+function buildAIDeck(difficulty = 1) {
+  const cards = [];
+  const tierStatBonus = (difficulty - 1) * 2;
+  for (let i=0;i<25;i++) { const c = generateCard('off'); c.off += tierStatBonus; cards.push(c); }
+  for (let i=0;i<25;i++) { const c = generateCard('def'); c.def += tierStatBonus; cards.push(c); }
+  return shuffle(cards);
+}
+
+function kickoffPos() {
+  if (Math.random() < 0.05) return 40 + Math.floor(Math.random()*21);
+  return 15 + Math.floor(Math.random()*21);
+}
+
+// ============================================================
+// PLAYER DATA + SEASON STATE (localStorage)
+// ============================================================
+function defaultPlayerData() {
+  return {
+    version: PLAYER_DATA_VERSION,
+    cash: 0, coachLevel: 1, coachXp: 0,
+    perksUnlocked: ['bigHand'],
+    perksEquipped: [],
+    stats: { totalMatches:0, totalWins:0, totalLosses:0, currentWinStreak:0, longestWinStreak:0, shutouts:0, comebacks:0 },
+    daily: {},
+    tutorialSeen: false
+  };
+}
+
+let playerData = null;
+
+function loadPlayerData() {
+  try {
+    const raw = localStorage.getItem(PLAYER_DATA_KEY);
+    if (!raw) { playerData = defaultPlayerData(); savePlayerData(); return; }
+    const parsed = JSON.parse(raw);
+    playerData = Object.assign(defaultPlayerData(), parsed);
+    playerData.stats = Object.assign(defaultPlayerData().stats, parsed.stats || {});
+  } catch (e) {
+    playerData = defaultPlayerData();
+    try { savePlayerData(); } catch(_) {}
+  }
+}
+
+function savePlayerData() {
+  try { localStorage.setItem(PLAYER_DATA_KEY, JSON.stringify(playerData)); } catch(e) {}
+}
+
+function clearPlayerData() {
+  try { localStorage.removeItem(PLAYER_DATA_KEY); } catch(e) {}
+  playerData = defaultPlayerData();
+  savePlayerData();
+}
+
+function hasPerk(id) { return !!(playerData && playerData.perksEquipped && playerData.perksEquipped.includes(id)); }
+function getPerk(id) { return PERK_POOL.find(p => p.id === id); }
+function getHandSize(side) { let s = HAND_SIZE; if (side !== 'ai' && hasPerk('bigHand')) s += 1; return s; }
+function getMaxEnergyBank(side) { let c = MAX_ENERGY_BANK; if (side !== 'ai' && hasPerk('banker')) c += 2; return c; }
+
+let seasonState = null;
+function loadSeason() {
+  try { const s = localStorage.getItem(SEASON_KEY); if (s) return JSON.parse(s); } catch(e) {}
+  return null;
+}
+function saveSeason() {
+  if (!seasonState) { try { localStorage.removeItem(SEASON_KEY); } catch(e) {} return; }
+  try { localStorage.setItem(SEASON_KEY, JSON.stringify(seasonState)); } catch(e) {}
+}
+function clearSeason() { seasonState = null; try { localStorage.removeItem(SEASON_KEY); } catch(e) {} }
+
+// ============================================================
+// XP / LEVEL / REWARDS
+// ============================================================
+function xpRequiredForLevel(level) {
+  if (level <= 5)  return 100;
+  if (level <= 15) return 200 + (level - 5)  * 50;
+  if (level <= 30) return 800 + (level - 15) * 100;
+  if (level <= 50) return 2500 + (level - 30) * 200;
+  return 7000;
+}
+
+function applyXpAndLevelUp(xpToAdd) {
+  const startLevel     = playerData.coachLevel;
+  const startXp        = playerData.coachXp;
+  const startXpForNext = xpRequiredForLevel(startLevel + 1);
+  const levelUps = [];
+  playerData.coachXp += xpToAdd;
+  while (playerData.coachLevel < COACH_LEVEL_CAP &&
+         playerData.coachXp >= xpRequiredForLevel(playerData.coachLevel + 1)) {
+    playerData.coachXp -= xpRequiredForLevel(playerData.coachLevel + 1);
+    playerData.coachLevel++;
+    const cashReward = 100 * playerData.coachLevel;
+    playerData.cash += cashReward;
+    let perkUnlocked = null;
+    PERK_POOL.forEach(perk => {
+      if (perk.unlockLevel === playerData.coachLevel && !playerData.perksUnlocked.includes(perk.id)) {
+        playerData.perksUnlocked.push(perk.id);
+        perkUnlocked = perk;
+      }
+    });
+    levelUps.push({ newLevel: playerData.coachLevel, perkUnlocked, cashReward });
+  }
+  if (playerData.coachLevel >= COACH_LEVEL_CAP) playerData.coachXp = 0;
+  savePlayerData();
+  return { startLevel, startXp, startXpForNext, levelUps };
+}
+
+function playerDataPlayedToday() {
+  const today = new Date().toISOString().slice(0,10);
+  return !!(playerData.daily && playerData.daily.lastMatchDate === today);
+}
+function markPlayerPlayedToday() {
+  if (!playerData.daily) playerData.daily = {};
+  playerData.daily.lastMatchDate = new Date().toISOString().slice(0,10);
+}
+
+function calculateMatchRewards(matchResult) {
+  const tier = matchResult.opponent ? matchResult.opponent.tier : 1;
+  const baseXp = matchResult.won ? 75 : 25;
+  const baseCash = matchResult.won ? 150 : 50;
+  let xpEarned = baseXp * tier;
+  let cashEarned = baseCash;
+  const breakdown = [
+    { label: (matchResult.won ? 'Match Won' : 'Match Played') + (tier>1 ? ' (Tier ' + tier + ')' : ''), xp: baseXp * tier, cash: baseCash }
+  ];
+  if (!playerDataPlayedToday()) {
+    xpEarned += 50; cashEarned += 200;
+    breakdown.push({ label:'First Match Today', xp:50, cash:200 });
+  }
+  markPlayerPlayedToday();
+  if (matchResult.won && matchResult.finalScore.ai === 0) {
+    xpEarned += 50;
+    breakdown.push({ label:'Perfect Shutout', xp:50, cash:0 });
+  }
+  if (matchResult.won && matchResult.stats.wasTrailingBy14AtHalftime) {
+    xpEarned += 50;
+    breakdown.push({ label:'Comeback Win', xp:50, cash:0 });
+  }
+  return { xpEarned, cashEarned, breakdown };
+}
+
+// ============================================================
+// GAME STATE (single global G)
+// ============================================================
+let G = null;
+
+function newGame(playerDeck, aiDeck, mode, opponent) {
+  const mods = shuffle([...LANE_MODIFIERS]).slice(0, 3);
+  const youDeck = shuffle(playerDeck.map(c => ({ ...c, uid: uid() })));
+  const aiD = shuffle(aiDeck.map(c => ({ ...c, uid: uid() })));
+  G = {
+    mode: mode || 'quick',
+    opponent: opponent || null,
+    drive: 1,
+    youScore: 0, aiScore: 0,
+    youEnergy: 1, aiEnergy: 1,
+    youDeck, aiDeck: aiD,
+    youHand: [], aiHand: [],
+    youDiscard: [], aiDiscard: [],
+    pendingPlays: [],
+    lanes: mods.map((m, i) => ({
+      idx: i, ...LANE_DEFS[i], modifier: m,
+      youCards: [], aiCards: [],
+      youPos: kickoffPos(), aiPos: kickoffPos(),
+      driveSinceScore: 0,
+      lockedFor: null
+    })),
+    busy: false, gameOver: false,
+    _wasTrailingBy14: undefined
+  };
+  drawCardsToHand('you', getHandSize());
+  drawCardsToHand('ai',  getHandSize('ai'));
+  if (hasPerk('quickReads')) {
+    G.youEnergy = Math.min(getMaxEnergyBank(), G.youEnergy + 2);
+  }
+  return G;
+}
+
+function drawCardsToHand(side, count) {
+  const deck = side==='you' ? G.youDeck : G.aiDeck;
+  const hand = side==='you' ? G.youHand : G.aiHand;
+  const disc = side==='you' ? G.youDiscard : G.aiDiscard;
+  const drawn = [];
+  let reshuffled = false;
+  for (let i=0;i<count;i++) {
+    if (deck.length === 0) {
+      if (disc.length === 0) break;
+      while (disc.length) deck.push(disc.shift());
+      const sh = shuffle(deck); deck.length = 0; deck.push(...sh);
+      reshuffled = true;
+    }
+    if (deck.length === 0) break;
+    const c = deck.shift();
+    hand.push(c);
+    drawn.push(c);
+  }
+  if (reshuffled && side === 'you') G._reshuffleFlash = true;
+  return drawn;
+}
+
+function discardHand(side) {
+  const hand = side==='you' ? G.youHand : G.aiHand;
+  const disc = side==='you' ? G.youDiscard : G.aiDiscard;
+  while (hand.length) disc.push(hand.shift());
+}
+
+function effectiveCost(card, lane) {
+  if (!lane || !lane.modifier) return card.cost;
+  if (lane.modifier.id === 'hurryUp'  && card.side === 'off') return Math.max(1, card.cost - 1);
+  if (lane.modifier.id === 'preventD' && card.side === 'def') return Math.max(1, card.cost - 1);
+  return card.cost;
+}
+
+function pendingCost() {
+  return G.pendingPlays.filter(p => p.side==='you').reduce((s,p) => s + p.effectiveCost, 0);
+}
+
+// ============================================================
+// SYNERGIES + FIELD EFFECTS + LANE STATS
+// ============================================================
+function detectSynergies(cards) {
+  const active = [];
+  for (const syn of SYNERGIES) {
+    const m = syn.match(cards);
+    if (m && m.length) active.push(syn);
+  }
+  return active;
+}
+function applySynergies(cards) {
+  for (const syn of SYNERGIES) {
+    const m = syn.match(cards);
+    if (m && m.length) syn.apply(m);
+  }
+}
+
+function applyLaneFieldEffects(lane) {
+  [...lane.youCards, ...lane.aiCards].forEach(c => {
+    if (!c.revealed || c.ejected) return;
+    const isYou = lane.youCards.includes(c);
+    const friendlies = isYou ? lane.youCards : lane.aiCards;
+    const enemies    = isYou ? lane.aiCards  : lane.youCards;
+    switch (c.desc) {
+      case 'fieldBuffOff':
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.pos === 'OL')
+          .forEach(x => { x._fieldOff = (x._fieldOff||0) + 5; });
+        break;
+      case 'fieldBuffOffAll':
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.side === 'off')
+          .forEach(x => { x._fieldOff = (x._fieldOff||0) + 4; });
+        break;
+      case 'fieldBuffDef':
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && (x.pos === 'CB' || x.pos === 'S'))
+          .forEach(x => { x._fieldDef = (x._fieldDef||0) + 3; });
+        break;
+      case 'fieldDebuffAll':
+        enemies.filter(x => x.revealed && !x.ejected && x.side === 'off')
+          .forEach(x => { x._fieldOff = (x._fieldOff||0) - 5; });
+        break;
+    }
+  });
+}
+
+function applyPerkStatBuffs(lane) {
+  const you = lane.youCards.filter(c => c.revealed && !c.ejected);
+  if (hasPerk('airItOut'))     you.filter(c => c.pos==='WR' || c.pos==='TE').forEach(c => c.curOff += 3);
+  if (hasPerk('groundGame'))   you.filter(c => c.pos==='RB').forEach(c => c.curOff += 3);
+  if (hasPerk('runStuffer'))   you.filter(c => c.pos==='DE' || c.pos==='DT').forEach(c => c.curDef += 3);
+  if (hasPerk('coverageCoach'))you.filter(c => c.pos==='CB' || c.pos==='S').forEach(c => c.curDef += 3);
+}
+
+function applyLaneModifier(lane) {
+  if (!lane.modifier) return;
+  const all = [...lane.youCards, ...lane.aiCards].filter(c => c.revealed && !c.ejected);
+  const you = lane.youCards.filter(c => c.revealed && !c.ejected);
+  const ai  = lane.aiCards .filter(c => c.revealed && !c.ejected);
+  switch (lane.modifier.id) {
+    case 'homeTurf':
+      you.filter(c => c.side==='off').forEach(c => c.curOff += 5);
+      ai .filter(c => c.side==='off').forEach(c => c.curOff = Math.max(0, c.curOff - 5));
+      break;
+    case 'muddyField':
+      all.forEach(c => { c.curOff = Math.floor(c.curOff * 0.75); c.curDef = Math.floor(c.curDef * 1.25); });
+      break;
+    case 'windTunnel':
+      all.filter(c => c.pos==='QB' || c.pos==='WR').forEach(c => c.curOff = Math.max(0, c.curOff - 5));
+      break;
+    case 'frozenTundra':
+      all.forEach(c => c._abilitiesDisabled = true);
+      break;
+    case 'blindingSun':
+      all.filter(c => c.pos==='WR' || c.pos==='TE').forEach(c => c.curOff = Math.max(0, c.curOff - 8));
+      break;
+    case 'redZone':
+      all.filter(c => c.side==='off').forEach(c => c.curOff += 8);
+      break;
+    case 'scramble':
+      all.filter(c => c.pos==='QB').forEach(c => c.curOff += 12);
+      break;
+    case 'groundPound':
+      all.filter(c => c.pos==='RB').forEach(c => c.curOff += 10);
+      all.filter(c => c.pos==='OL').forEach(c => c.curOff += 5);
+      break;
+    case 'airRaid':
+      all.filter(c => c.pos==='WR' || c.pos==='TE').forEach(c => c.curOff += 8);
+      break;
+    case 'trenches':
+      all.filter(c => c.pos==='OL').forEach(c => c.curOff += 6);
+      all.filter(c => c.pos==='DT').forEach(c => c.curDef += 6);
+      break;
+    case 'secondary':
+      all.filter(c => c.pos==='CB' || c.pos==='S').forEach(c => c.curDef += 6);
+      break;
+    case 'specialUnit':
+      all.filter(c => c.pos==='K') .forEach(c => c.curOff += 15);
+      all.filter(c => c.pos==='ST').forEach(c => c.curDef += 15);
+      break;
+    case 'playOfGame':
+      if (all.length) {
+        let h = all[0], hs = h.side==='off' ? h.curOff : h.curDef;
+        all.forEach(c => { const s = c.side==='off' ? c.curOff : c.curDef; if (s > hs) { h = c; hs = s; } });
+        if (h.side==='off') h.curOff += 20; else h.curDef += 20;
+      }
+      break;
+  }
+}
+
+function computeLaneStats(lane) {
+  [...lane.youCards, ...lane.aiCards].forEach(c => {
+    if (c.revealed) { c._fieldOff = 0; c._fieldDef = 0; }
+  });
+  applyLaneFieldEffects(lane);
+  // cross-lane field effects
+  G.lanes.forEach(other => {
+    if (other === lane) return;
+    [...other.youCards, ...other.aiCards].forEach(c => {
+      if (!c.revealed || c.ejected) return;
+      const isYou = other.youCards.includes(c);
+      const friendlies = isYou ? lane.youCards : lane.aiCards;
+      if (c.desc === 'fieldBuffAllOff') {
+        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'off').forEach(x => { x._fieldOff = (x._fieldOff||0) + 6; });
+      }
+      if (c.desc === 'fieldBuffAllDef') {
+        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'def').forEach(x => { x._fieldDef = (x._fieldDef||0) + 6; });
+      }
+    });
+  });
+  [...lane.youCards, ...lane.aiCards].forEach(c => {
+    if (c.revealed) {
+      c.curOff = Math.max(0, (c._baseOff ?? c.off) + (c._fieldOff||0));
+      c.curDef = Math.max(0, (c._baseDef ?? c.def) + (c._fieldDef||0));
+      if (c.ejected) { c.curOff = 0; c.curDef = 0; }
+    }
+  });
+  applyLaneModifier(lane);
+  applyPerkStatBuffs(lane);
+  applySynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
+  applySynergies(lane.aiCards .filter(c => c.revealed && !c.ejected));
+  const youOff = lane.youCards.filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
+  const youDef = lane.youCards.filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
+  const aiOff  = lane.aiCards .filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
+  const aiDef  = lane.aiCards .filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
+  return { youOff, youDef, aiOff, aiDef };
+}
+
+// ============================================================
+// AUDIO (Web Audio synth — extends Phase-1 set)
+// ============================================================
+let audioCtx = null;
+function audio() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){return null;} }
+  if (audioCtx.state === 'suspended') { try { audioCtx.resume(); } catch(e){} }
+  return audioCtx;
+}
+function sfx(type) {
+  const ctx = audio(); if (!ctx) return;
+  const now = ctx.currentTime;
+  const beep = (t, opts) => {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = opts.type || 'sine';
+    o.frequency.setValueAtTime(opts.f0, t);
+    if (opts.f1) o.frequency.exponentialRampToValueAtTime(opts.f1, t + opts.dur);
+    g.gain.setValueAtTime(opts.vol || 0.14, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + opts.dur);
+    o.connect(g).connect(ctx.destination);
+    o.start(t); o.stop(t + opts.dur + 0.01);
+  };
+  try {
+    if (type === 'play')    beep(now, { type:'triangle', f0:660, f1:990, dur:0.13 });
+    else if (type === 'snap') { [440,660,880].forEach((f,i) => beep(now + i*0.06, { type:'sawtooth', f0:f, dur:0.18, vol:0.13 })); }
+    else if (type === 'td')   { [523,659,783,1046,1318].forEach((f,i) => beep(now + i*0.08, { type:'sawtooth', f0:f, dur:0.3, vol:0.16 })); }
+    else if (type === 'fg')     beep(now, { type:'triangle', f0:440, f1:880, dur:0.25, vol:0.18 });
+    else if (type === 'safety') beep(now, { type:'sawtooth', f0:220, f1:110, dur:0.35, vol:0.2 });
+    else if (type === 'click')  beep(now, { type:'square',   f0:880, dur:0.04, vol:0.06 });
+    else if (type === 'reveal') beep(now, { type:'sine',     f0:900, f1:220, dur:0.13, vol:0.12 });
+    else if (type === 'flip')   beep(now, { type:'sine',     f0:900, f1:220, dur:0.13, vol:0.16 });
+    else if (type === 'rareFlash')   beep(now, { type:'triangle', f0:880, f1:1760, dur:0.22, vol:0.18 });
+    else if (type === 'legendaryHit'){ [523.25,659.25,783.99,1046.5].forEach((f,i) => beep(now + i*0.07, { type:'sawtooth', f0:f, dur:0.28, vol:0.13 })); }
+    else if (type === 'tick')       beep(now, { type:'square',   f0:880, dur:0.05, vol:0.07 });
+    else if (type === 'tickUrgent') beep(now, { type:'square',   f0:1320,dur:0.08, vol:0.12 });
+    else if (type === 'pick')       beep(now, { type:'triangle', f0:660, f1:990, dur:0.13, vol:0.14 });
+    else if (type === 'confirm')    beep(now, { type:'triangle', f0:440, f1:880, dur:0.2, vol:0.2 });
+    else if (type === 'discard')    beep(now, { type:'sine',     f0:240, f1:110, dur:0.24, vol:0.1 });
+    else if (type === 'draw')       beep(now, { type:'sine',     f0:620, f1:880, dur:0.1, vol:0.07 });
+    else if (type === 'reshuffle')  beep(now, { type:'sawtooth', f0:880, f1:180, dur:0.5, vol:0.12 });
+    else if (type === 'levelUp')   { [523.25,659.25,783.99].forEach((f,i) => beep(now + i*0.11, { type:'triangle', f0:f, dur:0.28, vol:0.18 })); }
+    else if (type === 'perkUnlock'){ [523.25,659.25,783.99,1046.5,1318.51].forEach((f,i) => beep(now + i*0.10, { type:'sawtooth', f0:f, dur:0.3, vol:0.14 })); }
+    else if (type === 'coinFlip')   beep(now, { type:'sine', f0:420, f1:900, dur:0.22, vol:0.12 });
+    else if (type === 'finalIntro'){ [880,659.25,440].forEach((f,i) => beep(now + i*0.18, { type:'sawtooth', f0:f, dur:0.4, vol:0.17 })); }
+  } catch(e) {}
+}
+
+// ============================================================
+// CARD LAYOUT + RENDERING
+// ============================================================
+const CARD_LAYOUT = {
+  portrait: { x: 0.078, y: 0.057, w: 0.844, h: 0.581 },
+  cost:     { cx: 0.148, cy: 0.107, r: 0.087 },
+  pos:      { x: 0.689, y: 0.064, w: 0.223, h: 0.072 },
+  name:     { x: 0.120, y: 0.656, w: 0.760, h: 0.076 },
+  stat:     { x: 0.241, y: 0.783, w: 0.518, h: 0.155 },
+  star:     { cx: 0.906, cy: 0.934, r: 0.036 }
+};
+const POS_ICON_MAP = {
+  QB:'pos_qb', RB:'pos_rb', WR:'pos_wr', TE:'pos_te', OL:'pos_ol', K:'pos_k',
+  CB:'pos_cb', S:'pos_s', LB:'pos_lb', DE:'pos_de', DT:'pos_dt', ST:'pos_st'
+};
+function cardFrameKey(card) { return `card_${card.rarity}_${card.side}`; }
+
+function buildCard(scene, card, targetW, opts = {}) {
+  const hidden = !!opts.hidden;
+  const dimmed = !!opts.dimmed;
+  const cont = scene.add.container(0, 0);
+  const frameKey = cardFrameKey(card);
+  const tex = scene.textures.get(frameKey);
+  const src = tex.source[0];
+  const aspect = src.height / src.width;
+  const W = targetW, H = targetW * aspect;
+  cont.cardWidth = W; cont.cardHeight = H;
+
+  if (hidden) {
+    const back = scene.add.graphics();
+    back.fillStyle(0x111824, 1); back.fillRoundedRect(-W/2, -H/2, W, H, 12);
+    back.lineStyle(4, 0xffb800, 0.8); back.strokeRoundedRect(-W/2, -H/2, W, H, 12);
+    back.lineStyle(2, 0xffb800, 0.25);
+    for (let i = -H/2 + 14; i < H/2 - 14; i += 14) {
+      back.beginPath(); back.moveTo(-W/2 + 12, i); back.lineTo(W/2 - 12, i + 8); back.strokePath();
+    }
+    cont.add(back);
+    const q = scene.add.text(0, -10, '?', {
+      fontFamily:'Bebas Neue', fontSize: Math.round(H*0.45)+'px', color:'#ffb800', stroke:'#000', strokeThickness:4
+    }).setOrigin(0.5);
+    cont.add(q);
+    return cont;
+  }
+
+  const pX = (CARD_LAYOUT.portrait.x + CARD_LAYOUT.portrait.w/2 - 0.5) * W;
+  const pY = (CARD_LAYOUT.portrait.y + CARD_LAYOUT.portrait.h/2 - 0.5) * H;
+  const pW = CARD_LAYOUT.portrait.w * W;
+  const pH = CARD_LAYOUT.portrait.h * H;
+  const portBg = scene.add.graphics();
+  portBg.fillStyle(0x1a1a26, 1); portBg.fillRect(pX - pW/2, pY - pH/2, pW, pH);
+  for (let i=0;i<pH;i+=12) { portBg.fillStyle(0x000000, 0.15); portBg.fillRect(pX - pW/2, pY - pH/2 + i, pW, 6); }
+  cont.add(portBg);
+
+  let portraitImg;
+  if (card.pos === 'QB' && scene.textures.exists('portrait_qb_default')) {
+    portraitImg = scene.add.image(pX, pY, 'portrait_qb_default');
+    const t = scene.textures.get('portrait_qb_default').source[0];
+    const tA = t.width / t.height, cA = pW / pH;
+    if (tA > cA) portraitImg.setDisplaySize(pW, pW / tA);
+    else portraitImg.setDisplaySize(pH * tA, pH);
+  } else {
+    const iconKey = POS_ICON_MAP[card.pos];
+    if (iconKey && scene.textures.exists(iconKey)) {
+      portraitImg = scene.add.image(pX, pY + pH*0.04, iconKey);
+      const t = scene.textures.get(iconKey).source[0];
+      const iA = t.width / t.height;
+      const maxW = pW * 0.85, maxH = pH * 0.85;
+      if (iA > maxW / maxH) portraitImg.setDisplaySize(maxW, maxW / iA);
+      else portraitImg.setDisplaySize(maxH * iA, maxH);
+    }
+  }
+  if (portraitImg) cont.add(portraitImg);
+
+  const frame = scene.add.image(0, 0, frameKey);
+  frame.setDisplaySize(W, H);
+  cont.add(frame);
+
+  const cX = (CARD_LAYOUT.cost.cx - 0.5) * W;
+  const cY = (CARD_LAYOUT.cost.cy - 0.5) * H;
+  cont.add(scene.add.text(cX, cY, String(card.cost), {
+    fontFamily:'Bebas Neue', fontSize: Math.round(H*0.075)+'px', color:'#ffb800', stroke:'#000', strokeThickness:3
+  }).setOrigin(0.5));
+
+  const posX = (CARD_LAYOUT.pos.x + CARD_LAYOUT.pos.w/2 - 0.5) * W;
+  const posY = (CARD_LAYOUT.pos.y + CARD_LAYOUT.pos.h/2 - 0.5) * H;
+  cont.add(scene.add.text(posX, posY, card.pos, {
+    fontFamily:'Bebas Neue', fontSize: Math.round(H*0.045)+'px', color:'#fff', stroke:'#000', strokeThickness:2
+  }).setOrigin(0.5));
+
+  const nX = (CARD_LAYOUT.name.x + CARD_LAYOUT.name.w/2 - 0.5) * W;
+  const nY = (CARD_LAYOUT.name.y + CARD_LAYOUT.name.h/2 - 0.5) * H;
+  const nameW = CARD_LAYOUT.name.w * W;
+  const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
+  const nameTxt = scene.add.text(nX, nY, lastName + ' · ' + card.team, {
+    fontFamily:'Bebas Neue', fontSize: Math.round(H*0.05)+'px', color:'#222', letterSpacing:1
+  }).setOrigin(0.5);
+  if (nameTxt.width > nameW - 8) nameTxt.setScale((nameW - 8) / nameTxt.width);
+  cont.add(nameTxt);
+
+  const sX = (CARD_LAYOUT.stat.x + CARD_LAYOUT.stat.w/2 - 0.5) * W;
+  const sY = (CARD_LAYOUT.stat.y + CARD_LAYOUT.stat.h/2 - 0.5) * H;
+  const statVal = card.side==='off' ? (card.curOff ?? card.off) : (card.curDef ?? card.def);
+  const statColor = card.side==='off' ? '#ff7a1a' : '#2a8aff';
+  cont.add(scene.add.text(sX, sY, String(statVal), {
+    fontFamily:'Bebas Neue', fontSize: Math.round(H*0.11)+'px', color:statColor, stroke:'#000', strokeThickness:3
+  }).setOrigin(0.5));
+
+  if (card.hasAbility || card.ability) {
+    const stX = (CARD_LAYOUT.star.cx - 0.5) * W;
+    const stY = (CARD_LAYOUT.star.cy - 0.5) * H;
+    const star = scene.add.image(stX, stY, 'star_ability');
+    star.setDisplaySize(W * 0.10, W * 0.10);
+    cont.add(star);
+  }
+
+  if (dimmed) {
+    const dim = scene.add.graphics();
+    dim.fillStyle(0x000000, 0.55); dim.fillRoundedRect(-W/2, -H/2, W, H, 12);
+    cont.add(dim);
+    cont.add(scene.add.text(0, 0, 'NO ENERGY', {
+      fontFamily:'Bebas Neue', fontSize: Math.round(H*0.07)+'px', color:'#ff4444', stroke:'#000', strokeThickness:4
+    }).setOrigin(0.5));
+  }
+  return cont;
+}
+
+// ============================================================
+// SCENE: BOOT
+// ============================================================
+class BootScene extends Phaser.Scene {
+  constructor() { super({ key:'BootScene' }); }
+  preload() {
+    const overlay = document.getElementById('loading-overlay');
+    const fill = document.getElementById('loading-fill');
+    this.load.on('progress', p => { fill.style.width = (p*100) + '%'; });
+    this.load.on('complete', () => {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.style.display = 'none', 600);
+    });
+    this.load.image('stadium_bg', ASSET_BASE + '04_stadium_bg.png');
+    this.load.image('field_bg',   ASSET_BASE + 'football-field-bg.png');
+    this.load.image('endzone_green', ASSET_BASE + '03_endzone_green.png');
+    this.load.image('endzone_red',   ASSET_BASE + '02_endzone_red.png');
+    this.load.image('logo',          ASSET_BASE + 'logo.png');
+    this.load.image('subtitle_logo', ASSET_BASE + 'subtitle-logo.png');
+    this.load.image('scoreboard',    ASSET_BASE + '01_scoreboard_frame.png');
+    this.load.image('btn_snap',      ASSET_BASE + '07_button_snap.png');
+    this.load.image('btn_concede',   ASSET_BASE + '07_button_concede.png');
+    this.load.image('badge_deck',    ASSET_BASE + '16_badge_deck.png');
+    this.load.image('badge_discard', ASSET_BASE + '17_badge_discard.png');
+    this.load.image('yardage_strip', ASSET_BASE + '06_yardage_strip.png');
+    this.load.image('orb_frame',     ASSET_BASE + '09_energy_orb_frame.png');
+    this.load.image('football',      ASSET_BASE + '10_football_icon.png');
+    this.load.image('football_sb',   ASSET_BASE + '11_football_scoreboard.png');
+    this.load.image('ring_you',      ASSET_BASE + '12_ring_you.png');
+    this.load.image('ring_cpu',      ASSET_BASE + '13_ring_cpu.png');
+    this.load.image('power_red',     ASSET_BASE + '14_power_circle_red.png');
+    this.load.image('power_green',   ASSET_BASE + '15_power_circle_green.png');
+    this.load.image('pill_left',     ASSET_BASE + '05_pill_left.png');
+    this.load.image('pill_mid',      ASSET_BASE + '05_pill_middle.png');
+    this.load.image('pill_right',    ASSET_BASE + '05_pill_right.png');
+    this.load.image('coin_heads',    ASSET_BASE + '30_coin_heads.png');
+    this.load.image('coin_tails',    ASSET_BASE + '31_coin_tails.png');
+    for (const rarity of ['common','uncommon','rare','legendary']) {
+      for (const side of ['off','def']) {
+        const num = { common: side==='off'?'18':'19',
+                      uncommon: side==='off'?'20':'21',
+                      rare: side==='off'?'22':'23',
+                      legendary: side==='off'?'24':'25' }[rarity];
+        this.load.image(`card_${rarity}_${side}`, ASSET_BASE + num + '_card_' + rarity + '_' + side + '.png');
+      }
+    }
+    this.load.image('star_ability', ASSET_BASE + '27_star_ability.png');
+    this.load.image('portrait_qb_default', ASSET_BASE + '26_portraits/qb_black_navy.png');
+    for (const key of Object.values(POS_ICON_MAP)) {
+      this.load.image(key, ASSET_BASE + 'icons/' + key + '.png');
+    }
+    // Modifier icons — only load ones we actually have
+    const modIconIds = ['homeTurf','muddyField','windTunnel','frozenTundra','blindingSun','redZone','hurryUp','preventD','blitzZone','scramble','groundPound','airRaid','trenches','secondary','specialUnit','coinFlip','playOfGame','turnover','suddenDeath'];
+    modIconIds.forEach(id => this.load.image('mod_' + id, ASSET_BASE + 'icons/mod_' + id + '.png'));
+  }
+  create() { this.scene.start('MenuScene'); }
+}
+
+// ============================================================
+// REUSABLE UI HELPERS (shared across scenes)
+// ============================================================
+function makeAssetButton(scene, x, y, label, assetKey, textColor, onClick, opts = {}) {
+  const w = opts.w || 440;
+  const cont = scene.add.container(x, y);
+  const btn = scene.add.image(0, 0, assetKey);
+  const tex = scene.textures.get(assetKey).source[0];
+  const h = w * (tex.height / tex.width);
+  btn.setDisplaySize(w, h);
+  cont.add(btn);
+  const t = scene.add.text(0, 0, label, {
+    fontFamily:'Bebas Neue', fontSize: (opts.fontSize || 52) + 'px',
+    color: textColor, stroke:'#000', strokeThickness:4, letterSpacing:4
+  }).setOrigin(0.5);
+  cont.add(t);
+  cont.setSize(w, h).setInteractive({ useHandCursor:true });
+  cont.on('pointerover', () => cont.setScale(1.05));
+  cont.on('pointerout',  () => cont.setScale(1));
+  cont.on('pointerdown', () => cont.setScale(0.96));
+  cont.on('pointerup',   () => { cont.setScale(1); onClick(); });
+  cont.label = t;
+  return cont;
+}
+
+function showToast(scene, msg, duration = 1500, color = '#ffb800') {
+  const W = scene.scale.width;
+  const cont = scene.add.container(W/2, 200).setDepth(9000).setAlpha(0);
+  const bg = scene.add.graphics();
+  bg.fillStyle(0x000000, 0.85); bg.fillRoundedRect(-220, -28, 440, 56, 12);
+  bg.lineStyle(2, Phaser.Display.Color.HexStringToColor(color).color, 0.9);
+  bg.strokeRoundedRect(-220, -28, 440, 56, 12);
+  cont.add(bg);
+  const txt = scene.add.text(0, 0, msg, {
+    fontFamily:'Bebas Neue', fontSize:'28px', color, stroke:'#000', strokeThickness:3, letterSpacing:2, align:'center'
+  }).setOrigin(0.5);
+  cont.add(txt);
+  scene.tweens.add({ targets: cont, alpha: 1, y: 220, duration: 200, ease: 'Cubic.out' });
+  scene.time.delayedCall(duration, () => {
+    scene.tweens.add({ targets: cont, alpha: 0, y: 200, duration: 250, onComplete: () => cont.destroy() });
+  });
+}
+
+// Boot
+const config = {
+  type: Phaser.AUTO,
+  parent: 'game-container',
+  width: GAME_W, height: GAME_H,
+  backgroundColor: '#050810',
+  resolution: Math.min(window.devicePixelRatio || 1, 2),
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scene: []
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadPlayerData();
+});
+</script>
+<script id="scenes-script">
+// ============================================================
+// SCENE: GAME — match loop with abilities/synergies/FG/2pt
+// ============================================================
+class GameScene extends Phaser.Scene {
+  constructor() { super({ key:'GameScene' }); }
+
+  create() {
+    this.cameras.main.fadeIn(400);
+    this.W = this.scale.width; this.H = this.scale.height;
+    this.LANE_GAP = 14;
+    this.LANE_W = (this.W - 50 - this.LANE_GAP * 2) / 3;
+    this.LANE_X = [25 + this.LANE_W/2,
+                   25 + this.LANE_W + this.LANE_GAP + this.LANE_W/2,
+                   25 + (this.LANE_W + this.LANE_GAP)*2 + this.LANE_W/2];
+    this.HEADER_H = 160;
+    this.FIELD_Y = this.HEADER_H + 10;
+    this.FIELD_H = 860;
+    this.HAND_Y = this.HEADER_H + this.FIELD_H + 30;
+    this.HAND_H = 280;
+    this.FOOTER_Y = this.H - 70;
+    this.reduced = prefersReducedMotion();
+
+    this.drawBackground();
+    this.buildScoreboard();
+    this.buildLanes();
+    this.buildHandArea();
+    this.buildFooter();
+
+    this.input.on('drop', (p, go, dz) => this.handleDrop(go, dz));
+    this.input.on('dragenter', (p, go, dz) => {
+      const lane = this.laneContainers[dz.laneIdx];
+      if (lane && lane.highlight) lane.highlight.setVisible(true);
+    });
+    this.input.on('dragleave', (p, go, dz) => {
+      const lane = this.laneContainers[dz.laneIdx];
+      if (lane && lane.highlight) lane.highlight.setVisible(false);
+    });
+    this.input.on('dragend', (p, go, dropped) => {
+      this.laneContainers.forEach(l => { if (l.highlight) l.highlight.setVisible(false); });
+      if (!dropped && go.input) {
+        this.tweens.add({ targets: go, x: go.input.dragStartX, y: go.input.dragStartY, scale: 1, duration: 250, ease:'Back.out' });
+      }
+    });
+
+    this.render();
+
+    // Tutorial — first run only
+    if (!playerData.tutorialSeen && G.mode === 'quick') {
+      this.time.delayedCall(800, () => this.showTutorialHint());
+      playerData.tutorialSeen = true;
+      savePlayerData();
+    }
+  }
+
+  showTutorialHint() {
+    showToast(this, 'DRAG a card to a lane to play it', 2400, '#ffb800');
+    this.time.delayedCall(2600, () => showToast(this, 'Tap SNAP! when ready to reveal', 2400, '#4aff8a'));
+  }
+
+  drawBackground() {
+    const g = this.add.graphics(); g.fillStyle(0x080c14, 1); g.fillRect(0, 0, this.W, this.H);
+    const stadium = this.add.image(this.W/2, this.HEADER_H/2, 'stadium_bg');
+    stadium.setDisplaySize(this.W, this.HEADER_H + 50); stadium.setAlpha(0.4);
+  }
+
+  buildScoreboard() {
+    const sb = this.add.image(this.W/2, 75, 'scoreboard');
+    const sbTex = this.textures.get('scoreboard').source[0];
+    sb.setDisplaySize(this.W - 20, (this.W - 20) * (sbTex.height / sbTex.width));
+
+    const youLbl = this.add.text(170, 75, 'YOU', { fontFamily:'Bebas Neue', fontSize:'24px', color:'#fff', stroke:'#000', strokeThickness:3 }).setOrigin(0.5, 1);
+    this.youScoreText = this.add.text(170, 100, '0', { fontFamily:'Bebas Neue', fontSize:'54px', color:'#fff', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
+    this.makeTooltip(youLbl, 'youScore');
+    this.makeTooltip(this.youScoreText, 'youScore');
+
+    const aiLbl = this.add.text(this.W - 170, 75, G.opponent ? G.opponent.name.toUpperCase().slice(0,6) : 'CPU', { fontFamily:'Bebas Neue', fontSize:'24px', color:'#fff', stroke:'#000', strokeThickness:3 }).setOrigin(0.5, 1);
+    this.aiScoreText = this.add.text(this.W - 170, 100, '0', { fontFamily:'Bebas Neue', fontSize:'54px', color:'#fff', stroke:'#000', strokeThickness:4 }).setOrigin(0.5);
+    this.makeTooltip(aiLbl, 'aiScore'); this.makeTooltip(this.aiScoreText, 'aiScore');
+
+    this.driveText = this.add.text(this.W/2, 60, 'DRIVE 1 / 8', { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ffb800', stroke:'#000', strokeThickness:3, letterSpacing:2 }).setOrigin(0.5);
+    this.quarterText = this.add.text(this.W/2, 100, '1ST QUARTER', { fontFamily:'Oswald', fontSize:'20px', color:'#fff', letterSpacing:4 }).setOrigin(0.5);
+
+    const orbX = this.W/2; const orbY = this.HEADER_H + 6;
+    const orbBg = this.add.circle(orbX, orbY, 38, 0xffb800, 1);
+    this.energyOrbGlow = this.add.circle(orbX, orbY, 44, 0xffb800, 0.3);
+    const orb = this.add.image(orbX, orbY, 'orb_frame'); orb.setDisplaySize(110, 110);
+    this.energyText = this.add.text(orbX, orbY, '1', { fontFamily:'Bebas Neue', fontSize:'42px', color:'#000', stroke:'#ffb800', strokeThickness:2 }).setOrigin(0.5);
+    this.energyOrb = orbBg;
+    orb.setInteractive({ useHandCursor:true });
+    this.makeTooltip(orb, 'energy');
+
+    const quit = this.add.container(60, 135);
+    const qBg = this.add.graphics(); qBg.fillStyle(0x331010, 0.9); qBg.fillRoundedRect(-46,-16,92,28,6); qBg.lineStyle(2,0xd62828,0.8); qBg.strokeRoundedRect(-46,-16,92,28,6);
+    const qTxt = this.add.text(0, 0, '◀ QUIT', { fontFamily:'Oswald', fontSize:'15px', color:'#ff7a7a', letterSpacing:2 }).setOrigin(0.5);
+    quit.add([qBg, qTxt]); quit.setSize(92,28).setInteractive({ useHandCursor:true });
+    quit.on('pointerup', () => {
+      sfx('click');
+      this.cameras.main.fadeOut(300);
+      this.time.delayedCall(300, () => this.scene.start('MenuScene'));
+    });
+  }
+
+  makeTooltip(target, key) {
+    if (!target.setInteractive) return;
+    if (!target.input) target.setInteractive({ useHandCursor:true });
+    target.on('pointerup', () => this.showTooltip(key));
+  }
+
+  showTooltip(key) {
+    const t = TOOLTIPS[key]; if (!t) return;
+    const W = this.W, H = this.H;
+    const cont = this.add.container(W/2, H/2).setDepth(9500);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.75); dim.fillRect(-W/2, -H/2, W, H);
+    cont.add(dim);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.98); panel.fillRoundedRect(-340, -200, 680, 400, 16);
+    panel.lineStyle(3, 0xffb800, 1); panel.strokeRoundedRect(-340, -200, 680, 400, 16);
+    cont.add(panel);
+    cont.add(this.add.text(0, -160, t.title, { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ffb800', letterSpacing:4 }).setOrigin(0.5));
+    cont.add(this.add.text(0, -40, t.body, { fontFamily:'Oswald', fontSize:'22px', color:'#e8e8e0', wordWrap:{ width: 620 }, align:'center', lineSpacing:6 }).setOrigin(0.5));
+    const close = makeAssetButton(this, 0, 150, 'GOT IT', 'btn_snap', '#fff', () => cont.destroy(), { w: 280, fontSize: 36 });
+    cont.add(close);
+    dim.setInteractive(new Phaser.Geom.Rectangle(-W/2, -H/2, W, H), Phaser.Geom.Rectangle.Contains);
+    dim.on('pointerup', () => cont.destroy());
+  }
+
+  buildLanes() {
+    this.laneContainers = [];
+    this.laneCardLayers = [];
+    this.laneOverlays = [];
+    for (let i=0;i<3;i++) {
+      const cx = this.LANE_X[i];
+      const cy = this.FIELD_Y + this.FIELD_H/2;
+      const cont = this.add.container(cx, cy);
+      const bg = this.add.image(0, 0, 'endzone_green'); bg.setDisplaySize(this.LANE_W, this.FIELD_H); bg.setAlpha(0.6);
+      cont.add(bg);
+      const dk = this.add.graphics();
+      dk.fillStyle(0x000000, 0.35); dk.fillRoundedRect(-this.LANE_W/2, -this.FIELD_H/2, this.LANE_W, this.FIELD_H, 10);
+      dk.lineStyle(2, 0xffb800, 0.4); dk.strokeRoundedRect(-this.LANE_W/2, -this.FIELD_H/2, this.LANE_W, this.FIELD_H, 10);
+      cont.add(dk);
+      const cardLayer = this.add.container(0, 0); cont.add(cardLayer); this.laneCardLayers.push(cardLayer);
+      const overlay = this.add.container(0, 0); cont.add(overlay); this.laneOverlays.push(overlay);
+      const dz = this.add.zone(0, 0, this.LANE_W, this.FIELD_H).setRectangleDropZone(this.LANE_W, this.FIELD_H);
+      dz.laneIdx = i; cont.add(dz);
+      const hl = this.add.graphics();
+      hl.lineStyle(6, 0xffb800, 1); hl.strokeRoundedRect(-this.LANE_W/2+3, -this.FIELD_H/2+3, this.LANE_W-6, this.FIELD_H-6, 10);
+      hl.setVisible(false); cont.add(hl); cont.highlight = hl;
+      this.laneContainers.push(cont);
+    }
+  }
+
+  renderLaneOverlay(idx) {
+    const lane = G.lanes[idx];
+    const overlay = this.laneOverlays[idx];
+    overlay.removeAll(true);
+
+    const cpuBarY = -this.FIELD_H/2 + 30;
+    this.drawYardageBar(overlay, cpuBarY, 'ai', lane);
+    this.drawModifier(overlay, 0, lane);
+    const youBarY = this.FIELD_H/2 - 30;
+    this.drawYardageBar(overlay, youBarY, 'you', lane);
+
+    const stats = computeLaneStats(lane);
+    const youNet = Math.floor(stats.youOff/2.5) - Math.floor(stats.aiDef/2.5);
+    const aiNet  = Math.floor(stats.aiOff/2.5) - Math.floor(stats.youDef/2.5);
+    this.drawPowerPill(overlay, -this.LANE_W/2 + 32, -60, aiNet, 'ai');
+    this.drawPowerPill(overlay,  this.LANE_W/2 - 32, -60, youNet, 'you');
+
+    // Synergy badges (Phase 2): show active synergies per side, near each row
+    const youSyn = detectSynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
+    const aiSyn  = detectSynergies(lane.aiCards .filter(c => c.revealed && !c.ejected));
+    this.drawSynergyBadges(overlay, aiSyn,  this.FIELD_H/2 - this.FIELD_H + 230,  -1);
+    this.drawSynergyBadges(overlay, youSyn, this.FIELD_H/2 - 230,                  1);
+  }
+
+  drawSynergyBadges(parent, list, y, dir) {
+    if (!list.length) return;
+    const startX = -this.LANE_W/2 + 8;
+    list.forEach((s, i) => {
+      const x = startX + i * 70;
+      const cont = this.add.container(x, y + (dir < 0 ? -6 : 6));
+      const bg = this.add.graphics();
+      bg.fillStyle(0xffb800, 0.85); bg.fillRoundedRect(0, -10, 64, 20, 6);
+      bg.lineStyle(1, 0x000000, 0.5); bg.strokeRoundedRect(0, -10, 64, 20, 6);
+      cont.add(bg);
+      cont.add(this.add.text(32, 0, s.icon + ' ' + s.name, {
+        fontFamily:'Oswald', fontSize:'10px', color:'#000', stroke:'#000', strokeThickness:0
+      }).setOrigin(0.5));
+      parent.add(cont);
+    });
+  }
+
+  drawPowerPill(parent, x, y, net, side) {
+    const isPositive = net > 0;
+    const key = isPositive ? 'power_green' : (net < 0 ? 'power_red' : 'power_green');
+    const circ = this.add.image(x, y, key); circ.setDisplaySize(52, 52); circ.setAlpha(net===0 ? 0.45 : 1);
+    parent.add(circ);
+    circ.setInteractive({ useHandCursor:true });
+    circ.on('pointerup', () => this.showTooltip('powerPill'));
+    parent.add(this.add.text(x, y, (net>=0?'+':'') + net, {
+      fontFamily:'Bebas Neue', fontSize:'22px', color:'#fff', stroke:'#000', strokeThickness:3
+    }).setOrigin(0.5));
+    parent.add(this.add.text(x, y + 28, side==='you'?'YOU':'CPU', {
+      fontFamily:'Oswald', fontSize:'11px', color: side==='you'?'#4aff8a':'#ff6a6a', stroke:'#000', strokeThickness:2, letterSpacing:2
+    }).setOrigin(0.5));
+  }
+
+  drawYardageBar(parent, y, side, lane) {
+    const barW = this.LANE_W - 12;
+    const barH = 34;
+    const pos = side==='you' ? lane.youPos : lane.aiPos;
+    const color = side==='you' ? 0x4aff8a : 0xff5a5a;
+    const strip = this.add.image(0, y, 'yardage_strip'); strip.setDisplaySize(barW, barH); parent.add(strip);
+    const endW = 14;
+    parent.add(this.add.rectangle(-barW/2 + endW/2, y, endW, barH-4, side==='you' ? 0xd62828 : 0x00aa44, pos<=15 ? 0.8 : 0.3));
+    parent.add(this.add.rectangle( barW/2 - endW/2, y, endW, barH-4, side==='you' ? 0x00aa44 : 0xd62828, pos>=85 ? 0.8 : 0.3));
+    const innerW = barW - endW*2 - 4;
+    const fillW = (Math.max(0, Math.min(100, pos))/100) * innerW;
+    parent.add(this.add.rectangle(-barW/2 + endW + 2 + fillW/2, y, fillW, barH-10, color, 0.6));
+    const ballX = -barW/2 + endW + 2 + fillW;
+    const ball = this.add.image(ballX, y, 'football'); ball.setDisplaySize(26, 22); parent.add(ball);
+    parent.add(this.add.text(-barW/2 + 4, y - barH/2 - 12, side==='you'?'YOU':'CPU', {
+      fontFamily:'Oswald', fontSize:'12px', color: side==='you'?'#4aff8a':'#ff7a7a', stroke:'#000', strokeThickness:2, letterSpacing:1
+    }).setOrigin(0, 0));
+    parent.add(this.add.text(barW/2 - 4, y - barH/2 - 12, this.formatYardLine(pos), {
+      fontFamily:'JetBrains Mono', fontSize:'12px', color:'#fff', stroke:'#000', strokeThickness:2
+    }).setOrigin(1, 0));
+  }
+
+  formatYardLine(pos) {
+    if (pos >= 100) return 'TD!';
+    if (pos <= 0) return 'SAFETY';
+    if (pos === 50) return 'MID';
+    if (pos < 50) return 'OWN ' + pos;
+    return 'OPP ' + (100 - pos);
+  }
+
+  drawModifier(parent, y, lane) {
+    const mod = lane.modifier; if (!mod) return;
+    const iconKey = 'mod_' + mod.id;
+    const cont = this.add.container(0, y);
+    if (this.textures.exists(iconKey)) {
+      const icon = this.add.image(0, -6, iconKey); icon.setDisplaySize(78, 78); cont.add(icon);
+    }
+    cont.add(this.add.text(0, 40, mod.name, { fontFamily:'Bebas Neue', fontSize:'18px', color:mod.color, stroke:'#000', strokeThickness:3, letterSpacing:2 }).setOrigin(0.5));
+    cont.add(this.add.text(0, 60, mod.desc, { fontFamily:'Oswald', fontSize:'13px', color:'#fff', stroke:'#000', strokeThickness:2, wordWrap:{ width: this.LANE_W - 24 }, align:'center' }).setOrigin(0.5, 0));
+    parent.add(cont);
+    cont.setSize(this.LANE_W - 20, 130).setInteractive({ useHandCursor:true });
+    cont.on('pointerup', () => showToast(this, mod.name + ' — ' + mod.desc, 2200, mod.color));
+  }
+
+  buildHandArea() {
+    this.handContainer = this.add.container(this.W/2, this.HAND_Y + this.HAND_H/2);
+    this.add.text(this.W/2, this.HAND_Y - 10, 'YOUR HAND', {
+      fontFamily:'Bebas Neue', fontSize:'28px', color:'#ffb800', stroke:'#000', strokeThickness:3, letterSpacing:6
+    }).setOrigin(0.5);
+
+    this.deckBadge = this.add.image(78, this.HAND_Y + this.HAND_H/2, 'badge_deck');
+    this.deckBadge.setDisplaySize(140, 56);
+    this.deckBadge.setInteractive({ useHandCursor:true });
+    this.deckBadge.on('pointerup', () => this.showTooltip('deck'));
+    this.deckCountText = this.add.text(78, this.HAND_Y + this.HAND_H/2 - 4, '0', {
+      fontFamily:'Bebas Neue', fontSize:'20px', color:'#fff', stroke:'#000', strokeThickness:3
+    }).setOrigin(0.5);
+    this.add.text(78, this.HAND_Y + this.HAND_H/2 + 14, 'DECK', {
+      fontFamily:'Oswald', fontSize:'10px', color:'#aaa', letterSpacing:2
+    }).setOrigin(0.5);
+
+    this.discardBadge = this.add.image(this.W - 78, this.HAND_Y + this.HAND_H/2, 'badge_discard');
+    this.discardBadge.setDisplaySize(140, 56);
+    this.discardBadge.setInteractive({ useHandCursor:true });
+    this.discardBadge.on('pointerup', () => this.showTooltip('discard'));
+    this.discardCountText = this.add.text(this.W - 78, this.HAND_Y + this.HAND_H/2 - 4, '0', {
+      fontFamily:'Bebas Neue', fontSize:'20px', color:'#fff', stroke:'#000', strokeThickness:3
+    }).setOrigin(0.5);
+    this.add.text(this.W - 78, this.HAND_Y + this.HAND_H/2 + 14, 'DISC', {
+      fontFamily:'Oswald', fontSize:'10px', color:'#aaa', letterSpacing:2
+    }).setOrigin(0.5);
+  }
+
+  buildFooter() {
+    const w = 320;
+    this.snapBtnContainer = this.add.container(this.W/2, this.FOOTER_Y);
+    const btnImg = this.add.image(0, 0, 'btn_snap');
+    const tex = this.textures.get('btn_snap').source[0];
+    btnImg.setDisplaySize(w, w * (tex.height / tex.width));
+    this.snapBtnImg = btnImg;
+    this.snapBtnText = this.add.text(0, 0, 'PASS', { fontFamily:'Bebas Neue', fontSize:'52px', color:'#fff', stroke:'#000', strokeThickness:5, letterSpacing:4 }).setOrigin(0.5);
+    this.snapBtnContainer.add([btnImg, this.snapBtnText]);
+    this.snapBtnContainer.setSize(w, w * (tex.height / tex.width)).setInteractive({ useHandCursor:true });
+    this.snapBtnContainer.on('pointerover', () => { if (!G.busy) this.snapBtnContainer.setScale(1.05); });
+    this.snapBtnContainer.on('pointerout',  () => this.snapBtnContainer.setScale(1));
+    this.snapBtnContainer.on('pointerdown', () => { if (!G.busy) this.snapBtnContainer.setScale(0.96); });
+    this.snapBtnContainer.on('pointerup',   () => { this.snapBtnContainer.setScale(1); if (!G.busy) this.endDrive(); });
+  }
+
+  drawSnapBtn() {
+    const hasPending = G.pendingPlays.some(p => p.side==='you');
+    if (hasPending) {
+      this.snapBtnText.setText('SNAP!'); this.snapBtnImg.setTint(0xffffff); this.snapBtnContainer.setAlpha(1);
+      if (!this.snapBtnContainer._pulsing && !this.reduced) {
+        this.snapBtnContainer._pulsing = true;
+        this.snapBtnContainer._pulseTween = this.tweens.add({ targets: this.snapBtnContainer, scale: 1.05, duration: 600, yoyo: true, repeat: -1, ease:'Sine.inOut' });
+      }
+    } else {
+      if (this.snapBtnContainer._pulsing) { this.snapBtnContainer._pulseTween.stop(); this.snapBtnContainer.setScale(1); this.snapBtnContainer._pulsing = false; }
+      this.snapBtnText.setText('PASS'); this.snapBtnImg.setTint(0x888888); this.snapBtnContainer.setAlpha(0.85);
+    }
+  }
+
+  render() {
+    this.youScoreText.setText(G.youScore);
+    this.aiScoreText.setText(G.aiScore);
+    this.driveText.setText(`DRIVE ${G.drive} / ${MAX_DRIVES}`);
+    const q = Math.ceil(G.drive/2);
+    this.quarterText.setText(`${['1ST','2ND','3RD','4TH'][q-1]} QUARTER`);
+    const energy = G.youEnergy - pendingCost();
+    this.energyText.setText(energy);
+    this.energyOrb.setFillStyle(energy <= 0 ? 0x555555 : 0xffb800);
+    this.energyOrbGlow.setAlpha(energy <= 0 ? 0.1 : 0.4);
+    this.deckCountText.setText(G.youDeck.length);
+    this.discardCountText.setText(G.youDiscard.length);
+    this.redrawLaneContents();
+    this.redrawHand();
+    this.drawSnapBtn();
+
+    // Reshuffle pulse (Phase 8 polish)
+    if (G._reshuffleFlash) {
+      G._reshuffleFlash = false;
+      sfx('reshuffle');
+      this.tweens.add({ targets: this.discardBadge, scale: 1.18, duration: 220, yoyo: true, ease:'Sine.inOut' });
+    }
+  }
+
+  redrawLaneContents() {
+    G.lanes.forEach((lane, idx) => {
+      const layer = this.laneCardLayers[idx];
+      layer.removeAll(true);
+      this.renderLaneOverlay(idx);
+      const slotW = Math.min(110, (this.LANE_W - 20) / MAX_SLOTS - 4);
+      const totalW = MAX_SLOTS * slotW + (MAX_SLOTS - 1) * 4;
+      const startX = -totalW/2 + slotW/2;
+
+      lane.aiCards.forEach((c, i) => {
+        const x = startX + i * (slotW + 4);
+        const y = -this.FIELD_H/2 + 130;
+        const card = buildCard(this, c, slotW, { hidden: !c.revealed });
+        card.x = x; card.y = y;
+        if (c.revealed) this.attachInspect(card, c);
+        layer.add(card);
+      });
+      for (let i = lane.aiCards.length; i < MAX_SLOTS; i++) {
+        const x = startX + i * (slotW + 4);
+        const y = -this.FIELD_H/2 + 130;
+        const slot = this.add.graphics();
+        slot.lineStyle(2, 0xff5a5a, 0.2); slot.strokeRoundedRect(x - slotW/2, y - slotW*0.7, slotW, slotW*1.4, 6);
+        layer.add(slot);
+      }
+
+      lane.youCards.forEach((c, i) => {
+        const x = startX + i * (slotW + 4);
+        const y = this.FIELD_H/2 - 130;
+        const card = buildCard(this, c, slotW, { hidden: !c.revealed });
+        card.x = x; card.y = y;
+        if (c.pending) {
+          card.setAlpha(0.85);
+          const pulse = this.add.graphics();
+          pulse.lineStyle(3, 0xffb800, 1);
+          pulse.strokeRoundedRect(-card.cardWidth/2 - 3, -card.cardHeight/2 - 3, card.cardWidth + 6, card.cardHeight + 6, 8);
+          card.add(pulse);
+          if (!this.reduced) this.tweens.add({ targets: pulse, alpha: 0.3, duration: 600, yoyo: true, repeat: -1, ease:'Sine.inOut' });
+        }
+        if (c.revealed) this.attachInspect(card, c);
+        layer.add(card);
+      });
+      for (let i = lane.youCards.length; i < MAX_SLOTS; i++) {
+        const x = startX + i * (slotW + 4);
+        const y = this.FIELD_H/2 - 130;
+        const slot = this.add.graphics();
+        slot.lineStyle(2, 0x4aff8a, 0.2); slot.strokeRoundedRect(x - slotW/2, y - slotW*0.7, slotW, slotW*1.4, 6);
+        layer.add(slot);
+      }
+    });
+  }
+
+  attachInspect(cardCont, cardData) {
+    cardCont.setSize(cardCont.cardWidth, cardCont.cardHeight);
+    cardCont.setInteractive({ useHandCursor:true });
+    cardCont.on('pointerup', () => this.showCardInspect(cardData));
+  }
+
+  showCardInspect(card) {
+    const W = this.W, H = this.H;
+    const cont = this.add.container(W/2, H/2).setDepth(9500);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.8); dim.fillRect(-W/2, -H/2, W, H);
+    cont.add(dim);
+    dim.setInteractive(new Phaser.Geom.Rectangle(-W/2, -H/2, W, H), Phaser.Geom.Rectangle.Contains);
+    dim.on('pointerup', () => cont.destroy());
+    const big = buildCard(this, card, 360);
+    big.x = 0; big.y = -120;
+    cont.add(big);
+    if (card.ability) {
+      cont.add(this.add.text(0, 160, card.ability, {
+        fontFamily:'Oswald', fontSize:'24px', color:'#ffb800', stroke:'#000', strokeThickness:3, align:'center', wordWrap:{ width: 600 }
+      }).setOrigin(0.5));
+    }
+    cont.add(this.add.text(0, 220, `${card.pos} · ${card.team} · ${card.rarity.toUpperCase()}`, {
+      fontFamily:'Oswald', fontSize:'20px', color:'#aaa', letterSpacing:2
+    }).setOrigin(0.5));
+    cont.add(this.add.text(0, 320, 'tap anywhere to close', { fontFamily:'Oswald', fontSize:'16px', color:'#666' }).setOrigin(0.5));
+  }
+
+  redrawHand() {
+    this.handContainer.removeAll(true);
+    const energy = G.youEnergy - pendingCost();
+    const cards = G.youHand;
+    if (!cards.length) return;
+    const cardW = 120;
+    const usableW = this.W - 240;
+    const idealSpacing = cardW + 16;
+    const spacing = Math.min(idealSpacing, usableW / cards.length);
+    const startX = -(spacing * (cards.length - 1)) / 2;
+
+    cards.forEach((card, i) => {
+      const x = startX + i * spacing;
+      const affordable = card.cost <= energy;
+      const handCard = buildCard(this, card, cardW, { dimmed: !affordable });
+      handCard.x = x; handCard.y = 0;
+      handCard.dataCard = card;
+      this.handContainer.add(handCard);
+      handCard.setSize(handCard.cardWidth, handCard.cardHeight).setInteractive({ useHandCursor:true });
+      let dragged = false;
+      handCard.on('pointerdown', () => { dragged = false; });
+      handCard.on('pointermove', (p) => { if (p.isDown && (Math.abs(p.x - p.downX) > 6 || Math.abs(p.y - p.downY) > 6)) dragged = true; });
+      handCard.on('pointerup', (p) => { if (!dragged) this.showCardInspect(card); });
+      if (affordable) {
+        this.input.setDraggable(handCard);
+        handCard.on('pointerover', () => { if (!handCard.input.isDragging && !this.reduced) this.tweens.add({ targets: handCard, y: -16, scale: 1.06, duration: 150 }); });
+        handCard.on('pointerout',  () => { if (!handCard.input.isDragging && !this.reduced) this.tweens.add({ targets: handCard, y: 0, scale: 1, duration: 150 }); });
+        handCard.on('dragstart', () => { handCard.setDepth(2000); handCard.setScale(1.15); dragged = true; });
+        handCard.on('drag', (p, dx, dy) => { handCard.x = dx; handCard.y = dy; });
+      }
+    });
+  }
+
+  handleDrop(go, dz) {
+    if (!go.dataCard) return;
+    const card = go.dataCard;
+    const lane = G.lanes[dz.laneIdx];
+    if (lane.youCards.length >= MAX_SLOTS) { this.showFloat('LANE FULL', '#ff5a5a'); this.returnCardToHand(go); return; }
+    const cost = effectiveCost(card, lane);
+    const energy = G.youEnergy - pendingCost();
+    if (cost > energy) { this.showFloat('NOT ENOUGH ENERGY', '#ff5a5a'); this.returnCardToHand(go); return; }
+    if (!G.youHand.find(c => c.id === card.id)) { this.returnCardToHand(go); return; }
+    const placed = { ...card, curOff: card.off, curDef: card.def, revealed:false, pending:true };
+    lane.youCards.push(placed);
+    G.pendingPlays.push({ card: placed, lane: dz.laneIdx, side:'you', effectiveCost: cost });
+    G.youHand = G.youHand.filter(c => c.id !== card.id);
+    sfx('play');
+    this.render();
+  }
+
+  returnCardToHand(go) {
+    if (go.input) this.tweens.add({ targets: go, x: go.input.dragStartX, y: go.input.dragStartY, scale: 1, duration: 250, ease:'Back.out' });
+  }
+
+  async endDrive() {
+    if (G.busy) return;
+    G.busy = true;
+    this.aiMakePlays();
+    this.render();
+    await this.delay(300);
+    this.cameras.main.flash(150, 255, 255, 255, false);
+    sfx('snap'); this.showFloat('SNAP!', '#ffb800', 80);
+    await this.delay(500);
+    await this.revealAllPending();
+    this.render();
+    await this.delay(400);
+    await this.processYardageAndScoring();
+    this.render();
+    await this.delay(400);
+
+    // Halftime trailing-by-14 capture (Phase 6)
+    if (G.drive === 4 && G._wasTrailingBy14 === undefined) {
+      G._wasTrailingBy14 = (G.aiScore - G.youScore) >= 14;
+    }
+
+    if (G.drive >= MAX_DRIVES) { await this.delay(400); this.endMatch(); return; }
+
+    // Discard arc animation (Phase 8) before bookkeeping
+    await this.animateDiscardHand();
+    discardHand('ai'); drawCardsToHand('ai', getHandSize('ai'));
+    G.drive++;
+    const gain = G.drive;
+    G.youEnergy = Math.min(getMaxEnergyBank(),      G.youEnergy + gain);
+    G.aiEnergy  = Math.min(getMaxEnergyBank('ai'),  G.aiEnergy  + gain);
+    drawCardsToHand('you', getHandSize());
+    this.render();
+    await this.animateDrawIn();
+    G.busy = false;
+    this.render();
+  }
+
+  // ---- Phase 1: SNAP reveal in winner-first order + ability dispatch ----
+  async revealAllPending() {
+    const youFirst = G.youScore >= G.aiScore;
+    const order = youFirst ? ['you','ai'] : ['ai','you'];
+    for (const side of order) {
+      const plays = G.pendingPlays.filter(p => p.side === side);
+      for (const play of plays) {
+        play.card.revealed = true;
+        play.card.pending = false;
+        play.card._baseOff = play.card.off;
+        play.card._baseDef = play.card.def;
+        await this.applyCardSnapAbility(play);
+        computeLaneStats(G.lanes[play.lane]);
+        sfx('reveal');
+        this.render();
+        await this.delay(this.reduced ? 80 : 220);
+      }
+    }
+    G.pendingPlays = [];
+    G.lanes.forEach(l => computeLaneStats(l));
+  }
+
+  async applyCardSnapAbility(play) {
+    const card = play.card;
+    const lane = G.lanes[play.lane];
+    const side = play.side;
+    const friendlies = side==='you' ? 'youCards' : 'aiCards';
+    const enemies    = side==='you' ? 'aiCards'  : 'youCards';
+    if (lane.modifier && lane.modifier.id === 'frozenTundra') return;
+    const triggerCount = (lane.modifier && lane.modifier.id === 'blitzZone' && card.side === 'def') ? 2 : 1;
+    for (let trig = 0; trig < triggerCount; trig++) {
+      switch (card.desc) {
+        case 'snapDraw':
+          drawCardsToHand(side, 1);
+          break;
+        case 'snapBuffOffLane':
+          lane[friendlies].filter(c => c.uid !== card.uid && c.revealed && !c.ejected && c.side === 'off')
+            .forEach(c => { c._baseOff = (c._baseOff || c.off) + 6; });
+          break;
+        case 'snapDebuffEnemyOff':
+          lane[enemies].filter(c => c.revealed && !c.ejected && c.side === 'off')
+            .forEach(c => { c._baseOff = Math.max(0, (c._baseOff || c.off) - 8); });
+          break;
+        case 'snapStealYards':
+          if (side === 'you') { lane.aiPos = Math.max(0, lane.aiPos - 10); lane.youPos = Math.min(100, lane.youPos + 10); }
+          else                { lane.youPos = Math.max(0, lane.youPos - 10); lane.aiPos = Math.min(100, lane.aiPos + 10); }
+          break;
+        case 'snapDefYards':
+          if (side === 'you') lane.aiPos = Math.max(0, lane.aiPos - 12);
+          else                lane.youPos = Math.max(0, lane.youPos - 12);
+          break;
+        case 'snapPunt':
+          if (side === 'you') lane.aiPos = Math.max(0, lane.aiPos - 10);
+          else                lane.youPos = Math.max(0, lane.youPos - 10);
+          break;
+        case 'snapFieldGoal': {
+          if (lane.modifier && lane.modifier.id === 'windTunnel') break;
+          const myPos = side === 'you' ? lane.youPos : lane.aiPos;
+          const hasKickingUnit = (side === 'you' ? lane.youCards : lane.aiCards)
+            .some(c => c.revealed && !c.ejected && c.pos === 'ST');
+          const fgThreshold = hasKickingUnit ? 35 : 50;
+          if (myPos >= fgThreshold) {
+            if (side === 'you') G.youScore += 3; else G.aiScore += 3;
+            sfx('fg');
+            await this.showScoreBurst('FIELD GOAL +3', side, false);
+            this.resetLane(lane);
+          }
+          break;
+        }
+        case 'snapBuffAllOff':
+          G.lanes.forEach(l => l[friendlies].filter(c => c.uid !== card.uid && c.revealed && !c.ejected && c.side === 'off')
+            .forEach(c => { c._baseOff = (c._baseOff || c.off) + 8; }));
+          break;
+      }
+    }
+  }
+
+  async processYardageAndScoring() {
+    for (let i=0;i<G.lanes.length;i++) {
+      const lane = G.lanes[i];
+      if (lane.lockedFor) continue;
+      const stats = computeLaneStats(lane);
+      const SCALE = 2.5;
+      let yourDelta = Math.floor(stats.youOff/SCALE) - Math.floor(stats.aiDef/SCALE);
+      let aiDelta   = Math.floor(stats.aiOff/SCALE)  - Math.floor(stats.youDef/SCALE);
+      lane.youCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) aiDelta -= 5; });
+      lane.aiCards .forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) yourDelta -= 5; });
+      if (lane.modifier && lane.modifier.id === 'coinFlip') {
+        const doubled = Math.random() < 0.5;
+        if (doubled) { yourDelta *= 2; aiDelta *= 2; showToast(this, '🎲 COIN FLIP: DOUBLED!', 900, '#dd99ff'); }
+        else { yourDelta = Math.floor(yourDelta/2); aiDelta = Math.floor(aiDelta/2); showToast(this, '🎲 COIN FLIP: HALVED!', 900, '#dd99ff'); }
+        await this.delay(500);
+      }
+      if (yourDelta !== 0 || aiDelta !== 0) {
+        lane.youPos = lane.youPos + yourDelta;
+        lane.aiPos  = lane.aiPos  + aiDelta;
+        this.render();
+        await this.delay(this.reduced ? 200 : 500);
+      }
+      await this.checkScoring(lane);
+    }
+  }
+
+  async checkScoring(lane) {
+    if (lane.youPos >= 100) { lane.youPos = 100; this.render(); await this.delay(300); await this.scoreTouchdown('you', lane); this.resetLane(lane); this.render(); }
+    if (lane.aiPos  >= 100) { lane.aiPos  = 100; this.render(); await this.delay(300); await this.scoreTouchdown('ai',  lane); this.resetLane(lane); this.render(); }
+    if (lane.aiPos  <=   0) { lane.aiPos  = 0;   this.render(); await this.delay(300); await this.scoreDefense ('you', lane); this.resetLane(lane); this.render(); }
+    if (lane.youPos <=   0) { lane.youPos = 0;   this.render(); await this.delay(300); await this.scoreDefense ('ai',  lane); this.resetLane(lane); this.render(); }
+  }
+
+  async scoreTouchdown(side, lane) {
+    if (side === 'you') G.youScore += 6; else G.aiScore += 6;
+    sfx('td');
+    await this.showScoreBurst('TOUCHDOWN +6', side, true);
+    const kicker = (side === 'you' ? lane.youCards : lane.aiCards).find(c => c.pos === 'K' && c.revealed && !c.ejected);
+    if (kicker) {
+      if (side === 'you') G.youScore += 1; else G.aiScore += 1;
+      sfx('fg'); await this.showScoreBurst('PAT GOOD +1', side, false);
+    }
+    // 2-pt conversion (Phase 3) — only when no kicker AND OFF count > enemy DEF count
+    const yourCards  = side === 'you' ? lane.youCards : lane.aiCards;
+    const enemyCards = side === 'you' ? lane.aiCards  : lane.youCards;
+    const yourOff = yourCards.filter(c => c.revealed && !c.ejected && c.side === 'off').length;
+    const enemyDef = enemyCards.filter(c => c.revealed && !c.ejected && c.side === 'def').length;
+    const canGoForTwo = yourOff > enemyDef;
+    if (side === 'you' && canGoForTwo && !kicker) {
+      const got2 = await ConversionScene.run(this, lane);
+      if (got2) { sfx('td'); await this.showScoreBurst('2-PT CONVERSION!', 'you', true); }
+    } else if (side === 'ai' && canGoForTwo && !kicker) {
+      if (Math.random() < 0.5) {
+        if (Math.random() < 0.5) { G.aiScore += 2; sfx('safety'); await this.showScoreBurst('CPU 2-PT!', 'ai', false); }
+        else { showToast(this, 'CPU 2-PT FAILED', 1000, '#ff7a7a'); await this.delay(700); }
+      }
+    }
+    this.render();
+  }
+
+  async scoreDefense(side, lane) {
+    const myCards = side==='you' ? lane.youCards : lane.aiCards;
+    const dbCount = myCards.filter(c => c.revealed && !c.ejected && (c.pos === 'CB' || c.pos === 'S')).length;
+    if (dbCount >= 4) {
+      if (side === 'you') G.youScore += 6; else G.aiScore += 6;
+      sfx('td'); await this.showScoreBurst('PICK SIX +6', side, true);
+    } else {
+      if (side === 'you') G.youScore += 2; else G.aiScore += 2;
+      sfx('safety'); await this.showScoreBurst('SAFETY +2', side, false);
+    }
+  }
+
+  resetLane(lane) {
+    lane.youCards = []; lane.aiCards = [];
+    lane.youPos = kickoffPos(); lane.aiPos = kickoffPos();
+  }
+
+  // ---- Phase 8: arc animations for draw/discard ----
+  async animateDiscardHand() {
+    return new Promise(resolve => {
+      const handCards = this.handContainer.list.slice();
+      if (this.reduced || !handCards.length) {
+        discardHand('you'); sfx('discard'); resolve(); return;
+      }
+      const dbX = this.discardBadge.x - this.handContainer.x;
+      const dbY = this.discardBadge.y - this.handContainer.y;
+      handCards.forEach((el, i) => {
+        this.time.delayedCall(i * 40, () => {
+          sfx('discard');
+          this.tweens.add({ targets: el, x: dbX, y: dbY, scale: 0.3, alpha: 0, angle: 30, duration: 380, ease:'Cubic.in' });
+        });
+      });
+      this.time.delayedCall(handCards.length * 40 + 420, () => {
+        discardHand('you'); resolve();
+      });
+    });
+  }
+
+  async animateDrawIn() {
+    if (this.reduced) return;
+    const list = this.handContainer.list.slice();
+    list.forEach((el, i) => {
+      const baseX = el.x, baseY = el.y;
+      el.x = this.deckBadge.x - this.handContainer.x;
+      el.y = this.deckBadge.y - this.handContainer.y;
+      el.setScale(0.3); el.setAlpha(0.35);
+      this.time.delayedCall(i * 80, () => {
+        sfx('draw');
+        this.tweens.add({ targets: el, x: baseX, y: baseY, scale: 1, alpha: 1, duration: 380, ease:'Cubic.out' });
+      });
+    });
+    await this.delay(list.length * 80 + 420);
+  }
+
+  showScoreBurst(text, side, big) {
+    return new Promise(resolve => {
+      const ringKey = side === 'you' ? 'ring_you' : 'ring_cpu';
+      const ring = this.add.image(this.W/2, this.H/2, ringKey).setDepth(2999).setScale(0.3).setAlpha(0);
+      this.tweens.add({ targets: ring, scale: big ? 1.4 : 1.0, alpha: 1, duration: this.reduced ? 100 : 300, ease:'Back.out' });
+      const color = side==='you' ? '#4aff8a' : '#ff5a5a';
+      const burst = this.add.text(this.W/2, this.H/2, text, {
+        fontFamily:'Bebas Neue', fontSize: big ? '120px' : '80px',
+        color, stroke:'#000', strokeThickness:10, letterSpacing:4
+      }).setOrigin(0.5).setDepth(3000).setScale(0.3).setAlpha(0);
+      this.tweens.add({ targets: burst, scale: 1.15, alpha: 1, duration: this.reduced ? 80 : 250, ease:'Back.out', onComplete: () => {
+        this.tweens.add({ targets: burst, scale: 1, duration: 100, onComplete: () => {
+          this.time.delayedCall(this.reduced ? 200 : 800, () => {
+            this.tweens.add({ targets: [burst, ring], alpha: 0, y:'-=60', duration: 300, ease:'Cubic.in', onComplete: () => { burst.destroy(); ring.destroy(); resolve(); } });
+          });
+        }});
+      }});
+    });
+  }
+
+  showFloat(text, color, size = 50) {
+    const t = this.add.text(this.W/2, this.H/2 - 100, text, {
+      fontFamily:'Bebas Neue', fontSize: size + 'px', color, stroke:'#000', strokeThickness:6, letterSpacing:4
+    }).setOrigin(0.5).setDepth(3000).setAlpha(0);
+    this.tweens.add({ targets: t, alpha: 1, y: t.y - 30, duration: this.reduced ? 80 : 200, onComplete: () => {
+      this.time.delayedCall(this.reduced ? 300 : 700, () => {
+        this.tweens.add({ targets: t, alpha: 0, duration: 300, onComplete: () => t.destroy() });
+      });
+    }});
+  }
+
+  aiMakePlays() {
+    let energy = G.aiEnergy;
+    const playable = [...G.aiHand].sort((a, b) => (b.off + b.def) - (a.off + a.def));
+    for (const card of playable) {
+      if (card.cost > energy) continue;
+      let bestIdx = -1, bestScore = -Infinity;
+      for (let i=0;i<3;i++) {
+        const lane = G.lanes[i];
+        if (lane.aiCards.length >= MAX_SLOTS) continue;
+        const stats = computeLaneStats(lane);
+        let score = 0;
+        if (card.side === 'off') {
+          score = card.off;
+          if (lane.aiPos >= 70) score += 18; else if (lane.aiPos >= 50) score += 8;
+          if (stats.youDef < card.off / 2) score += 6;
+          if (card.pos === 'K' && lane.aiPos >= 50) score += 14;
+        } else {
+          score = card.def;
+          if (lane.youPos >= 70) score += 22; else if (lane.youPos >= 50) score += 10;
+          if (lane.aiPos <= 30) score += 6;
+          if ((card.pos==='CB' || card.pos==='S') && lane.aiPos <= 50) {
+            const dbs = lane.aiCards.filter(c => c.pos==='CB' || c.pos==='S').length;
+            score += dbs * 5;
+          }
+        }
+        score += Math.random() * 3;
+        if (score > bestScore) { bestScore = score; bestIdx = i; }
+      }
+      if (bestIdx >= 0) {
+        const placed = { ...card, curOff: card.off, curDef: card.def, revealed:false, pending:true };
+        G.lanes[bestIdx].aiCards.push(placed);
+        G.pendingPlays.push({ card: placed, lane: bestIdx, side:'ai', effectiveCost: card.cost });
+        G.aiHand = G.aiHand.filter(c => c.id !== card.id);
+        energy -= card.cost;
+      }
+    }
+    G.aiEnergy = energy;
+  }
+
+  endMatch() {
+    G.gameOver = true;
+    // Lifetime stats + rewards (Phase 6)
+    const won  = G.youScore >  G.aiScore;
+    const lost = G.aiScore  >  G.youScore;
+    playerData.stats.totalMatches++;
+    if (won) {
+      playerData.stats.totalWins++;
+      playerData.stats.currentWinStreak++;
+      playerData.stats.longestWinStreak = Math.max(playerData.stats.longestWinStreak, playerData.stats.currentWinStreak);
+      if (G.aiScore === 0) playerData.stats.shutouts++;
+      if (G._wasTrailingBy14) playerData.stats.comebacks++;
+    } else if (lost) {
+      playerData.stats.totalLosses++;
+      playerData.stats.currentWinStreak = 0;
+    }
+    // Season bookkeeping
+    let seasonOngoing = false, championship = false;
+    if (G.mode === 'season' && seasonState) {
+      if (won) {
+        seasonState.wins++; seasonState.week++;
+        if (seasonState.wins >= 7) { championship = true; clearSeason(); }
+        else { seasonOngoing = true; saveSeason(); }
+      } else if (lost) { clearSeason(); }
+      else { seasonOngoing = true; saveSeason(); }
+    }
+    const matchResult = {
+      won,
+      opponent: G.opponent || null,
+      finalScore: { you: G.youScore, ai: G.aiScore },
+      stats: { wasTrailingBy14AtHalftime: !!G._wasTrailingBy14 }
+    };
+    const rewards = calculateMatchRewards(matchResult);
+    playerData.cash += rewards.cashEarned;
+    const levelInfo = applyXpAndLevelUp(rewards.xpEarned);
+    savePlayerData();
+    this.scene.start('MatchSummaryScene', { matchResult, rewards, levelInfo, seasonOngoing, championship });
+  }
+
+  delay(ms) { return new Promise(r => this.time.delayedCall(ms, r)); }
+}
+
+// ============================================================
+// SCENE: CONVERSION — 2-pt coin flip modal (Phase 3)
+// Static run() returns a Promise that resolves true/false.
+// ============================================================
+class ConversionScene extends Phaser.Scene {
+  constructor() { super({ key:'ConversionScene' }); }
+
+  static run(parent, lane) {
+    return new Promise(resolve => {
+      parent.scene.launch('ConversionScene', { lane, onDone: resolve });
+      parent.scene.pause();
+    });
+  }
+
+  init(data) { this.lane = data.lane; this.onDone = data.onDone; }
+
+  create() {
+    const W = this.scale.width, H = this.scale.height;
+    this.reduced = prefersReducedMotion();
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.85); dim.fillRect(0, 0, W, H);
+
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.98); panel.fillRoundedRect(W/2 - 360, H/2 - 360, 720, 720, 18);
+    panel.lineStyle(4, 0xffb800, 1); panel.strokeRoundedRect(W/2 - 360, H/2 - 360, 720, 720, 18);
+
+    this.titleTxt = this.add.text(W/2, H/2 - 300, 'TOUCHDOWN!', {
+      fontFamily:'Bebas Neue', fontSize:'72px', color:'#ffb800', stroke:'#000', strokeThickness:6, letterSpacing:4
+    }).setOrigin(0.5);
+    this.subTxt = this.add.text(W/2, H/2 - 220, this.lane.name + ' LANE — Go for 2?', {
+      fontFamily:'Oswald', fontSize:'24px', color:'#e8e8e0', letterSpacing:2
+    }).setOrigin(0.5);
+    this.add.text(W/2, H/2 - 180, 'You have more OFF than they have DEF here.', {
+      fontFamily:'Oswald', fontSize:'18px', color:'#aaa'
+    }).setOrigin(0.5);
+
+    this.choiceLayer = this.add.container(0, 0);
+    this.coinLayer = this.add.container(0, 0);
+    this.coinLayer.setVisible(false);
+
+    this.makePATBtn(W/2 - 170, H/2 + 80);
+    this.makeGoBtn(W/2 + 170, H/2 + 80);
+  }
+
+  makePATBtn(x, y) {
+    const btn = makeAssetButton(this, x, y, 'KICK PAT (+1)', 'btn_concede', '#fff', () => {
+      sfx('fg');
+      // PAT auto-good
+      G.youScore += 1;
+      this.finishWith(false, '+1 PAT GOOD');
+    }, { w: 280, fontSize: 28 });
+    this.choiceLayer.add(btn);
+  }
+
+  makeGoBtn(x, y) {
+    const btn = makeAssetButton(this, x, y, 'GO FOR 2', 'btn_snap', '#fff', () => {
+      sfx('click');
+      this.openCoinFlip();
+    }, { w: 280, fontSize: 28 });
+    this.choiceLayer.add(btn);
+  }
+
+  openCoinFlip() {
+    this.choiceLayer.setVisible(false);
+    this.coinLayer.setVisible(true);
+    const W = this.scale.width, H = this.scale.height;
+    this.titleTxt.setText('CALL IT');
+    this.subTxt.setText('Tap HEADS or TAILS to match the flip');
+
+    // The coin sprite
+    this.coin = this.add.image(W/2, H/2 - 30, 'coin_heads').setDisplaySize(180, 180);
+    this.coinLayer.add(this.coin);
+
+    const headsBtn = makeAssetButton(this, W/2 - 170, H/2 + 180, 'HEADS', 'btn_snap', '#fff', () => this.flip('heads'), { w: 280, fontSize: 32 });
+    const tailsBtn = makeAssetButton(this, W/2 + 170, H/2 + 180, 'TAILS', 'btn_concede', '#fff', () => this.flip('tails'), { w: 280, fontSize: 32 });
+    this.coinLayer.add(headsBtn); this.coinLayer.add(tailsBtn);
+    this.callBtns = [headsBtn, tailsBtn];
+  }
+
+  flip(call) {
+    if (this._flipping) return;
+    this._flipping = true;
+    this.callBtns.forEach(b => b.disableInteractive().setAlpha(0.5));
+    sfx('coinFlip');
+    const result = Math.random() < 0.5 ? 'heads' : 'tails';
+    const dur = this.reduced ? 200 : 1400;
+    // Scale-X flip: shrink to 0, swap key at midpoint, grow to 1
+    const spins = this.reduced ? 1 : 5;
+    let count = 0;
+    const halfDur = dur / (spins * 2);
+    const tick = () => {
+      this.tweens.add({ targets: this.coin, scaleX: 0, duration: halfDur, ease:'Linear', onComplete: () => {
+        count++;
+        const useHeads = (count % 2 === 0);
+        this.coin.setTexture(useHeads ? 'coin_heads' : 'coin_tails');
+        this.tweens.add({ targets: this.coin, scaleX: 1, duration: halfDur, ease:'Linear', onComplete: () => {
+          if (count >= spins * 2 - 1) {
+            // Final state — force to result
+            this.tweens.add({ targets: this.coin, scaleX: 0, duration: halfDur, ease:'Linear', onComplete: () => {
+              this.coin.setTexture(result === 'heads' ? 'coin_heads' : 'coin_tails');
+              this.tweens.add({ targets: this.coin, scaleX: 1, duration: halfDur, ease:'Linear', onComplete: () => this.resolveFlip(call, result) });
+            }});
+          } else {
+            tick();
+          }
+        }});
+      }});
+    };
+    // For reduced motion, skip animation
+    if (this.reduced) {
+      this.coin.setTexture(result === 'heads' ? 'coin_heads' : 'coin_tails');
+      this.time.delayedCall(200, () => this.resolveFlip(call, result));
+    } else {
+      tick();
+    }
+  }
+
+  resolveFlip(call, result) {
+    const W = this.scale.width, H = this.scale.height;
+    const matched = (call === result);
+    if (matched) {
+      G.youScore += 2;
+      sfx('confirm');
+      this.titleTxt.setText(result.toUpperCase() + ' — CONVERTED!');
+      this.titleTxt.setColor('#4aff8a');
+    } else {
+      sfx('discard');
+      this.titleTxt.setText(result.toUpperCase() + ' — NO GOOD');
+      this.titleTxt.setColor('#ff5a5a');
+    }
+    this.time.delayedCall(this.reduced ? 400 : 1400, () => this.finishWith(matched, ''));
+  }
+
+  finishWith(scored, msg) {
+    const cb = this.onDone;
+    this.scene.stop();
+    this.scene.resume('GameScene');
+    if (cb) cb(scored);
+  }
+}
+
+// Static accessor for callers
+window.ConversionScene = ConversionScene;
+
+// ============================================================
+// SCENE: MENU
+// ============================================================
+class MenuScene extends Phaser.Scene {
+  constructor() { super({ key:'MenuScene' }); }
+
+  create() {
+    const W = this.scale.width, H = this.scale.height;
+    this.cameras.main.fadeIn(500);
+    const bg = this.add.image(W/2, H/2, 'stadium_bg');
+    const bgTex = this.textures.get('stadium_bg').source[0];
+    const bgScale = Math.max(W / bgTex.width, H / bgTex.height);
+    bg.setScale(bgScale).setAlpha(0.85);
+    const vg = this.add.graphics(); vg.fillStyle(0x000000, 0.55); vg.fillRect(0, 0, W, H);
+
+    // Player stats chip
+    if (playerData) {
+      const chip = this.add.container(W/2, 50);
+      const chipBg = this.add.graphics();
+      chipBg.fillStyle(0x000000, 0.6); chipBg.fillRoundedRect(-200, -20, 400, 40, 8);
+      chipBg.lineStyle(2, 0xffb800, 0.5); chipBg.strokeRoundedRect(-200, -20, 400, 40, 8);
+      chip.add(chipBg);
+      chip.add(this.add.text(-180, 0, 'LV ' + playerData.coachLevel, { fontFamily:'Bebas Neue', fontSize:'22px', color:'#ffb800' }).setOrigin(0, 0.5));
+      chip.add(this.add.text(180, 0, '$' + playerData.cash.toLocaleString(), { fontFamily:'Bebas Neue', fontSize:'22px', color:'#4aff8a' }).setOrigin(1, 0.5));
+    }
+
+    // Logo
+    const logo = this.add.image(W/2, H*0.20, 'logo');
+    const logoTex = this.textures.get('logo').source[0];
+    const logoW = Math.min(W * 0.85, 720);
+    logo.setDisplaySize(logoW, logoW * (logoTex.height / logoTex.width));
+    this.tweens.add({ targets: logo, scale: logo.scaleX * 1.03, duration: 2400, yoyo: true, repeat: -1, ease:'Sine.inOut' });
+
+    this.add.text(W/2, H*0.36, 'STRATEGIC CARD FOOTBALL', { fontFamily:'Oswald', fontSize:'24px', color:'#ffb800', letterSpacing:10 }).setOrigin(0.5).setAlpha(0.85);
+
+    // Quick Play
+    makeAssetButton(this, W/2, H*0.48, 'QUICK PLAY', 'btn_snap', '#fff', () => {
+      sfx('click');
+      this.cameras.main.fadeOut(400);
+      this.time.delayedCall(400, () => {
+        newGame(buildQuickPlayDeck(), buildAIDeck(2), 'quick', null);
+        this.scene.start('GameScene');
+      });
+    }, { w: 420 });
+
+    // Season status text
+    const existing = loadSeason();
+    if (existing && existing.wins < 7) {
+      seasonState = existing;
+      this.add.text(W/2, H*0.555, `SEASON IN PROGRESS · WEEK ${existing.week} · ${existing.wins}/7 WINS`, {
+        fontFamily:'Oswald', fontSize:'16px', color:'#88ddff', letterSpacing:2
+      }).setOrigin(0.5);
+      makeAssetButton(this, W/2, H*0.61, 'CONTINUE SEASON', 'btn_snap', '#fff', () => {
+        sfx('click'); this.cameras.main.fadeOut(300);
+        this.time.delayedCall(300, () => this.scene.start('SeasonHubScene'));
+      }, { w: 420, fontSize: 40 });
+      makeAssetButton(this, W/2, H*0.71, 'DRAFT NEW SEASON', 'btn_concede', '#fff', () => {
+        sfx('click');
+        this.confirmNewDraft();
+      }, { w: 420, fontSize: 36 });
+    } else {
+      makeAssetButton(this, W/2, H*0.60, 'DRAFT & PLAY SEASON', 'btn_snap', '#fff', () => {
+        sfx('click'); this.cameras.main.fadeOut(400);
+        this.time.delayedCall(400, () => this.scene.start('DraftScene'));
+      }, { w: 420, fontSize: 40 });
+    }
+
+    // Locker Room
+    makeAssetButton(this, W/2 - 130, H*0.82, 'LOCKER ROOM', 'btn_concede', '#fff', () => {
+      sfx('click'); this.cameras.main.fadeOut(300);
+      this.time.delayedCall(300, () => this.scene.start('LockerRoomScene'));
+    }, { w: 240, fontSize: 24 });
+    makeAssetButton(this, W/2 + 130, H*0.82, 'HOW TO PLAY', 'btn_concede', '#fff', () => {
+      sfx('click'); this.showHowTo();
+    }, { w: 240, fontSize: 24 });
+
+    const ball1 = this.add.image(80, H - 80, 'football').setScale(0.3).setAlpha(0.5);
+    this.tweens.add({ targets: ball1, rotation: Math.PI*2, duration: 8000, repeat: -1, ease:'Linear' });
+    const ball2 = this.add.image(W - 80, H - 80, 'football').setScale(0.3).setAlpha(0.5);
+    this.tweens.add({ targets: ball2, rotation: -Math.PI*2, duration: 8000, repeat: -1, ease:'Linear' });
+    this.add.text(W/2, H - 40, 'PHASER EDITION', { fontFamily:'JetBrains Mono', fontSize:'14px', color:'#666', letterSpacing:4 }).setOrigin(0.5);
+  }
+
+  confirmNewDraft() {
+    const W = this.scale.width, H = this.scale.height;
+    const cont = this.add.container(W/2, H/2).setDepth(9000);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.85); dim.fillRect(-W/2, -H/2, W, H);
+    cont.add(dim);
+    dim.setInteractive(new Phaser.Geom.Rectangle(-W/2, -H/2, W, H), Phaser.Geom.Rectangle.Contains);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.98); panel.fillRoundedRect(-300, -180, 600, 360, 16);
+    panel.lineStyle(3, 0xff5a5a, 1); panel.strokeRoundedRect(-300, -180, 600, 360, 16);
+    cont.add(panel);
+    cont.add(this.add.text(0, -130, 'ABANDON SEASON?', { fontFamily:'Bebas Neue', fontSize:'42px', color:'#ff5a5a', letterSpacing:3 }).setOrigin(0.5));
+    cont.add(this.add.text(0, -60, 'Starting a new draft will erase your current season progress.', { fontFamily:'Oswald', fontSize:'18px', color:'#e8e8e0', align:'center', wordWrap:{ width: 540 } }).setOrigin(0.5));
+    cont.add(makeAssetButton(this, -140, 90, 'CANCEL', 'btn_concede', '#fff', () => cont.destroy(), { w: 240, fontSize: 28 }));
+    cont.add(makeAssetButton(this,  140, 90, 'DRAFT', 'btn_snap', '#fff', () => {
+      clearSeason();
+      this.cameras.main.fadeOut(400);
+      this.time.delayedCall(400, () => this.scene.start('DraftScene'));
+    }, { w: 240, fontSize: 28 }));
+  }
+
+  showHowTo() {
+    const W = this.scale.width, H = this.scale.height;
+    const overlay = this.add.container(W/2, H/2).setDepth(1000);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.92); dim.fillRect(-W/2, -H/2, W, H);
+    overlay.add(dim);
+    dim.setInteractive(new Phaser.Geom.Rectangle(-W/2, -H/2, W, H), Phaser.Geom.Rectangle.Contains);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.98); panel.fillRoundedRect(-380, -560, 760, 1120, 18);
+    panel.lineStyle(4, 0xffb800, 1); panel.strokeRoundedRect(-380, -560, 760, 1120, 18);
+    overlay.add(panel);
+    overlay.add(this.add.text(0, -490, 'HOW TO PLAY', { fontFamily:'Bebas Neue', fontSize:'64px', color:'#ffb800', letterSpacing:6 }).setOrigin(0.5));
+    const lines = [
+      '★  DRIVES — 8 drives per match. Energy = drive #.',
+      '   Unspent energy banks (cap 10).',
+      '',
+      '★  CARDS — drag from hand into one of 3 LANES.',
+      '   Orange = OFF, Blue = DEF, Gold ★ = ability.',
+      '   Tap a card to inspect it up close.',
+      '',
+      '★  SYNERGIES — pair the right positions in a lane',
+      '   for bonus stats (PLAY ACTION, BLITZ, etc).',
+      '',
+      '★  MODIFIERS — each lane has a unique rule the',
+      '   whole match. Tap the medallion to re-read.',
+      '',
+      '★  SNAP — reveal both sides. Winner reveals first.',
+      '   Net yards = (your OFF − their DEF) ÷ 2.5.',
+      '',
+      '★  SCORING:',
+      '   ★  TOUCHDOWN (6) — +1 PAT if Kicker',
+      '   ★  Otherwise GO FOR 2 (coin flip, +2)',
+      '   ★  FG (3) — Kicker past midfield',
+      '   ★  SAFETY (2) — opp pushed to 0',
+      '   ★  PICK-SIX (6) — 4+ DBs in a safety lane',
+      '',
+      '★  SEASON — draft a 50-card deck, win 7 in a row.'
+    ];
+    overlay.add(this.add.text(0, -380, lines.join('\n'), {
+      fontFamily:'Oswald', fontSize:'20px', color:'#e8e8e0', lineSpacing:5, align:'left'
+    }).setOrigin(0.5, 0));
+    overlay.add(makeAssetButton(this, 0, 480, 'GOT IT', 'btn_snap', '#fff', () => overlay.destroy(), { w: 320, fontSize: 40 }));
+  }
+}
+
+// ============================================================
+// SCENE: END (simple back-to-menu fallback)
+// ============================================================
+class EndScene extends Phaser.Scene {
+  constructor() { super({ key:'EndScene' }); }
+  init(data) { this.result = data; }
+  create() {
+    const W = this.scale.width, H = this.scale.height;
+    this.cameras.main.fadeIn(500);
+    const bg = this.add.image(W/2, H/2, 'stadium_bg');
+    const bgTex = this.textures.get('stadium_bg').source[0];
+    bg.setScale(Math.max(W / bgTex.width, H / bgTex.height)).setAlpha(0.6);
+    const vg = this.add.graphics(); vg.fillStyle(0x000000, 0.7); vg.fillRect(0,0,W,H);
+    const won = this.result.you > this.result.ai;
+    const label = won ? 'VICTORY' : this.result.ai > this.result.you ? 'DEFEAT' : 'TIE GAME';
+    const color = won ? '#4aff8a' : this.result.ai > this.result.you ? '#ff5a5a' : '#ffb800';
+    this.add.text(W/2, H*0.32, label, { fontFamily:'Bebas Neue', fontSize:'140px', color, stroke:'#000', strokeThickness:12, letterSpacing:6 }).setOrigin(0.5);
+    this.add.text(W/2, H*0.55, `YOU ${this.result.you}  —  ${this.result.ai} CPU`, { fontFamily:'Bebas Neue', fontSize:'60px', color:'#fff', stroke:'#000', strokeThickness:8, letterSpacing:6 }).setOrigin(0.5);
+    makeAssetButton(this, W/2, H*0.78, 'PLAY AGAIN', 'btn_snap', '#fff', () => {
+      sfx('click'); this.cameras.main.fadeOut(300);
+      this.time.delayedCall(300, () => { newGame(buildQuickPlayDeck(), buildAIDeck(2), 'quick', null); this.scene.start('GameScene'); });
+    });
+    makeAssetButton(this, W/2, H*0.88, 'MAIN MENU', 'btn_concede', '#fff', () => {
+      sfx('click'); this.cameras.main.fadeOut(300);
+      this.time.delayedCall(300, () => this.scene.start('MenuScene'));
+    });
+  }
+}
+
+// ============================================================
+// SCENE: DRAFT (Phase 4)
+// 10 packs of 6 (3 OFF + 3 DEF), pick 1 OFF + 1 DEF per pack.
+// 30 starter commons granted up front. Final deck: 50 cards.
+// ============================================================
+const PACK_PICK_SECONDS = 12;
+const FINAL_PACK_PICK_SECONDS = 15;
+let draftState = null;
+
+class DraftScene extends Phaser.Scene {
+  constructor() { super({ key:'DraftScene' }); }
+
+  create() {
+    this.W = this.scale.width; this.H = this.scale.height;
+    this.reduced = prefersReducedMotion();
+    this.cameras.main.fadeIn(400);
+
+    const bg = this.add.image(this.W/2, this.H/2, 'stadium_bg');
+    const bgTex = this.textures.get('stadium_bg').source[0];
+    bg.setScale(Math.max(this.W / bgTex.width, this.H / bgTex.height)).setAlpha(0.5);
+    const vg = this.add.graphics(); vg.fillStyle(0x050810, 0.7); vg.fillRect(0,0,this.W,this.H);
+
+    draftState = {
+      packNum: 1,
+      totalPacks: 10,
+      currentPack: [],
+      pickedOff: null,
+      pickedDef: null,
+      roster: generateStarterDeck(),
+      timeLeft: PACK_PICK_SECONDS,
+      busy: false,
+      autoSkipping: false
+    };
+
+    this.headerCont  = this.add.container(0, 0);
+    this.packArena   = this.add.container(this.W/2, this.H * 0.45);
+    this.footerCont  = this.add.container(0, 0);
+
+    this.buildHeader();
+    this.buildFooter();
+    this.startPack();
+  }
+
+  buildHeader() {
+    const W = this.W;
+    this.headerTxt = this.add.text(W/2, 60, '', { fontFamily:'Bebas Neue', fontSize:'48px', color:'#ffb800', stroke:'#000', strokeThickness:4, letterSpacing:4 }).setOrigin(0.5);
+    this.headerCont.add(this.headerTxt);
+    this.subTxt = this.add.text(W/2, 105, 'Pick 1 OFFENSE and 1 DEFENSE per pack', { fontFamily:'Oswald', fontSize:'18px', color:'#aaa', letterSpacing:2 }).setOrigin(0.5);
+    this.headerCont.add(this.subTxt);
+    // Timer
+    this.timerCircle = this.add.circle(W/2, 165, 30, 0x000000, 0.7);
+    this.timerCircle.setStrokeStyle(3, 0xffb800, 0.9);
+    this.timerTxt = this.add.text(W/2, 165, '12', { fontFamily:'Bebas Neue', fontSize:'34px', color:'#ffb800', stroke:'#000', strokeThickness:3 }).setOrigin(0.5);
+    this.headerCont.add(this.timerCircle); this.headerCont.add(this.timerTxt);
+    // Exit
+    const exit = this.add.container(60, 60);
+    const eBg = this.add.graphics(); eBg.fillStyle(0x331010, 0.9); eBg.fillRoundedRect(-46,-16,92,28,6); eBg.lineStyle(2,0xd62828,0.8); eBg.strokeRoundedRect(-46,-16,92,28,6);
+    const eTxt = this.add.text(0,0,'◀ EXIT',{ fontFamily:'Oswald', fontSize:'15px', color:'#ff7a7a', letterSpacing:2 }).setOrigin(0.5);
+    exit.add([eBg, eTxt]); exit.setSize(92,28).setInteractive({ useHandCursor:true });
+    exit.on('pointerup', () => this.confirmCancel());
+    this.headerCont.add(exit);
+  }
+
+  buildFooter() {
+    const W = this.W, H = this.H;
+    this.autoBtn = makeAssetButton(this, W/2, H - 70, '⏩ AUTO-PICK', 'btn_concede', '#fff', () => this.confirmAutoPick(), { w: 320, fontSize: 30 });
+    this.footerCont.add(this.autoBtn);
+    // Status text
+    this.statusTxt = this.add.text(W/2, H - 130, '', { fontFamily:'Oswald', fontSize:'16px', color:'#88ddff', letterSpacing:2 }).setOrigin(0.5);
+    this.footerCont.add(this.statusTxt);
+  }
+
+  confirmCancel() {
+    const W = this.W, H = this.H;
+    const cont = this.add.container(W/2, H/2).setDepth(9000);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.85); dim.fillRect(-W/2, -H/2, W, H);
+    cont.add(dim); dim.setInteractive(new Phaser.Geom.Rectangle(-W/2,-H/2,W,H), Phaser.Geom.Rectangle.Contains);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.98); panel.fillRoundedRect(-280, -160, 560, 320, 16);
+    panel.lineStyle(3, 0xff5a5a, 1); panel.strokeRoundedRect(-280, -160, 560, 320, 16);
+    cont.add(panel);
+    cont.add(this.add.text(0, -100, 'EXIT DRAFT?', { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ff5a5a', letterSpacing:3 }).setOrigin(0.5));
+    cont.add(this.add.text(0, -30, 'Your picks so far will be lost.', { fontFamily:'Oswald', fontSize:'18px', color:'#e8e8e0' }).setOrigin(0.5));
+    cont.add(makeAssetButton(this, -120, 90, 'STAY', 'btn_snap', '#fff', () => cont.destroy(), { w: 220, fontSize: 28 }));
+    cont.add(makeAssetButton(this,  120, 90, 'EXIT', 'btn_concede', '#fff', () => {
+      this.clearTimer(); draftState = null;
+      this.cameras.main.fadeOut(300);
+      this.time.delayedCall(300, () => this.scene.start('MenuScene'));
+    }, { w: 220, fontSize: 28 }));
+  }
+
+  confirmAutoPick() {
+    if (!draftState || draftState.busy) return;
+    const W = this.W, H = this.H;
+    const cont = this.add.container(W/2, H/2).setDepth(9000);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.85); dim.fillRect(-W/2, -H/2, W, H);
+    cont.add(dim); dim.setInteractive(new Phaser.Geom.Rectangle(-W/2,-H/2,W,H), Phaser.Geom.Rectangle.Contains);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.98); panel.fillRoundedRect(-280, -160, 560, 320, 16);
+    panel.lineStyle(3, 0xffb800, 1); panel.strokeRoundedRect(-280, -160, 560, 320, 16);
+    cont.add(panel);
+    cont.add(this.add.text(0, -100, 'SKIP REMAINING?', { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ffb800', letterSpacing:3 }).setOrigin(0.5));
+    cont.add(this.add.text(0, -30, 'AI will pick the best card from each remaining pack.', { fontFamily:'Oswald', fontSize:'18px', color:'#e8e8e0', align:'center', wordWrap:{ width: 500 } }).setOrigin(0.5));
+    cont.add(makeAssetButton(this, -120, 90, 'NO', 'btn_concede', '#fff', () => cont.destroy(), { w: 220, fontSize: 28 }));
+    cont.add(makeAssetButton(this,  120, 90, 'AUTO', 'btn_snap', '#fff', () => { cont.destroy(); this.runAutoPickAll(); }, { w: 220, fontSize: 28 }));
+  }
+
+  bestAutoPick(cards) {
+    if (!cards.length) return null;
+    return [...cards].sort((a, b) => {
+      const r = RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity];
+      if (r !== 0) return r;
+      const aS = a.side==='off' ? a.off : a.def;
+      const bS = b.side==='off' ? b.off : b.def;
+      return bS - aS;
+    })[0];
+  }
+
+  async runAutoPickAll() {
+    draftState.busy = true;
+    draftState.autoSkipping = true;
+    // Honor current pack picks; fill missing.
+    if (!draftState.pickedOff) draftState.pickedOff = this.bestAutoPick(draftState.currentPack.filter(c => c.side==='off'));
+    if (!draftState.pickedDef) draftState.pickedDef = this.bestAutoPick(draftState.currentPack.filter(c => c.side==='def'));
+    await this.finalizePack(true);
+    while (draftState && draftState.packNum <= draftState.totalPacks) {
+      draftState.currentPack = generateDraftPack(draftState.packNum);
+      const offBest = this.bestAutoPick(draftState.currentPack.filter(c => c.side==='off'));
+      const defBest = this.bestAutoPick(draftState.currentPack.filter(c => c.side==='def'));
+      if (offBest && offBest.rarity === 'legendary') sfx('legendaryHit');
+      else if (offBest && offBest.rarity === 'rare') sfx('rareFlash');
+      if (defBest && defBest.rarity === 'legendary') sfx('legendaryHit');
+      else if (defBest && defBest.rarity === 'rare') sfx('rareFlash');
+      draftState.roster.push(offBest); draftState.roster.push(defBest);
+      draftState.packNum++;
+    }
+    showToast(this, 'AUTO-PICKED REMAINING', 1400, '#ffb800');
+    this.time.delayedCall(800, () => this.finishDraft());
+  }
+
+  startPack() {
+    if (!draftState) return;
+    draftState.busy = true;
+    draftState.pickedOff = null; draftState.pickedDef = null;
+    const isFinal = draftState.packNum >= draftState.totalPacks;
+    draftState.timeLeft = isFinal ? FINAL_PACK_PICK_SECONDS : PACK_PICK_SECONDS;
+    draftState.currentPack = generateDraftPack(draftState.packNum);
+    this.updateHeader();
+    if (isFinal) { sfx('finalIntro'); }
+    this.renderPack(true);
+    this.time.delayedCall(this.reduced ? 150 : 600, () => this.revealAllCards());
+  }
+
+  updateHeader() {
+    const isFinal = draftState.packNum >= draftState.totalPacks;
+    this.headerTxt.setText(isFinal ? 'FINAL PACK' : `PACK ${draftState.packNum} / ${draftState.totalPacks}`);
+    this.headerTxt.setColor(isFinal ? '#ff66ff' : '#ffb800');
+    this.statusTxt.setText('Deck so far: ' + draftState.roster.length + ' / 50');
+  }
+
+  renderPack(initial) {
+    this.packArena.removeAll(true);
+    const cardW = 130;
+    const gapX = 14, gapY = 28;
+    const positions = [];
+    for (let row=0; row<2; row++) {
+      for (let col=0; col<3; col++) {
+        positions.push({ x: (col - 1) * (cardW + gapX), y: row === 0 ? -130 : 130 });
+      }
+    }
+    // OFF labels (top)
+    this.packArena.add(this.add.text(0, -240, '🟧 OFFENSE — PICK ONE', { fontFamily:'Bebas Neue', fontSize:'22px', color:'#ff8a3a', letterSpacing:3 }).setOrigin(0.5));
+    this.packArena.add(this.add.text(0, 30, '🟦 DEFENSE — PICK ONE', { fontFamily:'Bebas Neue', fontSize:'22px', color:'#5acaff', letterSpacing:3 }).setOrigin(0.5));
+
+    // Index by row: first 3 are OFF, last 3 are DEF
+    const off = draftState.currentPack.filter(c => c.side==='off');
+    const def = draftState.currentPack.filter(c => c.side==='def');
+    const ordered = [...off, ...def];
+    ordered.forEach((card, idx) => {
+      const pos = positions[idx];
+      const cont = this.add.container(pos.x, pos.y);
+      cont.cardData = card;
+      cont.startPos = { x: pos.x, y: pos.y };
+      const inner = this.add.container(0, 0);
+      if (initial && !card._revealed) {
+        // Card back
+        const back = buildCard(this, card, cardW, { hidden: true });
+        inner.add(back);
+      } else {
+        const front = buildCard(this, card, cardW);
+        inner.add(front);
+      }
+      cont.add(inner);
+      cont.cardInner = inner;
+      cont.setSize(cardW, cardW * 1.4);
+      cont.setInteractive({ useHandCursor: true });
+      cont.on('pointerup', () => this.tapCard(cont));
+      this.packArena.add(cont);
+      // Highlight picked
+      this.refreshPickHighlight(cont);
+    });
+  }
+
+  refreshPickHighlight(cont) {
+    const card = cont.cardData;
+    if (cont._halo) { cont._halo.destroy(); cont._halo = null; }
+    const isPicked = (card === draftState.pickedOff || card === draftState.pickedDef);
+    const sidePicked = card.side==='off' ? draftState.pickedOff : draftState.pickedDef;
+    const isFaded = sidePicked && !isPicked;
+    if (isPicked) {
+      const halo = this.add.graphics();
+      halo.lineStyle(4, 0xffb800, 1);
+      halo.strokeRoundedRect(-72, -100, 144, 200, 10);
+      cont.add(halo); cont._halo = halo;
+      cont.setAlpha(1);
+    } else if (isFaded) {
+      cont.setAlpha(0.4);
+    } else {
+      cont.setAlpha(1);
+    }
+  }
+
+  async revealAllCards() {
+    if (!draftState) return;
+    const items = this.packArena.list.filter(c => c.cardData);
+    for (const cont of items) {
+      const card = cont.cardData;
+      card._revealed = true;
+      // Replace back with front
+      const cardW = 130;
+      cont.cardInner.removeAll(true);
+      const front = buildCard(this, card, cardW);
+      cont.cardInner.add(front);
+      // Flash for rare/legendary
+      if (card.rarity === 'rare') { sfx('rareFlash'); this.flashCard(cont, 0xffaa44, 600); }
+      else if (card.rarity === 'legendary') {
+        sfx('legendaryHit');
+        this.flashCard(cont, 0xffd54d, 900);
+        if (!this.reduced) this.cameras.main.shake(220, 0.008);
+      } else {
+        sfx('flip');
+      }
+      await new Promise(r => this.time.delayedCall(this.reduced ? 80 : 250, r));
+      if (!draftState) return;
+    }
+    draftState.busy = false;
+    this.startPackTimer();
+  }
+
+  flashCard(cont, color, dur) {
+    const g = this.add.graphics();
+    g.fillStyle(color, 0.5); g.fillRoundedRect(-75, -105, 150, 210, 12);
+    cont.add(g);
+    this.tweens.add({ targets: g, alpha: 0, duration: dur, onComplete: () => g.destroy() });
+  }
+
+  tapCard(cont) {
+    if (!draftState || draftState.busy) return;
+    const card = cont.cardData;
+    if (!card._revealed) return;
+    if (card === draftState.pickedOff || card === draftState.pickedDef) return;
+    if (card.side==='off') draftState.pickedOff = card;
+    else                    draftState.pickedDef = card;
+    sfx('pick');
+    // refresh all
+    this.packArena.list.filter(c => c.cardData).forEach(c => this.refreshPickHighlight(c));
+    if (draftState.pickedOff && draftState.pickedDef) {
+      this.clearTimer();
+      this.time.delayedCall(600, () => this.finalizePack(false));
+    }
+  }
+
+  startPackTimer() {
+    this.clearTimer();
+    const refresh = () => {
+      if (!draftState) return;
+      this.timerTxt.setText(Math.max(0, draftState.timeLeft));
+      const ttl = draftState.timeLeft;
+      if (ttl <= 2) this.timerTxt.setColor('#ff5a5a');
+      else if (ttl <= 4) this.timerTxt.setColor('#ffaa44');
+      else this.timerTxt.setColor('#ffb800');
+    };
+    refresh();
+    this.tickEvent = this.time.addEvent({
+      delay: 1000, loop: true, callback: () => {
+        if (!draftState || draftState.busy) return;
+        draftState.timeLeft--;
+        if (draftState.timeLeft <= 4 && draftState.timeLeft > 1) sfx('tick');
+        else if (draftState.timeLeft === 1) sfx('tickUrgent');
+        refresh();
+        if (draftState.timeLeft <= 0) {
+          this.clearTimer();
+          this.autoPickCurrent();
+        }
+      }
+    });
+  }
+
+  clearTimer() {
+    if (this.tickEvent) { this.tickEvent.remove(false); this.tickEvent = null; }
+  }
+
+  async autoPickCurrent() {
+    if (!draftState || draftState.busy) return;
+    draftState.busy = true;
+    if (!draftState.pickedOff) draftState.pickedOff = this.bestAutoPick(draftState.currentPack.filter(c => c.side==='off'));
+    if (!draftState.pickedDef) draftState.pickedDef = this.bestAutoPick(draftState.currentPack.filter(c => c.side==='def'));
+    this.packArena.list.filter(c => c.cardData).forEach(c => this.refreshPickHighlight(c));
+    showToast(this, 'AUTO-PICKED', 900, '#ffb800');
+    this.time.delayedCall(600, () => this.finalizePack(true));
+  }
+
+  async finalizePack(fromAuto) {
+    if (!draftState) return;
+    draftState.busy = true;
+    this.clearTimer();
+    sfx('discard');
+    if (!fromAuto) sfx('confirm');
+    // Animate picks toward header (deck), others fade
+    const items = this.packArena.list.filter(c => c.cardData);
+    items.forEach((cont) => {
+      const card = cont.cardData;
+      if (card === draftState.pickedOff || card === draftState.pickedDef) {
+        this.tweens.add({ targets: cont, y: cont.y - 400, alpha: 0, scale: 0.4, duration: 400, ease:'Cubic.in' });
+      } else {
+        this.tweens.add({ targets: cont, y: cont.y + 60, alpha: 0, duration: 360, ease:'Cubic.in' });
+      }
+    });
+    await new Promise(r => this.time.delayedCall(440, r));
+    if (!draftState) return;
+    if (draftState.pickedOff) draftState.roster.push(draftState.pickedOff);
+    if (draftState.pickedDef) draftState.roster.push(draftState.pickedDef);
+    draftState.pickedOff = null; draftState.pickedDef = null;
+    draftState.packNum++;
+    if (draftState.packNum > draftState.totalPacks) { this.finishDraft(); return; }
+    if (!draftState.autoSkipping) {
+      this.startPack();
+    }
+  }
+
+  finishDraft() {
+    this.clearTimer();
+    seasonState = { roster: draftState.roster, wins: 0, week: 1 };
+    saveSeason();
+    draftState = null;
+    this.cameras.main.fadeOut(400);
+    this.time.delayedCall(400, () => this.scene.start('SeasonHubScene'));
+  }
+}
+
+// ============================================================
+// SCENE: SEASON HUB (Phase 5)
+// ============================================================
+class SeasonHubScene extends Phaser.Scene {
+  constructor() { super({ key:'SeasonHubScene' }); }
+  create() {
+    const W = this.scale.width, H = this.scale.height;
+    this.cameras.main.fadeIn(400);
+    if (!seasonState) seasonState = loadSeason();
+    if (!seasonState) { this.scene.start('MenuScene'); return; }
+
+    const bg = this.add.image(W/2, H/2, 'stadium_bg');
+    const bgTex = this.textures.get('stadium_bg').source[0];
+    bg.setScale(Math.max(W / bgTex.width, H / bgTex.height)).setAlpha(0.5);
+    const vg = this.add.graphics(); vg.fillStyle(0x000000, 0.7); vg.fillRect(0,0,W,H);
+
+    this.add.text(W/2, 70, 'SEASON', { fontFamily:'Bebas Neue', fontSize:'72px', color:'#ffb800', stroke:'#000', strokeThickness:6, letterSpacing:8 }).setOrigin(0.5);
+    this.add.text(W/2, 130, `WEEK ${seasonState.week}`, { fontFamily:'Oswald', fontSize:'22px', color:'#88ddff', letterSpacing:4 }).setOrigin(0.5);
+
+    // Trophies row
+    const trophyY = 200;
+    for (let i=0;i<7;i++) {
+      const x = W/2 - (3.5 - i - 0.5) * 70;
+      const won = i < seasonState.wins;
+      const next = i === seasonState.wins;
+      const t = this.add.text(x, trophyY, won ? '🏆' : (next ? '➤' : '·'), {
+        fontFamily:'Bebas Neue', fontSize: won ? '48px' : next ? '34px' : '34px',
+        color: won ? '#ffb800' : next ? '#88ddff' : '#666'
+      }).setOrigin(0.5);
+      if (next) this.tweens.add({ targets: t, scale: 1.2, duration: 700, yoyo: true, repeat: -1, ease:'Sine.inOut' });
+    }
+
+    // Next opponent panel
+    const opp = OPPONENT_TEAMS[Math.min(seasonState.wins, OPPONENT_TEAMS.length - 1)];
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.92); panel.fillRoundedRect(W/2 - 360, 280, 720, 320, 16);
+    panel.lineStyle(3, 0xffb800, 0.8); panel.strokeRoundedRect(W/2 - 360, 280, 720, 320, 16);
+    this.add.text(W/2, 320, 'NEXT OPPONENT', { fontFamily:'Oswald', fontSize:'18px', color:'#aaa', letterSpacing:6 }).setOrigin(0.5);
+    this.add.text(W/2, 370, opp.name.toUpperCase(), { fontFamily:'Bebas Neue', fontSize:'68px', color:'#fff', stroke:'#000', strokeThickness:5, letterSpacing:6 }).setOrigin(0.5);
+    this.add.text(W/2, 440, '⭐'.repeat(opp.tier), { fontFamily:'Bebas Neue', fontSize:'34px', color:'#ffb800' }).setOrigin(0.5);
+    this.add.text(W/2, 510, opp.flavor, { fontFamily:'Oswald', fontSize:'20px', color:'#e8e8e0', align:'center', wordWrap:{ width: 660 }, fontStyle:'italic' }).setOrigin(0.5);
+
+    // Roster summary
+    const offCount = seasonState.roster.filter(c => c.side==='off').length;
+    const defCount = seasonState.roster.filter(c => c.side==='def').length;
+    this.add.text(W/2, 660, `Roster: ${offCount} OFF · ${defCount} DEF`, { fontFamily:'Oswald', fontSize:'20px', color:'#88ddff', letterSpacing:2 }).setOrigin(0.5);
+
+    // PLAY MATCH
+    makeAssetButton(this, W/2, H - 280, 'PLAY MATCH', 'btn_snap', '#fff', () => {
+      sfx('click'); this.cameras.main.fadeOut(400);
+      this.time.delayedCall(400, () => {
+        const aiDeck = buildAIDeck(opp.tier);
+        newGame(seasonState.roster, aiDeck, 'season', opp);
+        this.scene.start('GameScene');
+      });
+    }, { w: 380 });
+    makeAssetButton(this, W/2 - 130, H - 160, 'VIEW ROSTER', 'btn_concede', '#fff', () => {
+      sfx('click'); this.scene.start('RosterScene');
+    }, { w: 240, fontSize: 28 });
+    makeAssetButton(this, W/2 + 130, H - 160, 'MAIN MENU', 'btn_concede', '#fff', () => {
+      sfx('click'); this.cameras.main.fadeOut(300);
+      this.time.delayedCall(300, () => this.scene.start('MenuScene'));
+    }, { w: 240, fontSize: 28 });
+  }
+}
+
+// ============================================================
+// SCENE: ROSTER (Phase 5)
+// ============================================================
+class RosterScene extends Phaser.Scene {
+  constructor() { super({ key:'RosterScene' }); }
+  create() {
+    const W = this.scale.width, H = this.scale.height;
+    this.cameras.main.fadeIn(300);
+    if (!seasonState) seasonState = loadSeason();
+    if (!seasonState) { this.scene.start('MenuScene'); return; }
+
+    const vg = this.add.graphics(); vg.fillStyle(0x050810, 1); vg.fillRect(0,0,W,H);
+
+    this.add.text(W/2, 60, 'ROSTER', { fontFamily:'Bebas Neue', fontSize:'56px', color:'#ffb800', stroke:'#000', strokeThickness:5, letterSpacing:6 }).setOrigin(0.5);
+    this.add.text(W/2, 110, `${seasonState.roster.length} cards`, { fontFamily:'Oswald', fontSize:'18px', color:'#aaa', letterSpacing:2 }).setOrigin(0.5);
+
+    // Sorted list — OFF then DEF, by cost
+    const sorted = [...seasonState.roster].sort((a, b) => {
+      if (a.side !== b.side) return a.side === 'off' ? -1 : 1;
+      return a.cost - b.cost;
+    });
+    // Two columns scrollable container
+    const listCont = this.add.container(0, 0);
+    const cardW = 140;
+    const cardH = cardW * 1.4;
+    const cols = 5;
+    const gap = 10;
+    const startX = (W - (cols * cardW + (cols - 1) * gap)) / 2 + cardW/2;
+    sorted.forEach((c, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = startX + col * (cardW + gap);
+      const y = 180 + row * (cardH + gap);
+      const cc = buildCard(this, c, cardW);
+      cc.x = x; cc.y = y;
+      cc.setSize(cardW, cardH).setInteractive({ useHandCursor: true });
+      cc.on('pointerup', () => this.showInspect(c));
+      listCont.add(cc);
+    });
+    // Scroll via drag (mobile)
+    let dragStart = null;
+    this.input.on('pointerdown', (p) => { dragStart = { y: p.y, contY: listCont.y }; });
+    this.input.on('pointermove', (p) => {
+      if (!dragStart || !p.isDown) return;
+      listCont.y = dragStart.contY + (p.y - dragStart.y);
+      const totalRows = Math.ceil(sorted.length / cols);
+      const maxScroll = Math.max(0, totalRows * (cardH + gap) - (H - 280));
+      if (listCont.y > 0) listCont.y = 0;
+      if (listCont.y < -maxScroll) listCont.y = -maxScroll;
+    });
+    this.input.on('pointerup', () => { dragStart = null; });
+
+    makeAssetButton(this, W/2, H - 60, 'BACK', 'btn_concede', '#fff', () => {
+      sfx('click'); this.scene.start('SeasonHubScene');
+    }, { w: 320, fontSize: 32 });
+  }
+
+  showInspect(card) {
+    const W = this.scale.width, H = this.scale.height;
+    const cont = this.add.container(W/2, H/2).setDepth(9000);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.85); dim.fillRect(-W/2, -H/2, W, H);
+    cont.add(dim);
+    dim.setInteractive(new Phaser.Geom.Rectangle(-W/2, -H/2, W, H), Phaser.Geom.Rectangle.Contains);
+    dim.on('pointerup', () => cont.destroy());
+    const big = buildCard(this, card, 360);
+    big.x = 0; big.y = -100; cont.add(big);
+    if (card.ability) {
+      cont.add(this.add.text(0, 200, card.ability, { fontFamily:'Oswald', fontSize:'24px', color:'#ffb800', stroke:'#000', strokeThickness:3, align:'center', wordWrap:{ width: 600 } }).setOrigin(0.5));
+    }
+    cont.add(this.add.text(0, 260, `${card.pos} · ${card.team} · ${card.rarity.toUpperCase()}`, { fontFamily:'Oswald', fontSize:'20px', color:'#aaa', letterSpacing:2 }).setOrigin(0.5));
+  }
+}
+
+// ============================================================
+// SCENE: MATCH SUMMARY (Phase 6)
+// Sequenced reveal: result → score → XP tick → cash tick → breakdown
+// → XP bar fill (with level-ups) → perk-unlock banner → CONTINUE
+// ============================================================
+class MatchSummaryScene extends Phaser.Scene {
+  constructor() { super({ key:'MatchSummaryScene' }); }
+  init(data) {
+    this.matchResult = data.matchResult;
+    this.rewards = data.rewards;
+    this.levelInfo = data.levelInfo;
+    this.seasonOngoing = !!data.seasonOngoing;
+    this.championship = !!data.championship;
+  }
+
+  create() {
+    this.W = this.scale.width; this.H = this.scale.height;
+    this.reduced = prefersReducedMotion();
+    this.cameras.main.fadeIn(300);
+    const bg = this.add.image(this.W/2, this.H/2, 'stadium_bg');
+    const bgTex = this.textures.get('stadium_bg').source[0];
+    bg.setScale(Math.max(this.W / bgTex.width, this.H / bgTex.height)).setAlpha(0.4);
+    const vg = this.add.graphics(); vg.fillStyle(0x050810, 0.85); vg.fillRect(0,0,this.W,this.H);
+
+    const won = this.matchResult.won;
+    const tie = this.matchResult.finalScore.you === this.matchResult.finalScore.ai;
+    const label = won ? 'VICTORY' : tie ? 'TIE GAME' : 'DEFEAT';
+    const color = won ? '#4aff8a' : tie ? '#ffb800' : '#ff5a5a';
+
+    // Result banner
+    this.resultTxt = this.add.text(this.W/2, 140, label, {
+      fontFamily:'Bebas Neue', fontSize:'120px', color, stroke:'#000', strokeThickness:10, letterSpacing:8
+    }).setOrigin(0.5).setAlpha(0).setScale(0.5);
+
+    // Championship banner
+    if (this.championship) {
+      this.champTxt = this.add.text(this.W/2, 60, '🏆 CHAMPIONS! 🏆', {
+        fontFamily:'Bebas Neue', fontSize:'40px', color:'#ffb800', stroke:'#000', strokeThickness:5, letterSpacing:6
+      }).setOrigin(0.5).setAlpha(0);
+    }
+
+    this.scoreTxt = this.add.text(this.W/2, 260, `YOU ${this.matchResult.finalScore.you}  —  ${this.matchResult.finalScore.ai}  CPU`, {
+      fontFamily:'Bebas Neue', fontSize:'56px', color:'#fff', stroke:'#000', strokeThickness:7, letterSpacing:6
+    }).setOrigin(0.5).setAlpha(0);
+
+    this.opponentTxt = this.add.text(this.W/2, 320, this.matchResult.opponent ? 'vs. ' + this.matchResult.opponent.name : 'QUICK PLAY', {
+      fontFamily:'Oswald', fontSize:'24px', color:'#aaa', letterSpacing:4
+    }).setOrigin(0.5).setAlpha(0);
+
+    // XP row
+    this.xpRow = this.add.container(this.W/2, 410).setAlpha(0);
+    const xpLbl = this.add.text(-140, 0, 'XP EARNED', { fontFamily:'Oswald', fontSize:'24px', color:'#88ddff', letterSpacing:3 }).setOrigin(0, 0.5);
+    this.xpVal = this.add.text(140, 0, '+0', { fontFamily:'Bebas Neue', fontSize:'42px', color:'#fff', stroke:'#000', strokeThickness:4 }).setOrigin(1, 0.5);
+    this.xpRow.add([xpLbl, this.xpVal]);
+
+    this.cashRow = this.add.container(this.W/2, 470).setAlpha(0);
+    const cashLbl = this.add.text(-140, 0, 'CASH EARNED', { fontFamily:'Oswald', fontSize:'24px', color:'#4aff8a', letterSpacing:3 }).setOrigin(0, 0.5);
+    this.cashVal = this.add.text(140, 0, '+$0', { fontFamily:'Bebas Neue', fontSize:'42px', color:'#fff', stroke:'#000', strokeThickness:4 }).setOrigin(1, 0.5);
+    this.cashRow.add([cashLbl, this.cashVal]);
+
+    // Breakdown
+    this.breakdownCont = this.add.container(this.W/2, 560);
+
+    // XP bar / level
+    this.levelTxt = this.add.text(this.W/2 - 200, 920, 'LV ' + this.levelInfo.startLevel, { fontFamily:'Bebas Neue', fontSize:'36px', color:'#ffb800', stroke:'#000', strokeThickness:4 }).setOrigin(0, 0.5);
+    this.nextPerkTxt = this.add.text(this.W/2 + 200, 920, '', { fontFamily:'Oswald', fontSize:'16px', color:'#88ddff', letterSpacing:2 }).setOrigin(1, 0.5);
+    this.updateNextPerkHint(this.levelInfo.startLevel);
+
+    this.xpBarBg = this.add.graphics();
+    this.xpBarBg.fillStyle(0x222633, 1); this.xpBarBg.fillRoundedRect(this.W/2 - 280, 950, 560, 32, 8);
+    this.xpBarBg.lineStyle(2, 0xffb800, 0.6); this.xpBarBg.strokeRoundedRect(this.W/2 - 280, 950, 560, 32, 8);
+    this.xpBarFill = this.add.graphics();
+    this.xpBarText = this.add.text(this.W/2, 966, '', { fontFamily:'JetBrains Mono', fontSize:'18px', color:'#fff', stroke:'#000', strokeThickness:3 }).setOrigin(0.5);
+    this.setXpBarPercent(this.levelInfo.startXp / this.levelInfo.startXpForNext);
+    this.xpBarText.setText(this.levelInfo.startXp + ' / ' + this.levelInfo.startXpForNext);
+
+    // Perk-unlock banner placeholder
+    this.perkBanner = this.add.container(this.W/2, 1080).setAlpha(0);
+    this.perkBannerBg = this.add.graphics();
+    this.perkBannerBg.fillStyle(0xffb800, 0.95); this.perkBannerBg.fillRoundedRect(-280, -50, 560, 100, 12);
+    this.perkBanner.add(this.perkBannerBg);
+    this.perkBannerTxt = this.add.text(0, 0, '', { fontFamily:'Bebas Neue', fontSize:'28px', color:'#000', align:'center', wordWrap:{ width: 540 } }).setOrigin(0.5);
+    this.perkBanner.add(this.perkBannerTxt);
+
+    // Continue button
+    this.continueBtn = makeAssetButton(this, this.W/2, this.H - 120, 'CONTINUE', 'btn_snap', '#fff', () => this.onContinue(), { w: 380 });
+    this.continueBtn.setAlpha(0);
+
+    this.runSequence();
+  }
+
+  setXpBarPercent(pct) {
+    pct = Math.max(0, Math.min(1, pct));
+    this.xpBarFill.clear();
+    this.xpBarFill.fillStyle(0xffb800, 1);
+    this.xpBarFill.fillRoundedRect(this.W/2 - 280, 950, 560 * pct, 32, 8);
+  }
+
+  updateNextPerkHint(currentLevel) {
+    const nextPerk = PERK_POOL.find(p => p.unlockLevel > currentLevel);
+    if (nextPerk) this.nextPerkTxt.setText('Next: ' + nextPerk.icon + ' ' + nextPerk.name + ' (Lv ' + nextPerk.unlockLevel + ')');
+    else this.nextPerkTxt.setText(currentLevel >= COACH_LEVEL_CAP ? 'MAX LEVEL' : 'All perks unlocked');
+  }
+
+  async runSequence() {
+    const r = this.reduced;
+    await this.delay(r ? 10 : 100);
+    this.tweens.add({ targets: this.resultTxt, alpha: 1, scale: 1, duration: r ? 100 : 500, ease:'Back.out' });
+    if (this.champTxt) this.tweens.add({ targets: this.champTxt, alpha: 1, duration: r ? 100 : 400, delay: 200 });
+    await this.delay(r ? 100 : 500);
+    this.tweens.add({ targets: [this.scoreTxt, this.opponentTxt], alpha: 1, duration: r ? 100 : 400 });
+    await this.delay(r ? 100 : 500);
+    // XP tick
+    this.tweens.add({ targets: this.xpRow, alpha: 1, duration: r ? 80 : 300 });
+    await this.tickValue(this.xpVal, 0, this.rewards.xpEarned, r ? 200 : 800, v => '+' + v);
+    // Cash tick
+    this.tweens.add({ targets: this.cashRow, alpha: 1, duration: r ? 80 : 300 });
+    await this.tickValue(this.cashVal, 0, this.rewards.cashEarned, r ? 200 : 800, v => '+$' + v);
+    // Breakdown
+    for (let i=0;i<this.rewards.breakdown.length;i++) {
+      const line = this.rewards.breakdown[i];
+      const row = this.add.container(0, i * 36);
+      const lTxt = this.add.text(-280, 0, line.label, { fontFamily:'Oswald', fontSize:'20px', color:'#e8e8e0' }).setOrigin(0, 0.5);
+      const rightPieces = [];
+      if (line.xp)   rightPieces.push('+' + line.xp + ' XP');
+      if (line.cash) rightPieces.push('+$' + line.cash);
+      const rTxt = this.add.text(280, 0, rightPieces.join('  ·  '), { fontFamily:'Oswald', fontSize:'20px', color:'#ffb800', stroke:'#000', strokeThickness:2 }).setOrigin(1, 0.5);
+      row.add([lTxt, rTxt]); row.setAlpha(0);
+      this.breakdownCont.add(row);
+      this.tweens.add({ targets: row, alpha: 1, duration: r ? 30 : 200 });
+      await this.delay(r ? 30 : 160);
+    }
+    await this.delay(r ? 60 : 240);
+    await this.animateXpBar();
+    // Perk unlock banner
+    const unlocked = [...this.levelInfo.levelUps].reverse().map(l => l.perkUnlocked).find(Boolean);
+    if (unlocked) {
+      this.perkBannerTxt.setText('PERK UNLOCKED!\n' + unlocked.icon + ' ' + unlocked.name + ' — ' + unlocked.desc);
+      this.tweens.add({ targets: this.perkBanner, alpha: 1, y: 1080, duration: r ? 100 : 400, ease:'Back.out' });
+      sfx('perkUnlock');
+      await this.delay(r ? 80 : 320);
+    }
+    this.tweens.add({ targets: this.continueBtn, alpha: 1, duration: r ? 100 : 350 });
+  }
+
+  tickValue(target, from, to, ms, fmt) {
+    return new Promise(resolve => {
+      if (from === to) { target.setText(fmt(to)); resolve(); return; }
+      const startT = performance.now();
+      let lastTick = 0;
+      const step = (now) => {
+        const t = Math.min(1, (now - startT) / ms);
+        const val = Math.round(from + (to - from) * t);
+        target.setText(fmt(val));
+        if (now - lastTick > 80) { sfx('tick'); lastTick = now; }
+        if (t < 1) requestAnimationFrame(step);
+        else { target.setText(fmt(to)); resolve(); }
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
+  async animateXpBar() {
+    let curLevel = this.levelInfo.startLevel;
+    let curXp = this.levelInfo.startXp;
+    let xpRemaining = this.rewards.xpEarned;
+    const r = this.reduced;
+    while (xpRemaining > 0 && curLevel < COACH_LEVEL_CAP) {
+      const needed = xpRequiredForLevel(curLevel + 1) - curXp;
+      if (xpRemaining < needed) {
+        curXp += xpRemaining; xpRemaining = 0;
+        const total = xpRequiredForLevel(curLevel + 1);
+        this.tweenBar(curXp / total, r ? 200 : 900);
+        this.xpBarText.setText(curXp + ' / ' + total);
+        await this.delay(r ? 220 : 950);
+      } else {
+        xpRemaining -= needed;
+        const total = xpRequiredForLevel(curLevel + 1);
+        this.tweenBar(1, r ? 180 : 800);
+        this.xpBarText.setText(total + ' / ' + total);
+        await this.delay(r ? 200 : 900);
+        sfx('levelUp');
+        curLevel++;
+        this.levelTxt.setText('LV ' + curLevel);
+        this.updateNextPerkHint(curLevel);
+        // Flash bar
+        this.tweens.add({ targets: this.xpBarFill, alpha: 0.3, duration: 120, yoyo: true });
+        await this.delay(r ? 100 : 360);
+        curXp = 0;
+        this.setXpBarPercent(0);
+        this.xpBarText.setText('0 / ' + xpRequiredForLevel(curLevel + 1));
+        await this.delay(r ? 60 : 200);
+      }
+    }
+  }
+
+  tweenBar(targetPct, dur) {
+    const startPct = this._currentBarPct || 0;
+    const obj = { v: startPct };
+    this.tweens.add({ targets: obj, v: targetPct, duration: dur, ease:'Cubic.out', onUpdate: () => this.setXpBarPercent(obj.v) });
+    this._currentBarPct = targetPct;
+  }
+
+  onContinue() {
+    sfx('click');
+    this.cameras.main.fadeOut(300);
+    this.time.delayedCall(300, () => {
+      if (this.matchResult.opponent && this.seasonOngoing) {
+        this.scene.start('SeasonHubScene');
+      } else if (this.matchResult.opponent && !this.seasonOngoing && !this.championship) {
+        showToastDefer = 'BETTER LUCK NEXT TIME';
+        this.scene.start('MenuScene');
+      } else {
+        this.scene.start('MenuScene');
+      }
+    });
+  }
+
+  delay(ms) { return new Promise(r => this.time.delayedCall(ms, r)); }
+}
+let showToastDefer = null;
+
+// ============================================================
+// SCENE: LOCKER ROOM (Phase 7)
+// ============================================================
+class LockerRoomScene extends Phaser.Scene {
+  constructor() { super({ key:'LockerRoomScene' }); }
+  create() {
+    this.W = this.scale.width; this.H = this.scale.height;
+    this.cameras.main.fadeIn(300);
+    const vg = this.add.graphics(); vg.fillStyle(0x050810, 1); vg.fillRect(0,0,this.W,this.H);
+    this.add.image(this.W/2, this.H/2, 'stadium_bg')
+      .setScale(Math.max(this.W / this.textures.get('stadium_bg').source[0].width, this.H / this.textures.get('stadium_bg').source[0].height))
+      .setAlpha(0.15);
+
+    this.add.text(this.W/2, 60, 'LOCKER ROOM', { fontFamily:'Bebas Neue', fontSize:'60px', color:'#ffb800', stroke:'#000', strokeThickness:5, letterSpacing:6 }).setOrigin(0.5);
+    this.cashTxt = this.add.text(this.W - 30, 60, '', { fontFamily:'Bebas Neue', fontSize:'28px', color:'#4aff8a' }).setOrigin(1, 0.5);
+    this.lvlTxt = this.add.text(30, 60, '', { fontFamily:'Bebas Neue', fontSize:'28px', color:'#ffb800' }).setOrigin(0, 0.5);
+
+    this.add.text(this.W/2, 130, 'EQUIPPED PERKS', { fontFamily:'Oswald', fontSize:'18px', color:'#aaa', letterSpacing:4 }).setOrigin(0.5);
+    this.slotsCont = this.add.container(0, 0);
+    this.poolCont = this.add.container(0, 0);
+
+    makeAssetButton(this, this.W/2 - 130, this.H - 130, 'BACK', 'btn_concede', '#fff', () => { sfx('click'); this.cameras.main.fadeOut(300); this.time.delayedCall(300, () => this.scene.start('MenuScene')); }, { w: 240, fontSize: 28 });
+    makeAssetButton(this, this.W/2 + 130, this.H - 130, 'RESET PROGRESS', 'btn_concede', '#fff', () => this.confirmReset(), { w: 240, fontSize: 24 });
+
+    this.render();
+  }
+
+  render() {
+    this.cashTxt.setText('$' + playerData.cash.toLocaleString());
+    this.lvlTxt.setText('LV ' + playerData.coachLevel);
+    this.slotsCont.removeAll(true);
+    this.poolCont.removeAll(true);
+    // Three slots
+    const slotW = 240, slotH = 110, gap = 16;
+    const startX = this.W/2 - (slotW * 1.5 + gap);
+    for (let i=0;i<3;i++) {
+      const x = startX + i * (slotW + gap);
+      const y = 170;
+      const cont = this.add.container(x + slotW/2, y + slotH/2);
+      const bg = this.add.graphics();
+      const perkId = playerData.perksEquipped[i];
+      if (perkId) {
+        bg.fillStyle(0x1a2030, 0.95); bg.fillRoundedRect(-slotW/2, -slotH/2, slotW, slotH, 12);
+        bg.lineStyle(2, 0xffb800, 0.9); bg.strokeRoundedRect(-slotW/2, -slotH/2, slotW, slotH, 12);
+        cont.add(bg);
+        const perk = getPerk(perkId);
+        cont.add(this.add.text(-slotW/2 + 12, -28, perk.icon, { fontFamily:'Bebas Neue', fontSize:'36px' }).setOrigin(0, 0.5));
+        cont.add(this.add.text(-slotW/2 + 56, -28, perk.name, { fontFamily:'Bebas Neue', fontSize:'22px', color:'#ffb800' }).setOrigin(0, 0.5));
+        cont.add(this.add.text(-slotW/2 + 12, 6, perk.desc, { fontFamily:'Oswald', fontSize:'13px', color:'#e8e8e0', wordWrap:{ width: slotW - 24 } }).setOrigin(0, 0.5));
+        const unEq = makeAssetButton(this, 0, 38, 'UNEQUIP', 'btn_concede', '#fff', () => { sfx('click'); this.unequip(perkId); }, { w: 140, fontSize: 18 });
+        unEq.setScale(0.7);
+        cont.add(unEq);
+      } else {
+        bg.fillStyle(0x0d1320, 0.7); bg.fillRoundedRect(-slotW/2, -slotH/2, slotW, slotH, 12);
+        bg.lineStyle(2, 0x444444, 0.7); bg.strokeRoundedRect(-slotW/2, -slotH/2, slotW, slotH, 12);
+        cont.add(bg);
+        cont.add(this.add.text(0, 0, 'EMPTY', { fontFamily:'Bebas Neue', fontSize:'26px', color:'#666', letterSpacing:4 }).setOrigin(0.5));
+      }
+      this.slotsCont.add(cont);
+    }
+    // Pool
+    this.add.text(this.W/2, 340, 'AVAILABLE PERKS', { fontFamily:'Oswald', fontSize:'18px', color:'#aaa', letterSpacing:4 }).setOrigin(0.5);
+    const pCols = 3, pCardW = 240, pCardH = 130, pGap = 18;
+    const poolStartX = this.W/2 - (pCardW * (pCols/2)) - (pGap * (pCols-1)/2) + pCardW/2;
+    PERK_POOL.forEach((perk, i) => {
+      const col = i % pCols, row = Math.floor(i / pCols);
+      const x = poolStartX + col * (pCardW + pGap);
+      const y = 400 + row * (pCardH + pGap) + pCardH/2;
+      const unlocked = playerData.perksUnlocked.includes(perk.id);
+      const equipped = playerData.perksEquipped.includes(perk.id);
+      const cont = this.add.container(x, y);
+      const bg = this.add.graphics();
+      bg.fillStyle(unlocked ? 0x1a2030 : 0x0d1018, 0.95);
+      bg.fillRoundedRect(-pCardW/2, -pCardH/2, pCardW, pCardH, 12);
+      bg.lineStyle(2, equipped ? 0x4aff8a : (unlocked ? 0xffb800 : 0x444444), 0.9);
+      bg.strokeRoundedRect(-pCardW/2, -pCardH/2, pCardW, pCardH, 12);
+      cont.add(bg);
+      cont.add(this.add.text(-pCardW/2 + 12, -40, perk.icon, { fontFamily:'Bebas Neue', fontSize:'32px' }).setOrigin(0, 0.5));
+      cont.add(this.add.text(-pCardW/2 + 52, -40, perk.name, { fontFamily:'Bebas Neue', fontSize:'20px', color: unlocked ? '#ffb800' : '#666' }).setOrigin(0, 0.5));
+      cont.add(this.add.text(-pCardW/2 + 12, 0, perk.desc, { fontFamily:'Oswald', fontSize:'13px', color: unlocked ? '#e8e8e0' : '#666', wordWrap:{ width: pCardW - 24 } }).setOrigin(0, 0.5));
+      if (equipped) {
+        cont.add(this.add.text(0, 40, 'EQUIPPED', { fontFamily:'Bebas Neue', fontSize:'14px', color:'#4aff8a', letterSpacing:3 }).setOrigin(0.5));
+      } else if (!unlocked) {
+        cont.add(this.add.text(0, 40, 'UNLOCK AT LV ' + perk.unlockLevel, { fontFamily:'Bebas Neue', fontSize:'14px', color:'#888', letterSpacing:2 }).setOrigin(0.5));
+      } else {
+        cont.add(this.add.text(0, 40, 'TAP TO EQUIP', { fontFamily:'Oswald', fontSize:'14px', color:'#88ddff', letterSpacing:2 }).setOrigin(0.5));
+        cont.setSize(pCardW, pCardH).setInteractive({ useHandCursor:true });
+        cont.on('pointerup', () => { sfx('click'); this.tryEquip(perk.id); });
+      }
+      this.poolCont.add(cont);
+    });
+  }
+
+  tryEquip(perkId) {
+    if (!playerData.perksUnlocked.includes(perkId)) return;
+    if (playerData.perksEquipped.includes(perkId)) return;
+    if (playerData.perksEquipped.length < 3) {
+      playerData.perksEquipped.push(perkId);
+      savePlayerData(); this.render(); return;
+    }
+    this.showSwapModal(perkId);
+  }
+
+  unequip(perkId) {
+    playerData.perksEquipped = playerData.perksEquipped.filter(p => p !== perkId);
+    savePlayerData(); this.render();
+  }
+
+  showSwapModal(newPerkId) {
+    const W = this.W, H = this.H;
+    const newPerk = getPerk(newPerkId); if (!newPerk) return;
+    const canAfford = playerData.cash >= PERK_SWAP_COST;
+    const cont = this.add.container(W/2, H/2).setDepth(9000);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.85); dim.fillRect(-W/2, -H/2, W, H);
+    cont.add(dim); dim.setInteractive(new Phaser.Geom.Rectangle(-W/2,-H/2,W,H), Phaser.Geom.Rectangle.Contains);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.98); panel.fillRoundedRect(-340, -240, 680, 480, 16);
+    panel.lineStyle(3, 0xffb800, 1); panel.strokeRoundedRect(-340, -240, 680, 480, 16);
+    cont.add(panel);
+    cont.add(this.add.text(0, -180, 'SWAP IN ' + newPerk.name + '?', { fontFamily:'Bebas Neue', fontSize:'32px', color:'#ffb800', letterSpacing:3, align:'center', wordWrap:{ width: 620 } }).setOrigin(0.5));
+    cont.add(this.add.text(0, -120, canAfford ? 'Costs $' + PERK_SWAP_COST + '. Choose which slot to replace.' : 'Need $' + PERK_SWAP_COST + '. You have $' + playerData.cash.toLocaleString() + '. Unequip a perk (free) or earn more cash.', {
+      fontFamily:'Oswald', fontSize:'18px', color:'#e8e8e0', align:'center', wordWrap:{ width: 620 }
+    }).setOrigin(0.5));
+    playerData.perksEquipped.forEach((eqId, i) => {
+      const eq = getPerk(eqId);
+      const btn = makeAssetButton(this, 0, -40 + i * 70, 'REPLACE ' + eq.icon + ' ' + eq.name, 'btn_concede', '#fff', () => {
+        if (playerData.cash < PERK_SWAP_COST) return;
+        playerData.cash -= PERK_SWAP_COST;
+        const idx = playerData.perksEquipped.indexOf(eqId);
+        if (idx >= 0) playerData.perksEquipped[idx] = newPerkId;
+        savePlayerData(); cont.destroy(); this.render();
+      }, { w: 500, fontSize: 22 });
+      if (!canAfford) { btn.setAlpha(0.4); btn.disableInteractive(); }
+      cont.add(btn);
+    });
+    cont.add(makeAssetButton(this, 0, 180, 'CANCEL', 'btn_concede', '#fff', () => cont.destroy(), { w: 240, fontSize: 26 }));
+  }
+
+  confirmReset() {
+    const W = this.W, H = this.H;
+    const step1 = this.add.container(W/2, H/2).setDepth(9100);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.9); dim.fillRect(-W/2, -H/2, W, H);
+    step1.add(dim); dim.setInteractive(new Phaser.Geom.Rectangle(-W/2,-H/2,W,H), Phaser.Geom.Rectangle.Contains);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x200000, 0.98); panel.fillRoundedRect(-340, -200, 680, 400, 16);
+    panel.lineStyle(3, 0xff5a5a, 1); panel.strokeRoundedRect(-340, -200, 680, 400, 16);
+    step1.add(panel);
+    step1.add(this.add.text(0, -140, 'RESET ALL PROGRESS?', { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ff5a5a', letterSpacing:3 }).setOrigin(0.5));
+    step1.add(this.add.text(0, -50, 'Cash, level, perks — everything goes back to zero.', { fontFamily:'Oswald', fontSize:'20px', color:'#e8e8e0', align:'center', wordWrap:{ width: 620 } }).setOrigin(0.5));
+    step1.add(makeAssetButton(this, -140, 110, 'CANCEL', 'btn_snap', '#fff', () => step1.destroy(), { w: 220, fontSize: 26 }));
+    step1.add(makeAssetButton(this,  140, 110, 'CONTINUE', 'btn_concede', '#fff', () => { step1.destroy(); this.confirmReset2(); }, { w: 220, fontSize: 26 }));
+  }
+
+  confirmReset2() {
+    const W = this.W, H = this.H;
+    const c = this.add.container(W/2, H/2).setDepth(9100);
+    const dim = this.add.graphics(); dim.fillStyle(0x000000, 0.9); dim.fillRect(-W/2, -H/2, W, H);
+    c.add(dim); dim.setInteractive(new Phaser.Geom.Rectangle(-W/2,-H/2,W,H), Phaser.Geom.Rectangle.Contains);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x200000, 0.98); panel.fillRoundedRect(-340, -200, 680, 400, 16);
+    panel.lineStyle(3, 0xff5a5a, 1); panel.strokeRoundedRect(-340, -200, 680, 400, 16);
+    c.add(panel);
+    c.add(this.add.text(0, -140, 'REALLY SURE?', { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ff5a5a', letterSpacing:3 }).setOrigin(0.5));
+    c.add(this.add.text(0, -50, 'This cannot be undone.\n\nFinal step: type DELETE.', { fontFamily:'Oswald', fontSize:'20px', color:'#e8e8e0', align:'center', wordWrap:{ width: 620 } }).setOrigin(0.5));
+    c.add(makeAssetButton(this, -140, 110, 'CANCEL', 'btn_snap', '#fff', () => c.destroy(), { w: 220, fontSize: 26 }));
+    c.add(makeAssetButton(this,  140, 110, 'TYPE DELETE', 'btn_concede', '#fff', () => {
+      c.destroy();
+      const typed = prompt('Type DELETE to confirm:');
+      if (typed === 'DELETE') {
+        clearPlayerData();
+        clearSeason();
+        showToast(this, 'PROGRESS RESET', 1500, '#ff5a5a');
+        this.time.delayedCall(1200, () => this.render());
+      }
+    }, { w: 220, fontSize: 22 }));
+  }
+}
+
+// ============================================================
+// BOOTSTRAP: register all scenes
+// ============================================================
+config.scene = [BootScene, MenuScene, GameScene, ConversionScene, DraftScene, SeasonHubScene, RosterScene, MatchSummaryScene, LockerRoomScene, EndScene];
+const game = new Phaser.Game(config);
+
+// Defer-toast plumbing: shown on next MenuScene create
+game.events.on('step', () => {
+  if (showToastDefer) {
+    const scene = game.scene.getScene('MenuScene');
+    if (scene && scene.scene.isActive('MenuScene')) {
+      showToast(scene, showToastDefer, 2400, '#ff5a5a');
+      showToastDefer = null;
+    }
+  }
+});
+</script>
+</body>
+</html>
