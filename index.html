@@ -902,37 +902,39 @@ function buildCard(scene, card, targetW, opts = {}) {
     fontFamily:'Bebas Neue', fontSize: Math.round(H*0.045)+'px', color:'#fff', stroke:'#000', strokeThickness:2
   }).setOrigin(0.5));
 
-  // Name bar — hand cards get a black backing strip behind the text for contrast
-  // (the frame's printed name area is washed out at small sizes).
+  // Name bar — black backing strip behind the text for contrast against the
+  // frame's washed-out printed name area. Drawn on EVERY card (hand and field)
+  // because the field background bleeds through the transparent window
+  // otherwise, making the name unreadable on a played card.
   const nX = (CARD_LAYOUT.name.x + CARD_LAYOUT.name.w/2 - 0.5) * W;
   const nY = (CARD_LAYOUT.name.y + CARD_LAYOUT.name.h/2 - 0.5) * H;
   const nameW = CARD_LAYOUT.name.w * W;
   const nameH = CARD_LAYOUT.name.h * H;
-  if (contextHand) {
-    const nameBg = scene.add.graphics();
-    nameBg.fillStyle(0x000000, 0.65);
-    nameBg.fillRect(nX - nameW/2, nY - nameH/2, nameW, nameH);
-    cont.add(nameBg);
-  }
+  const nameBg = scene.add.graphics();
+  nameBg.fillStyle(0x000000, contextHand ? 0.7 : 0.85);
+  nameBg.fillRect(nX - nameW/2, nY - nameH/2, nameW, nameH);
+  cont.add(nameBg);
   const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
   const nameTxt = scene.add.text(nX, nY, lastName + ' · ' + card.team, {
     fontFamily:'Bebas Neue', fontSize: Math.round(H*0.05)+'px',
-    color: contextHand ? '#ffe8a8' : '#222', letterSpacing:1
+    color: '#ffe8a8', letterSpacing:1
   }).setOrigin(0.5);
   if (nameTxt.width > nameW - 8) nameTxt.setScale((nameW - 8) / nameTxt.width);
   cont.add(nameTxt);
 
-  // Stat block — bigger font + black backing strip for hand cards so the
-  // number reads clearly at thumbnail scale.
+  // Stat block — black backing strip behind the number, drawn on EVERY card
+  // (hand and field). The frame asset has a transparent stat window, so
+  // without this the field's red/green background bleeds through and the
+  // stat number — the snap-time read — is unreadable on played cards.
   const sX = (CARD_LAYOUT.stat.x + CARD_LAYOUT.stat.w/2 - 0.5) * W;
   const sY = (CARD_LAYOUT.stat.y + CARD_LAYOUT.stat.h/2 - 0.5) * H;
   const statVal = card.side==='off' ? (card.curOff ?? card.off) : (card.curDef ?? card.def);
   const statColor = card.side==='off' ? '#ff7a1a' : '#2a8aff';
-  if (contextHand) {
+  {
     const sW = CARD_LAYOUT.stat.w * W;
     const sH = CARD_LAYOUT.stat.h * H;
     const statBg = scene.add.graphics();
-    statBg.fillStyle(0x000000, 0.7);
+    statBg.fillStyle(0x000000, contextHand ? 0.75 : 0.9);
     statBg.fillRoundedRect(sX - sW/2, sY - sH/2, sW, sH, 4);
     cont.add(statBg);
   }
@@ -1430,7 +1432,11 @@ class GameScene extends Phaser.Scene {
 
   drawModifier(parent, y, lane) {
     const mod = lane.modifier; if (!mod) return;
-    const iconKey = 'mod_' + mod.id;
+    // Most modifier icons live in icons/mod_<id>.png. COIN FLIP is an exception:
+    // its mod_coinFlip.png asset is a corrupted sprite sheet (two icons + text
+    // crammed together), so we fall back to the clean 30_coin_heads.png coin
+    // medallion preloaded under the 'coin_heads' key.
+    const iconKey = mod.id === 'coinFlip' ? 'coin_heads' : ('mod_' + mod.id);
     const cont = this.add.container(0, y);
     // Smaller icon so the name + desc have full lane width to breathe.
     if (this.textures.exists(iconKey)) {
@@ -1685,8 +1691,21 @@ class GameScene extends Phaser.Scene {
     const back  = cards.slice(4, 8);
     const dirMul = (side === 'you') ? 1 : -1;
     const backY = anchorY + dirMul * rowYOffset;
-    placeRow(front, anchorY, 0, 0);
-    placeRow(back,  backY,   rowXShift, 4);
+    // Asymmetric draw order: always draw the row farther from the line of
+    // scrimmage FIRST so the row closer to the line sits on top. This keeps
+    // the front row's stat number (the snap-time read) visible:
+    //   CPU side: back row is above (toward top edge) → front drawn first,
+    //             back on top covers front's COST (we don't show CPU costs).
+    //   YOU side: back row is below (toward player) → back drawn first,
+    //             front on top covers back row's COST circle, but back row's
+    //             stat stays visible and the front row's stat is intact.
+    if (side === 'you') {
+      placeRow(back,  backY,   rowXShift, 0);
+      placeRow(front, anchorY, 0,         4);
+    } else {
+      placeRow(front, anchorY, 0,         0);
+      placeRow(back,  backY,   rowXShift, 4);
+    }
   }
 
   attachInspect(cardCont, cardData) {
