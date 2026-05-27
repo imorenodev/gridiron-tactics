@@ -1621,46 +1621,47 @@ class GameScene extends Phaser.Scene {
       layer.removeAll(true);
       this.renderLaneOverlay(idx);
 
-      // Field grid: 2 rows × 4 cols per side, up to 8 cards per side.
-      // slotW = 20% of lane width; cardH derives from frame aspect (~1.38).
-      const slotW  = this.LANE_W * 0.20;
-      const cardH  = slotW * 1.38;
-      const rowGap = 6;
-      const colSlotW = this.LANE_W / 4;
-      const colCenters = [
-        -colSlotW * 1.5, -colSlotW * 0.5,
-        +colSlotW * 0.5, +colSlotW * 1.5
-      ];
+      // Cards are big (42% of lane width) because they overlap — each successive
+      // card is offset 40% right of the previous, so 60% of every card stays
+      // visible. Cost circle (top-left) is preserved because cards fan LEFT→RIGHT;
+      // stat box (bottom-center) is preserved because horizontal offset ≤ 50%.
+      const slotW = this.LANE_W * 0.42;
+      const cardH = slotW * 1.38;
+      const stepX = slotW * 0.40;
+      const rowYOffset = cardH * 0.35;   // 35% of back row peeks past front row
+      const rowXShift  = slotW * 0.20;   // back row staggered to peek between front cards
 
-      // Per-side card zone — sits between the lane modifier (center band) and
-      // the yardage bar (top/bottom edge). Rows centered inside that zone so
-      // padding from both bar and modifier is roughly even.
+      // Front-row anchor: card center sits one half-height outside the modifier
+      // band (75 px) so the modifier medallion stays uncovered.
       const modClear = 75;
-      const barClear = 40;
-      const youZoneCenter = (modClear + (this.FIELD_H/2 - barClear)) / 2;
-      const cpuZoneCenter = ((-this.FIELD_H/2 + barClear) + (-modClear)) / 2;
-      // Card 0-3 sit in the row CLOSER to the modifier ("front line"); 4-7 sit
-      // in the row farther out. Same convention both sides for symmetry.
-      const rowOffset = (cardH + rowGap) / 2;
-      const youFrontY = youZoneCenter - rowOffset;
-      const youBackY  = youZoneCenter + rowOffset;
-      const cpuFrontY = cpuZoneCenter + rowOffset;
-      const cpuBackY  = cpuZoneCenter - rowOffset;
+      const cpuAnchorY = -(modClear + cardH/2);   // card 0 sits at line of scrimmage (top side)
+      const youAnchorY = +(modClear + cardH/2);   // mirror for YOU
 
-      lane.aiCards.forEach((c, i) => {
-        const x = colCenters[i % 4];
-        const y = i < 4 ? cpuFrontY : cpuBackY;
-        const card = buildCard(this, c, slotW, { hidden: !c.revealed });
-        card.x = x; card.y = y;
-        if (c.revealed) this.attachInspect(card, c);
-        layer.add(card);
-      });
+      this._layoutStack(layer, lane.aiCards,  'ai',  slotW, cardH, stepX, rowYOffset, rowXShift, cpuAnchorY);
+      this._layoutStack(layer, lane.youCards, 'you', slotW, cardH, stepX, rowYOffset, rowXShift, youAnchorY);
+      // Drop zones still cover the full lane via lane container.
+    });
+  }
 
-      lane.youCards.forEach((c, i) => {
-        const x = colCenters[i % 4];
-        const y = i < 4 ? youFrontY : youBackY;
+  // Lay out a side's cards as a fanned overlap stack:
+  //   n ≤ 4 → single fanned row centered at anchorY
+  //   n ≥ 5 → cards 0-3 in front row, 4-7 in back row spilling OUTWARD from the
+  //           modifier (CPU back row sits above, YOU back row sits below).
+  // Cards are added to the layer in play order so later cards naturally render
+  // on top (Phaser Containers render children in insert order).
+  _layoutStack(layer, cards, side, slotW, cardH, stepX, rowYOffset, rowXShift, anchorY) {
+    const n = cards.length;
+    if (n === 0) return;
+    const placeRow = (rowCards, rowY, xShift, depthBase) => {
+      const rn = rowCards.length;
+      const rowW = slotW + (rn - 1) * stepX;
+      const startX = -rowW / 2 + slotW / 2 + (xShift || 0);
+      rowCards.forEach((c, i) => {
+        const x = startX + i * stepX;
+        const rot = (i - (rn - 1) / 2) * 0.05;  // ±3° fan
         const card = buildCard(this, c, slotW, { hidden: !c.revealed });
-        card.x = x; card.y = y;
+        card.x = x; card.y = rowY;
+        card.setRotation(rot);
         if (c.pending) {
           card.setAlpha(0.85);
           const pulse = this.add.graphics();
@@ -1672,9 +1673,20 @@ class GameScene extends Phaser.Scene {
         if (c.revealed) this.attachInspect(card, c);
         layer.add(card);
       });
-      // Empty-slot placeholders removed — 48 outlined rects per scene was noise.
-      // Drop zones still cover the full lane regardless.
-    });
+    };
+
+    if (n <= 4) {
+      placeRow(cards, anchorY, 0, 0);
+      return;
+    }
+    // Two-row layout: front row anchored at the line of scrimmage, back row
+    // spills outward (YOU → toward player, CPU → toward top edge).
+    const front = cards.slice(0, 4);
+    const back  = cards.slice(4, 8);
+    const dirMul = (side === 'you') ? 1 : -1;
+    const backY = anchorY + dirMul * rowYOffset;
+    placeRow(front, anchorY, 0, 0);
+    placeRow(back,  backY,   rowXShift, 4);
   }
 
   attachInspect(cardCont, cardData) {
