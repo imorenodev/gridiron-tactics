@@ -1473,26 +1473,37 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const badgeY = this.HAND_BANNER_Y + 4;
+    // Badge frames are two-panel: wider rect on the left (label), small
+    // gold-bordered square on the right (count). The label and number sit
+    // inside their respective panels rather than stacked in the center.
+    // Offsets scaled from the prompt's 140-wide reference to our 130-wide badge.
+    const LABEL_DX = -24;
+    const COUNT_DX =  36;
+
     this.deckBadge = this.add.image(85, badgeY, 'badge_deck');
     this.deckBadge.setDisplaySize(130, 50);
     this.deckBadge.setInteractive({ useHandCursor:true });
     this.deckBadge.on('pointerup', () => this.showTooltip('deck'));
-    this.deckCountText = this.add.text(85, badgeY - 4, '0', {
-      fontFamily:'Bebas Neue', fontSize:'20px', color:'#fff', stroke:'#000', strokeThickness:3
+    this.add.text(85 + LABEL_DX, badgeY, 'DECK', {
+      fontFamily:'Oswald', fontSize:'13px', color:'#fff',
+      stroke:'#000', strokeThickness:2, letterSpacing:2
     }).setOrigin(0.5);
-    this.add.text(85, badgeY + 18, 'DECK', {
-      fontFamily:'Oswald', fontSize:'10px', color:'#aaa', letterSpacing:2
+    this.deckCountText = this.add.text(85 + COUNT_DX, badgeY, '0', {
+      fontFamily:'Bebas Neue', fontSize:'22px', color:'#ffb800',
+      stroke:'#000', strokeThickness:3
     }).setOrigin(0.5);
 
     this.discardBadge = this.add.image(this.W - 85, badgeY, 'badge_discard');
     this.discardBadge.setDisplaySize(130, 50);
     this.discardBadge.setInteractive({ useHandCursor:true });
     this.discardBadge.on('pointerup', () => this.showTooltip('discard'));
-    this.discardCountText = this.add.text(this.W - 85, badgeY - 4, '0', {
-      fontFamily:'Bebas Neue', fontSize:'20px', color:'#fff', stroke:'#000', strokeThickness:3
+    this.add.text((this.W - 85) + LABEL_DX, badgeY, 'DISC', {
+      fontFamily:'Oswald', fontSize:'13px', color:'#fff',
+      stroke:'#000', strokeThickness:2, letterSpacing:2
     }).setOrigin(0.5);
-    this.add.text(this.W - 85, badgeY + 18, 'DISC', {
-      fontFamily:'Oswald', fontSize:'10px', color:'#aaa', letterSpacing:2
+    this.discardCountText = this.add.text((this.W - 85) + COUNT_DX, badgeY, '0', {
+      fontFamily:'Bebas Neue', fontSize:'22px', color:'#ffb800',
+      stroke:'#000', strokeThickness:3
     }).setOrigin(0.5);
   }
 
