@@ -1184,8 +1184,9 @@ class GameScene extends Phaser.Scene {
     const SB_H    = SB_W * (sbTex.height / sbTex.width);
     this.SB_TOP = SB_TOP; this.SB_W = SB_W; this.SB_H = SB_H;
     this.SB_CENTER_Y  = SB_TOP + SB_H / 2;
-    this.ENERGY_ORB_Y = SB_TOP + SB_H + 4;          // orb tucked just under scoreboard
-    this.HEADER_BOTTOM = SB_TOP + SB_H + 60;        // scoreboard + orb cluster
+    // Energy orb relocated to the action bar (see buildFooter), so the header
+    // now ends at the scoreboard's bottom edge — lanes flow right below it.
+    this.HEADER_BOTTOM = SB_TOP + SB_H;
     this.FIELD_Y      = this.HEADER_BOTTOM + 10;
 
     // Action row sits 16px from the bottom edge. Snap/Pass button is ~120px tall
@@ -1282,17 +1283,7 @@ class GameScene extends Phaser.Scene {
     this.driveText   = this.add.text(this.W/2, sbC - 18, 'DRIVE 1 / 8',  { fontFamily:'Bebas Neue', fontSize:'40px', color:'#ffb800', stroke:'#000', strokeThickness:3, letterSpacing:2 }).setOrigin(0.5);
     this.quarterText = this.add.text(this.W/2, sbC + 22, '1ST QUARTER',  { fontFamily:'Oswald', fontSize:'20px', color:'#fff', letterSpacing:4 }).setOrigin(0.5);
 
-    // Energy orb — centered on the seam between scoreboard and field, so its
-    // bottom edge sits cleanly below the scoreboard image and its top edge
-    // peeks into the header band without clipping into either score readout.
-    const orbX = this.W/2; const orbY = this.ENERGY_ORB_Y;
-    const orbBg = this.add.circle(orbX, orbY, 38, 0xffb800, 1);
-    this.energyOrbGlow = this.add.circle(orbX, orbY, 44, 0xffb800, 0.3);
-    const orb = this.add.image(orbX, orbY, 'orb_frame'); orb.setDisplaySize(110, 110);
-    this.energyText = this.add.text(orbX, orbY, '1', { fontFamily:'Bebas Neue', fontSize:'42px', color:'#000', stroke:'#ffb800', strokeThickness:2 }).setOrigin(0.5);
-    this.energyOrb = orbBg;
-    orb.setInteractive({ useHandCursor:true });
-    this.makeTooltip(orb, 'energy');
+    // Energy orb moved to the action bar — built in buildFooter().
     // QUIT button removed — CONCEDE in the footer takes over.
   }
 
@@ -1508,14 +1499,15 @@ class GameScene extends Phaser.Scene {
   }
 
   buildFooter() {
-    // Paired action bar: CONCEDE (left) | SNAP/PASS (right). Equal widths so
-    // they read as a single unit; gold divider line above (drawn in drawBackground)
-    // visually connects them as "the action zone".
-    const btnW = 300, gap = 20;
-    const totalW = btnW * 2 + gap;
+    // Three-element action bar: CONCEDE | energy orb | SNAP/PASS.
+    // Orb is slightly larger than the button height so it reads as the focal
+    // element of the row. Equal 20px gaps between each piece.
+    const btnW = 300, gap = 20, orbD = 96;
+    const totalW = btnW * 2 + orbD + gap * 2;
     const leftEdge = (this.W - totalW) / 2;
     const concedeX = leftEdge + btnW/2;
-    const snapX    = leftEdge + btnW + gap + btnW/2;
+    const orbX     = leftEdge + btnW + gap + orbD/2;
+    const snapX    = leftEdge + btnW + gap + orbD + gap + btnW/2;
     const snapW = btnW, concedeW = btnW;
 
     // ---- CONCEDE (left) ----
@@ -1531,6 +1523,22 @@ class GameScene extends Phaser.Scene {
     this.concedeBtn.on('pointerout',  () => this.concedeBtn.setScale(1));
     this.concedeBtn.on('pointerdown', () => this.concedeBtn.setScale(0.96));
     this.concedeBtn.on('pointerup',   () => { this.concedeBtn.setScale(1); this.confirmConcede(); });
+
+    // ---- ENERGY ORB (center) ----
+    // Background glow + solid gold disc + framed orb image + count text.
+    // Same instance variable names as before so render() updates Just Work.
+    this.energyOrbX = orbX;
+    this.energyOrbY = this.FOOTER_Y;
+    this.energyOrbGlow = this.add.circle(orbX, this.FOOTER_Y, orbD/2 + 6, 0xffb800, 0.3);
+    this.energyOrb     = this.add.circle(orbX, this.FOOTER_Y, orbD/2 - 12, 0xffb800, 1);
+    const orbImg       = this.add.image(orbX, this.FOOTER_Y, 'orb_frame');
+    orbImg.setDisplaySize(orbD, orbD);
+    this.energyText    = this.add.text(orbX, this.FOOTER_Y, '1', {
+      fontFamily:'Bebas Neue', fontSize:'40px', color:'#000',
+      stroke:'#ffb800', strokeThickness:2
+    }).setOrigin(0.5);
+    orbImg.setInteractive({ useHandCursor:true });
+    this.makeTooltip(orbImg, 'energy');
 
     // ---- SNAP / PASS (right) ----
     this.snapBtnContainer = this.add.container(snapX, this.FOOTER_Y);
