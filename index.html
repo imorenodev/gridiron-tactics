@@ -1620,29 +1620,45 @@ class GameScene extends Phaser.Scene {
       const layer = this.laneCardLayers[idx];
       layer.removeAll(true);
       this.renderLaneOverlay(idx);
-      const slotW = Math.min(110, (this.LANE_W - 20) / MAX_SLOTS - 4);
-      const totalW = MAX_SLOTS * slotW + (MAX_SLOTS - 1) * 4;
-      const startX = -totalW/2 + slotW/2;
+
+      // Field grid: 2 rows × 4 cols per side, up to 8 cards per side.
+      // slotW = 20% of lane width; cardH derives from frame aspect (~1.38).
+      const slotW  = this.LANE_W * 0.20;
+      const cardH  = slotW * 1.38;
+      const rowGap = 6;
+      const colSlotW = this.LANE_W / 4;
+      const colCenters = [
+        -colSlotW * 1.5, -colSlotW * 0.5,
+        +colSlotW * 0.5, +colSlotW * 1.5
+      ];
+
+      // Per-side card zone — sits between the lane modifier (center band) and
+      // the yardage bar (top/bottom edge). Rows centered inside that zone so
+      // padding from both bar and modifier is roughly even.
+      const modClear = 75;
+      const barClear = 40;
+      const youZoneCenter = (modClear + (this.FIELD_H/2 - barClear)) / 2;
+      const cpuZoneCenter = ((-this.FIELD_H/2 + barClear) + (-modClear)) / 2;
+      // Card 0-3 sit in the row CLOSER to the modifier ("front line"); 4-7 sit
+      // in the row farther out. Same convention both sides for symmetry.
+      const rowOffset = (cardH + rowGap) / 2;
+      const youFrontY = youZoneCenter - rowOffset;
+      const youBackY  = youZoneCenter + rowOffset;
+      const cpuFrontY = cpuZoneCenter + rowOffset;
+      const cpuBackY  = cpuZoneCenter - rowOffset;
 
       lane.aiCards.forEach((c, i) => {
-        const x = startX + i * (slotW + 4);
-        const y = -this.FIELD_H/2 + 130;
+        const x = colCenters[i % 4];
+        const y = i < 4 ? cpuFrontY : cpuBackY;
         const card = buildCard(this, c, slotW, { hidden: !c.revealed });
         card.x = x; card.y = y;
         if (c.revealed) this.attachInspect(card, c);
         layer.add(card);
       });
-      for (let i = lane.aiCards.length; i < MAX_SLOTS; i++) {
-        const x = startX + i * (slotW + 4);
-        const y = -this.FIELD_H/2 + 130;
-        const slot = this.add.graphics();
-        slot.lineStyle(1, 0xff5a5a, 0.06); slot.strokeRoundedRect(x - slotW/2, y - slotW*0.7, slotW, slotW*1.4, 6);
-        layer.add(slot);
-      }
 
       lane.youCards.forEach((c, i) => {
-        const x = startX + i * (slotW + 4);
-        const y = this.FIELD_H/2 - 130;
+        const x = colCenters[i % 4];
+        const y = i < 4 ? youFrontY : youBackY;
         const card = buildCard(this, c, slotW, { hidden: !c.revealed });
         card.x = x; card.y = y;
         if (c.pending) {
@@ -1656,13 +1672,8 @@ class GameScene extends Phaser.Scene {
         if (c.revealed) this.attachInspect(card, c);
         layer.add(card);
       });
-      for (let i = lane.youCards.length; i < MAX_SLOTS; i++) {
-        const x = startX + i * (slotW + 4);
-        const y = this.FIELD_H/2 - 130;
-        const slot = this.add.graphics();
-        slot.lineStyle(1, 0x4aff8a, 0.06); slot.strokeRoundedRect(x - slotW/2, y - slotW*0.7, slotW, slotW*1.4, 6);
-        layer.add(slot);
-      }
+      // Empty-slot placeholders removed — 48 outlined rects per scene was noise.
+      // Drop zones still cover the full lane regardless.
     });
   }
 
@@ -2310,8 +2321,17 @@ class MenuScene extends Phaser.Scene {
 
     // Dev hook: load ?auto=quick to skip the menu and jump straight into a
     // quickplay match. Useful for screenshots and layout iteration.
+    // Add &fill to pre-populate lane 0 with revealed cards on both sides so a
+    // headless screenshot can capture the 2-row field grid.
     if (typeof window !== 'undefined' && window.location.search.indexOf('auto=quick') >= 0) {
       newGame(buildQuickPlayDeck(), buildAIDeck(2), 'quick', null);
+      if (window.location.search.indexOf('fill') >= 0) {
+        const lane0 = G.lanes[0];
+        const youOff = G.youDeck.filter(c => c.side === 'off').slice(0, 6);
+        const aiDef  = G.aiDeck .filter(c => c.side === 'def').slice(0, 6);
+        youOff.forEach(c => lane0.youCards.push({ ...c, curOff: c.off, curDef: c.def, revealed: true, _baseOff: c.off, _baseDef: c.def }));
+        aiDef .forEach(c => lane0.aiCards .push({ ...c, curOff: c.off, curDef: c.def, revealed: true, _baseOff: c.off, _baseDef: c.def }));
+      }
       this.scene.start('GameScene');
     }
 
