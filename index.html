@@ -413,6 +413,20 @@ function kickoffPos() {
   return 15 + Math.floor(Math.random()*21);
 }
 
+// In horizontal mode, which screen side the player occupies. Flips at halftime
+// (drive 5+) so teams "switch ends." First half: YOU left / CPU right.
+// Purely cosmetic — game state (youPos/aiPos) is unaffected.
+function youOnLeft() {
+  return G.drive <= 4;
+}
+// X sign for a team's territory: -1 = left half, +1 = right half.
+// CPU sits opposite YOU. Only meaningful in horizontal mode.
+function teamSign(team) {
+  const yL = youOnLeft();
+  if (team === 'you') return yL ? -1 : +1;
+  return yL ? +1 : -1;
+}
+
 // ============================================================
 // PLAYER DATA + SEASON STATE (localStorage)
 // ============================================================
@@ -1546,15 +1560,18 @@ class GameScene extends Phaser.Scene {
     //            in horizontal → wide & short (LANE_LEN × LANE_THICK).
     const rectW = this.isH ? this.LANE_LEN   : this.LANE_THICK;
     const rectH = this.isH ? this.LANE_THICK : this.LANE_LEN;
-    // Two-tone field halves. In vertical the split is along Y (red top / green
-    // bottom). In horizontal the split is along X (red left / green right) so
-    // CPU territory reads as the left half and YOU as the right.
+    // Two-tone field halves.
+    //   Vertical:   red top (CPU) / green bottom (YOU).
+    //   Horizontal: green sits on YOU's current screen side, red opposite.
+    //               Sides swap at halftime via repaintLaneBackgrounds().
     const halfW = this.isH ? this.LANE_LEN/2 : this.LANE_THICK;
     const halfH = this.isH ? this.LANE_THICK : this.LANE_LEN/2;
-    const redCx  = this.isH ? -this.LANE_LEN/4 : 0;
-    const redCy  = this.isH ? 0 : -this.LANE_LEN/4;
-    const grnCx  = this.isH ?  this.LANE_LEN/4 : 0;
+    const youXOffset = this.isH ? teamSign('you') * (this.LANE_LEN/4) : 0;
+    const cpuXOffset = -youXOffset;
+    const grnCx  = this.isH ? youXOffset : 0;
+    const redCx  = this.isH ? cpuXOffset : 0;
     const grnCy  = this.isH ? 0 :  this.LANE_LEN/4;
+    const redCy  = this.isH ? 0 : -this.LANE_LEN/4;
     for (let i=0;i<3;i++) {
       const cont = this.add.container(this.LANE_X[i], this.LANE_Y[i]);
       const bgRed = this.add.image(redCx, redCy, 'endzone_red');
@@ -1563,6 +1580,10 @@ class GameScene extends Phaser.Scene {
       const bgGreen = this.add.image(grnCx, grnCy, 'endzone_green');
       bgGreen.setDisplaySize(halfW, halfH); bgGreen.setAlpha(0.6);
       cont.add(bgGreen);
+      // Stash refs so repaintLaneBackgrounds() can reposition them at halftime
+      // without rebuilding the whole lane container.
+      cont.bgRed = bgRed;
+      cont.bgGreen = bgGreen;
       const dk = this.add.graphics();
       dk.fillStyle(0x000000, 0.35); dk.fillRoundedRect(-rectW/2, -rectH/2, rectW, rectH, 10);
       dk.lineStyle(2, 0xffb800, 0.4); dk.strokeRoundedRect(-rectW/2, -rectH/2, rectW, rectH, 10);
@@ -1581,6 +1602,19 @@ class GameScene extends Phaser.Scene {
       hl.setVisible(false); cont.add(hl); cont.highlight = hl;
       this.laneContainers.push(cont);
     }
+  }
+
+  // Halftime swap: in horizontal mode the green/red backgrounds need to flip
+  // sides when YOU switches to the opposite half. Only repositions the two
+  // bg images — drop zones, layers, and the highlight border stay put.
+  repaintLaneBackgrounds() {
+    if (!this.isH) return;
+    const youX = teamSign('you') * (this.LANE_LEN/4);
+    const cpuX = -youX;
+    this.laneContainers.forEach(cont => {
+      if (cont.bgGreen) cont.bgGreen.x = youX;
+      if (cont.bgRed)   cont.bgRed.x   = cpuX;
+    });
   }
 
   renderLaneOverlay(idx) {
@@ -1605,12 +1639,12 @@ class GameScene extends Phaser.Scene {
     const youNet = netYardsBasic(stats.youOff, stats.aiDef);
     const aiNet  = netYardsBasic(stats.aiOff, stats.youDef);
     if (this.isH) {
-      // Horizontal: pills flank the modifier left/right along the drive axis.
-      // CPU pill in the left (CPU) half, YOU pill in the right (YOU) half.
-      // Vertically centered so they live inside the cards' band — the overlay
-      // draws above cardLayer so they read clearly on top of stacked cards.
-      this.drawPowerPill(overlay, -130, 0, aiNet, 'ai',  lane);
-      this.drawPowerPill(overlay,  130, 0, youNet, 'you', lane);
+      // Horizontal: pills flank the modifier left/right along the drive axis,
+      // each on its own team's side. Vertically centered so they live inside
+      // the cards' band — the overlay draws above cardLayer so they read
+      // clearly on top of stacked cards. Side flips at halftime.
+      this.drawPowerPill(overlay, teamSign('ai')  * 130, 0, aiNet, 'ai',  lane);
+      this.drawPowerPill(overlay, teamSign('you') * 130, 0, youNet, 'you', lane);
     } else {
       // Vertical: pills are at the top-left and bottom-right corners of the
       // center band — position alone communicates ownership.
@@ -1622,13 +1656,15 @@ class GameScene extends Phaser.Scene {
     const youSyn = detectSynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
     const aiSyn  = detectSynergies(lane.aiCards .filter(c => c.revealed && !c.ejected));
     if (this.isH) {
-      // Horizontal: badges along each side's inner edge of the bars, on the
-      // half that side owns. CPU badges flush-left in the top strip below the
-      // CPU bar; YOU badges flush-right in the bottom strip above the YOU bar.
+      // Horizontal: badges along each team's own half. CPU badges in the
+      // top strip below the CPU bar, YOU badges in the bottom strip above
+      // the YOU bar. Each cluster flush to its team's outer edge.
       const cpuY =  -acrossHalf + 34 + 14;
       const youY =   acrossHalf - 34 - 14;
-      this.drawSynergyBadges(overlay, aiSyn,  cpuY, -1, 'cpu');
-      this.drawSynergyBadges(overlay, youSyn, youY,  1, 'you');
+      const youAlign = teamSign('you') < 0 ? 'left' : 'right';
+      const cpuAlign = teamSign('ai')  < 0 ? 'left' : 'right';
+      this.drawSynergyBadges(overlay, aiSyn,  cpuY, -1, cpuAlign);
+      this.drawSynergyBadges(overlay, youSyn, youY,  1, youAlign);
     } else {
       this.drawSynergyBadges(overlay, aiSyn,  this.FIELD_H/2 - this.FIELD_H + 230,  -1);
       this.drawSynergyBadges(overlay, youSyn, this.FIELD_H/2 - 230,                  1);
@@ -1637,14 +1673,16 @@ class GameScene extends Phaser.Scene {
 
   drawSynergyBadges(parent, list, y, dir, align) {
     if (!list.length) return;
-    // align: 'cpu' → flush-left in left half;  'you' → flush-right in right
-    //                  half. Used in horizontal mode. Defaults (omitted) keep
-    //                  vertical layout's original flush-left-of-lane behavior.
+    // align: 'left' → flush-left of the lane (step rightward);
+    //        'right' → flush-right of the lane (step leftward).
+    //        Used in horizontal mode so each team's badges sit on its own
+    //        screen side; the side flips at halftime. Omitted = vertical
+    //        layout's original flush-left-of-lane behavior.
     let startX, stepDir;
-    if (align === 'you') {
+    if (align === 'right') {
       startX = this.LANE_LEN/2 - 8 - 64;
       stepDir = -1;
-    } else if (align === 'cpu') {
+    } else if (align === 'left') {
       startX = -this.LANE_LEN/2 + 8;
       stepDir = 1;
     } else {
@@ -1753,21 +1791,42 @@ class GameScene extends Phaser.Scene {
     const color = side==='you' ? 0x4aff8a : 0xff5a5a;
     const strip = this.add.image(0, y, 'yardage_strip'); strip.setDisplaySize(barW, barH); parent.add(strip);
     const endW = 14;
-    parent.add(this.add.rectangle(-barW/2 + endW/2, y, endW, barH-4, side==='you' ? 0xd62828 : 0x00aa44, pos<=15 ? 0.8 : 0.3));
-    parent.add(this.add.rectangle( barW/2 - endW/2, y, endW, barH-4, side==='you' ? 0x00aa44 : 0xd62828, pos>=85 ? 0.8 : 0.3));
+    // Drive direction along the bar.
+    //   Vertical: every bar drives left→right (own EZ on left, opp on right).
+    //   Horizontal: each team drives toward its target EZ on the OPPOSITE
+    //     screen side from its own territory. ownSign tells us which end of
+    //     the bar is "home" — pos=0 sits there, pos=100 at the far end.
+    const team = side === 'you' ? 'you' : 'ai';
+    const ownSign = this.isH ? teamSign(team) : -1;  // vertical: home = left
+    // EZ end markers — own (red for YOU / green for CPU) on the team's side,
+    // opp (green for YOU / red for CPU) on the far side.
+    const ownEZ_X = ownSign * (barW/2 - endW/2);
+    const oppEZ_X = -ownSign * (barW/2 - endW/2);
+    const ownColor = side==='you' ? 0xd62828 : 0x00aa44;
+    const oppColor = side==='you' ? 0x00aa44 : 0xd62828;
+    parent.add(this.add.rectangle(ownEZ_X, y, endW, barH-4, ownColor, pos<=15 ? 0.8 : 0.3));
+    parent.add(this.add.rectangle(oppEZ_X, y, endW, barH-4, oppColor, pos>=85 ? 0.8 : 0.3));
     const innerW = barW - endW*2 - 4;
-    const fillW = (Math.max(0, Math.min(100, pos))/100) * innerW;
-    parent.add(this.add.rectangle(-barW/2 + endW + 2 + fillW/2, y, fillW, barH-10, color, 0.6));
-    const ballX = -barW/2 + endW + 2 + fillW;
+    const innerHalf = innerW / 2;
+    const startX = ownSign * (innerHalf + 1);     // pos=0 → at own EZ inner edge
+    const driveDir = -ownSign;                    // drive away from own EZ
+    const fillLen = (Math.max(0, Math.min(100, pos))/100) * innerW;
+    const ballX = startX + driveDir * fillLen;
+    const fillCenterX = (startX + ballX) / 2;
+    parent.add(this.add.rectangle(fillCenterX, y, fillLen, barH-10, color, 0.6));
     const ball = this.add.image(ballX, y, 'football'); ball.setDisplaySize(26, 22); parent.add(ball);
-    // Yardage-bar owner label: uses SIDE_LABEL_COLORS (the ownership cue),
-    // distinct from the power-pill ring color (good/bad-for-player).
-    parent.add(this.add.text(-barW/2 + 4, y - barH/2 - 12, side==='you'?'YOU':'CPU', {
+    // Yardage-bar owner label sits at the team's own side of the bar (the
+    // team's name lives on the team's own end); yard-line text on the far
+    // end. SIDE_LABEL_COLORS is the ownership cue, distinct from the
+    // power-pill ring color (good/bad-for-player).
+    const labelOwnX =  ownSign * (barW/2 - 4);
+    const labelOppX = -ownSign * (barW/2 - 4);
+    parent.add(this.add.text(labelOwnX, y - barH/2 - 12, side==='you'?'YOU':'CPU', {
       fontFamily:'Oswald', fontSize:'12px', color: SIDE_LABEL_COLORS[side==='you'?'you':'cpu'], stroke:'#000', strokeThickness:2, letterSpacing:1
-    }).setOrigin(0, 0));
-    parent.add(this.add.text(barW/2 - 4, y - barH/2 - 12, this.formatYardLine(pos), {
+    }).setOrigin(ownSign < 0 ? 0 : 1, 0));
+    parent.add(this.add.text(labelOppX, y - barH/2 - 12, this.formatYardLine(pos), {
       fontFamily:'JetBrains Mono', fontSize:'12px', color:'#fff', stroke:'#000', strokeThickness:2
-    }).setOrigin(1, 0));
+    }).setOrigin(ownSign < 0 ? 1 : 0, 0));
 
     // Tap target — opens the net-yards breakdown for this side. Uses
     // pointerdown+up matching so it only fires on a real tap, not when a
@@ -2000,6 +2059,19 @@ class GameScene extends Phaser.Scene {
     this.energyOrbGlow.setAlpha(energy <= 0 ? 0.1 : 0.4);
     this.deckCountText.setText(G.youDeck.length);
     this.discardCountText.setText(G.youDiscard.length);
+    // Halftime side swap (horizontal mode only): repaint the two-tone field
+    // backgrounds when youOnLeft() flips. Overlay + cards already redraw every
+    // render(), so they pick up the new sides automatically; only the static
+    // bg images need a nudge.
+    const yL = youOnLeft();
+    if (this._lastYouOnLeft !== yL) {
+      const firstRender = this._lastYouOnLeft === undefined;
+      this._lastYouOnLeft = yL;
+      this.repaintLaneBackgrounds();
+      if (!firstRender && this.isH) {
+        showToast(this, 'HALFTIME — SWITCHING SIDES', 2200, '#ffb800');
+      }
+    }
     this.redrawLaneContents();
     this.redrawHand();
     this.drawSnapBtn();
@@ -2019,22 +2091,24 @@ class GameScene extends Phaser.Scene {
       this.renderLaneOverlay(idx);
 
       if (this.isH) {
-        // Horizontal lane: cards fan along the drive axis (X). CPU on the
-        // left half, YOU on the right; front card of each side sits just
-        // past the central modifier+pill cluster. Cards are sized from
-        // LANE_THICK because vertical space (across the lane) is the binding
-        // constraint — 2 rows of cards must fit inside the inner Y band.
+        // Horizontal lane: cards fan along the drive axis (X), each team on
+        // its own current half. Front card of each side sits just past the
+        // central modifier+pill cluster; later cards spill outward toward
+        // that team's own end zone. Sides flip at halftime via teamSign().
+        // Cards are sized from LANE_THICK because vertical space (across the
+        // lane) is the binding constraint — 2 rows must fit inside the inner
+        // Y band.
         const slotW = this.LANE_THICK * 0.35;
         const cardH = slotW * 1.38;
         const stepX = slotW * 0.40;
         const rowYOffset = cardH * 0.35;
-        // modClear keeps card 0 (front of each side) past the pill cluster's
-        // outer edge with a small visual gap.
         const modClear = 174;
-        const cpuAnchorX = -(modClear + slotW/2);
-        const youAnchorX = +(modClear + slotW/2);
-        this._layoutStackH(layer, lane.aiCards,  'ai',  slotW, cardH, stepX, rowYOffset, cpuAnchorX);
-        this._layoutStackH(layer, lane.youCards, 'you', slotW, cardH, stepX, rowYOffset, youAnchorX);
+        const youSign = teamSign('you');
+        const cpuSign = teamSign('ai');
+        const youAnchorX = youSign * (modClear + slotW/2);
+        const cpuAnchorX = cpuSign * (modClear + slotW/2);
+        this._layoutStackH(layer, lane.aiCards,  'ai',  slotW, cardH, stepX, rowYOffset, cpuAnchorX, cpuSign);
+        this._layoutStackH(layer, lane.youCards, 'you', slotW, cardH, stepX, rowYOffset, youAnchorX, youSign);
         return;
       }
 
@@ -2061,14 +2135,14 @@ class GameScene extends Phaser.Scene {
   }
 
   // Horizontal-orientation equivalent of _layoutStack. Cards fan along X away
-  // from the lane's vertical center line (CPU leftward, YOU rightward). 5–8
-  // cards spill into a second row offset along Y. Preserves the same
-  // ±3° rotation fan, pending-pulse border, attachInspect on revealed cards,
-  // and asymmetric draw-order rule from the vertical version.
-  _layoutStackH(layer, cards, side, slotW, cardH, stepX, rowYOffset, anchorX) {
+  // from the lane's vertical center line — direction (dirX) follows the
+  // team's current screen side so cards spill toward that team's own end
+  // zone. 5–8 cards spill into a second row offset along Y. Preserves the
+  // same ±3° rotation fan, pending-pulse border, attachInspect on revealed
+  // cards, and asymmetric draw-order rule from the vertical version.
+  _layoutStackH(layer, cards, side, slotW, cardH, stepX, rowYOffset, anchorX, dirX) {
     const n = cards.length;
     if (n === 0) return;
-    const dirX = side === 'you' ? 1 : -1;
     const placeRow = (rowCards, rowY) => {
       const rn = rowCards.length;
       rowCards.forEach((c, i) => {
