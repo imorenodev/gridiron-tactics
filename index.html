@@ -1523,10 +1523,15 @@ class GameScene extends Phaser.Scene {
       dk.fillStyle(0x000000, 0.35); dk.fillRoundedRect(-this.LANE_W/2, -this.FIELD_H/2, this.LANE_W, this.FIELD_H, 10);
       dk.lineStyle(2, 0xffb800, 0.4); dk.strokeRoundedRect(-this.LANE_W/2, -this.FIELD_H/2, this.LANE_W, this.FIELD_H, 10);
       cont.add(dk);
-      const cardLayer = this.add.container(0, 0); cont.add(cardLayer); this.laneCardLayers.push(cardLayer);
-      const overlay = this.add.container(0, 0); cont.add(overlay); this.laneOverlays.push(overlay);
+      // Drop zone goes BELOW cardLayer and overlay in the display list. Phaser
+      // hit-tests in reverse z-order, so a full-lane drop zone added on top
+      // would shadow the pill / yardage-bar hit-zones inside overlay and eat
+      // every tap. Drag-drop still works because Phaser matches drop zones by
+      // their dropZone flag during the drag lifecycle, independent of stacking.
       const dz = this.add.zone(0, 0, this.LANE_W, this.FIELD_H).setRectangleDropZone(this.LANE_W, this.FIELD_H);
       dz.laneIdx = i; cont.add(dz);
+      const cardLayer = this.add.container(0, 0); cont.add(cardLayer); this.laneCardLayers.push(cardLayer);
+      const overlay = this.add.container(0, 0); cont.add(overlay); this.laneOverlays.push(overlay);
       const hl = this.add.graphics();
       hl.lineStyle(6, 0xffb800, 1); hl.strokeRoundedRect(-this.LANE_W/2+3, -this.FIELD_H/2+3, this.LANE_W-6, this.FIELD_H-6, 10);
       hl.setVisible(false); cont.add(hl); cont.highlight = hl;
