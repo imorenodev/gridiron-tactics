@@ -3140,7 +3140,14 @@ class ConversionScene extends Phaser.Scene {
     });
   }
 
-  init(data) { this.lane = data.lane; this.onDone = data.onDone; }
+  init(data) {
+    this.lane = data.lane; this.onDone = data.onDone;
+    // Phaser keeps the scene class instance alive across stop/launch cycles,
+    // so this flag (set to true mid-flip to debounce repeat HEADS/TAILS taps)
+    // persists from the previous conversion and blocks the next one. Reset
+    // it on every launch.
+    this._flipping = false;
+  }
 
   create() {
     const W = this.scale.width, H = this.scale.height;
