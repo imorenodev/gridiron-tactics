@@ -91,6 +91,12 @@ const GAME_W = 900;
 const GAME_H = 1500;
 const LANE_COUNT = 3;
 const MAX_SLOTS = 8;
+// 'vertical'   — original layout: 3 tall lanes side by side, ball drives along
+//                the screen's long axis, CPU half on top / YOU half on bottom.
+// 'horizontal' — experimental: 3 wide-but-short lanes stacked top-to-bottom,
+//                ball drives left→right, end zones at the lane's left & right
+//                ends, CPU cards on the left side / YOU cards on the right.
+const LANE_ORIENTATION = 'horizontal';  // flip to 'vertical' to A/B compare
 const MAX_DRIVES = 8;
 const HAND_SIZE = 5;
 const MAX_ENERGY_BANK = 10;
@@ -1359,12 +1365,7 @@ class GameScene extends Phaser.Scene {
     // width per lane on small viewports.
     this.SIDE_MARGIN = 12;
     this.LANE_GAP = 8;
-    this.LANE_W = (this.W - this.SIDE_MARGIN * 2 - this.LANE_GAP * 2) / 3;
-    this.LANE_X = [
-      this.SIDE_MARGIN + this.LANE_W/2,
-      this.SIDE_MARGIN + this.LANE_W + this.LANE_GAP + this.LANE_W/2,
-      this.SIDE_MARGIN + (this.LANE_W + this.LANE_GAP)*2 + this.LANE_W/2
-    ];
+    this.isH = LANE_ORIENTATION === 'horizontal';
 
     // ---- Vertical regions, derived from real asset dimensions ----
     // Scoreboard anchors to the top of the canvas (origin 0.5, 0) — all header
@@ -1390,6 +1391,40 @@ class GameScene extends Phaser.Scene {
     this.HAND_BANNER_Y  = this.HAND_TRAY_TOP + 32;
     this.ACTION_DIVIDER_Y = this.FOOTER_Y - 70;     // thin gold line above buttons
     this.FIELD_H        = this.HAND_TRAY_TOP - this.FIELD_Y - 12;
+
+    // ---- Lane geometry (orientation-dependent) ----
+    // LANE_LEN  = long axis of a lane (the drive direction). YOU's positive,
+    //             CPU's negative inside the lane container.
+    // LANE_THICK = short/across axis of a lane.
+    // LANE_X[i] / LANE_Y[i] = screen-space center of lane i.
+    // LANE_W kept as an alias for the across-lane dimension so legacy callers
+    // that read `this.LANE_W` (yardage bar width, card slot sizing) Just Work
+    // — its semantic in both orientations is "lane thickness".
+    if (this.isH) {
+      // 3 lanes stacked top-to-bottom; ball drives left↔right.
+      this.LANE_THICK = (this.FIELD_H - this.LANE_GAP * 2) / 3;
+      this.LANE_LEN   = this.W - this.SIDE_MARGIN * 2;
+      this.LANE_X = [this.W/2, this.W/2, this.W/2];
+      this.LANE_Y = [
+        this.FIELD_Y + this.LANE_THICK/2,
+        this.FIELD_Y + this.LANE_THICK + this.LANE_GAP + this.LANE_THICK/2,
+        this.FIELD_Y + (this.LANE_THICK + this.LANE_GAP)*2 + this.LANE_THICK/2
+      ];
+      this.LANE_W = this.LANE_THICK;
+    } else {
+      // 3 lanes side-by-side; ball drives top↔bottom.
+      this.LANE_W = (this.W - this.SIDE_MARGIN * 2 - this.LANE_GAP * 2) / 3;
+      this.LANE_X = [
+        this.SIDE_MARGIN + this.LANE_W/2,
+        this.SIDE_MARGIN + this.LANE_W + this.LANE_GAP + this.LANE_W/2,
+        this.SIDE_MARGIN + (this.LANE_W + this.LANE_GAP)*2 + this.LANE_W/2
+      ];
+      this.LANE_THICK = this.LANE_W;
+      this.LANE_LEN   = this.FIELD_H;
+      const cy = this.FIELD_Y + this.FIELD_H/2;
+      this.LANE_Y = [cy, cy, cy];
+    }
+
     this.reduced = prefersReducedMotion();
 
     this.drawBackground();
@@ -1507,33 +1542,42 @@ class GameScene extends Phaser.Scene {
     this.laneContainers = [];
     this.laneCardLayers = [];
     this.laneOverlays = [];
+    // Lane rect: in vertical → narrow & tall (LANE_THICK × LANE_LEN).
+    //            in horizontal → wide & short (LANE_LEN × LANE_THICK).
+    const rectW = this.isH ? this.LANE_LEN   : this.LANE_THICK;
+    const rectH = this.isH ? this.LANE_THICK : this.LANE_LEN;
+    // Two-tone field halves. In vertical the split is along Y (red top / green
+    // bottom). In horizontal the split is along X (red left / green right) so
+    // CPU territory reads as the left half and YOU as the right.
+    const halfW = this.isH ? this.LANE_LEN/2 : this.LANE_THICK;
+    const halfH = this.isH ? this.LANE_THICK : this.LANE_LEN/2;
+    const redCx  = this.isH ? -this.LANE_LEN/4 : 0;
+    const redCy  = this.isH ? 0 : -this.LANE_LEN/4;
+    const grnCx  = this.isH ?  this.LANE_LEN/4 : 0;
+    const grnCy  = this.isH ? 0 :  this.LANE_LEN/4;
     for (let i=0;i<3;i++) {
-      const cx = this.LANE_X[i];
-      const cy = this.FIELD_Y + this.FIELD_H/2;
-      const cont = this.add.container(cx, cy);
-      // Two-tone field: red on CPU half (top), green on player half (bottom).
-      const halfH = this.FIELD_H / 2;
-      const bgRed = this.add.image(0, -this.FIELD_H/4, 'endzone_red');
-      bgRed.setDisplaySize(this.LANE_W, halfH); bgRed.setAlpha(0.6);
+      const cont = this.add.container(this.LANE_X[i], this.LANE_Y[i]);
+      const bgRed = this.add.image(redCx, redCy, 'endzone_red');
+      bgRed.setDisplaySize(halfW, halfH); bgRed.setAlpha(0.6);
       cont.add(bgRed);
-      const bgGreen = this.add.image(0,  this.FIELD_H/4, 'endzone_green');
-      bgGreen.setDisplaySize(this.LANE_W, halfH); bgGreen.setAlpha(0.6);
+      const bgGreen = this.add.image(grnCx, grnCy, 'endzone_green');
+      bgGreen.setDisplaySize(halfW, halfH); bgGreen.setAlpha(0.6);
       cont.add(bgGreen);
       const dk = this.add.graphics();
-      dk.fillStyle(0x000000, 0.35); dk.fillRoundedRect(-this.LANE_W/2, -this.FIELD_H/2, this.LANE_W, this.FIELD_H, 10);
-      dk.lineStyle(2, 0xffb800, 0.4); dk.strokeRoundedRect(-this.LANE_W/2, -this.FIELD_H/2, this.LANE_W, this.FIELD_H, 10);
+      dk.fillStyle(0x000000, 0.35); dk.fillRoundedRect(-rectW/2, -rectH/2, rectW, rectH, 10);
+      dk.lineStyle(2, 0xffb800, 0.4); dk.strokeRoundedRect(-rectW/2, -rectH/2, rectW, rectH, 10);
       cont.add(dk);
       // Drop zone goes BELOW cardLayer and overlay in the display list. Phaser
       // hit-tests in reverse z-order, so a full-lane drop zone added on top
       // would shadow the pill / yardage-bar hit-zones inside overlay and eat
       // every tap. Drag-drop still works because Phaser matches drop zones by
       // their dropZone flag during the drag lifecycle, independent of stacking.
-      const dz = this.add.zone(0, 0, this.LANE_W, this.FIELD_H).setRectangleDropZone(this.LANE_W, this.FIELD_H);
+      const dz = this.add.zone(0, 0, rectW, rectH).setRectangleDropZone(rectW, rectH);
       dz.laneIdx = i; cont.add(dz);
       const cardLayer = this.add.container(0, 0); cont.add(cardLayer); this.laneCardLayers.push(cardLayer);
       const overlay = this.add.container(0, 0); cont.add(overlay); this.laneOverlays.push(overlay);
       const hl = this.add.graphics();
-      hl.lineStyle(6, 0xffb800, 1); hl.strokeRoundedRect(-this.LANE_W/2+3, -this.FIELD_H/2+3, this.LANE_W-6, this.FIELD_H-6, 10);
+      hl.lineStyle(6, 0xffb800, 1); hl.strokeRoundedRect(-rectW/2+3, -rectH/2+3, rectW-6, rectH-6, 10);
       hl.setVisible(false); cont.add(hl); cont.highlight = hl;
       this.laneContainers.push(cont);
     }
@@ -1544,10 +1588,15 @@ class GameScene extends Phaser.Scene {
     const overlay = this.laneOverlays[idx];
     overlay.removeAll(true);
 
-    const cpuBarY = -this.FIELD_H/2 + 30;
+    // Bars hug each side's edge of the across-lane dimension.
+    // vertical:   across = Y axis, so bars sit at top/bottom of FIELD_H.
+    // horizontal: across = Y axis still (lane is wide & short), so bars sit
+    //             at top/bottom of LANE_THICK — running full LANE_LEN wide.
+    const acrossHalf = this.LANE_THICK / 2;
+    const cpuBarY = -acrossHalf + 17;
+    const youBarY =  acrossHalf - 17;
     this.drawYardageBar(overlay, cpuBarY, 'ai', lane);
     this.drawModifier(overlay, 0, lane);
-    const youBarY = this.FIELD_H/2 - 30;
     this.drawYardageBar(overlay, youBarY, 'you', lane);
 
     // Pre-snap pill number — netYardsBasic is shared with buildYardageBreakdown
@@ -1555,26 +1604,55 @@ class GameScene extends Phaser.Scene {
     const stats = computeLaneStats(lane);
     const youNet = netYardsBasic(stats.youOff, stats.aiDef);
     const aiNet  = netYardsBasic(stats.aiOff, stats.youDef);
-    // Pills are positioned so ownership reads from POSITION (never color):
-    // CPU pill sits in the top-left of the center band (closer to the CPU
-    // yardage bar at the top); YOU pill sits in the bottom-right (closer
-    // to the YOU yardage bar at the bottom). The modifier medallion stays
-    // dead-center between them.
-    this.drawPowerPill(overlay, -this.LANE_W/2 + 42, -85, aiNet, 'ai',  lane);
-    this.drawPowerPill(overlay,  this.LANE_W/2 - 42,  85, youNet, 'you', lane);
+    if (this.isH) {
+      // Horizontal: pills flank the modifier left/right along the drive axis.
+      // CPU pill in the left (CPU) half, YOU pill in the right (YOU) half.
+      // Vertically centered so they live inside the cards' band — the overlay
+      // draws above cardLayer so they read clearly on top of stacked cards.
+      this.drawPowerPill(overlay, -130, 0, aiNet, 'ai',  lane);
+      this.drawPowerPill(overlay,  130, 0, youNet, 'you', lane);
+    } else {
+      // Vertical: pills are at the top-left and bottom-right corners of the
+      // center band — position alone communicates ownership.
+      this.drawPowerPill(overlay, -this.LANE_W/2 + 42, -85, aiNet, 'ai',  lane);
+      this.drawPowerPill(overlay,  this.LANE_W/2 - 42,  85, youNet, 'you', lane);
+    }
 
     // Synergy badges (Phase 2): show active synergies per side, near each row
     const youSyn = detectSynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
     const aiSyn  = detectSynergies(lane.aiCards .filter(c => c.revealed && !c.ejected));
-    this.drawSynergyBadges(overlay, aiSyn,  this.FIELD_H/2 - this.FIELD_H + 230,  -1);
-    this.drawSynergyBadges(overlay, youSyn, this.FIELD_H/2 - 230,                  1);
+    if (this.isH) {
+      // Horizontal: badges along each side's inner edge of the bars, on the
+      // half that side owns. CPU badges flush-left in the top strip below the
+      // CPU bar; YOU badges flush-right in the bottom strip above the YOU bar.
+      const cpuY =  -acrossHalf + 34 + 14;
+      const youY =   acrossHalf - 34 - 14;
+      this.drawSynergyBadges(overlay, aiSyn,  cpuY, -1, 'cpu');
+      this.drawSynergyBadges(overlay, youSyn, youY,  1, 'you');
+    } else {
+      this.drawSynergyBadges(overlay, aiSyn,  this.FIELD_H/2 - this.FIELD_H + 230,  -1);
+      this.drawSynergyBadges(overlay, youSyn, this.FIELD_H/2 - 230,                  1);
+    }
   }
 
-  drawSynergyBadges(parent, list, y, dir) {
+  drawSynergyBadges(parent, list, y, dir, align) {
     if (!list.length) return;
-    const startX = -this.LANE_W/2 + 8;
+    // align: 'cpu' → flush-left in left half;  'you' → flush-right in right
+    //                  half. Used in horizontal mode. Defaults (omitted) keep
+    //                  vertical layout's original flush-left-of-lane behavior.
+    let startX, stepDir;
+    if (align === 'you') {
+      startX = this.LANE_LEN/2 - 8 - 64;
+      stepDir = -1;
+    } else if (align === 'cpu') {
+      startX = -this.LANE_LEN/2 + 8;
+      stepDir = 1;
+    } else {
+      startX = -this.LANE_W/2 + 8;
+      stepDir = 1;
+    }
     list.forEach((s, i) => {
-      const x = startX + i * 70;
+      const x = startX + stepDir * i * 70;
       const cont = this.add.container(x, y + (dir < 0 ? -6 : 6));
       const bg = this.add.graphics();
       bg.fillStyle(0xffb800, 0.85); bg.fillRoundedRect(0, -10, 64, 20, 6);
@@ -1666,7 +1744,10 @@ class GameScene extends Phaser.Scene {
   }
 
   drawYardageBar(parent, y, side, lane) {
-    const barW = this.LANE_W - 12;
+    // In horizontal, the bar runs along the lane's long axis (LANE_LEN), so
+    // the football has the full drive distance to traverse. In vertical it
+    // still spans across-lane (LANE_W).
+    const barW = (this.isH ? this.LANE_LEN : this.LANE_W) - 12;
     const barH = 34;
     const pos = side==='you' ? lane.youPos : lane.aiPos;
     const color = side==='you' ? 0x4aff8a : 0xff5a5a;
@@ -1725,21 +1806,44 @@ class GameScene extends Phaser.Scene {
     // medallion preloaded under the 'coin_heads' key.
     const iconKey = mod.id === 'coinFlip' ? 'coin_heads' : ('mod_' + mod.id);
     const cont = this.add.container(0, y);
-    // Smaller icon so the name + desc have full lane width to breathe.
-    if (this.textures.exists(iconKey)) {
-      const icon = this.add.image(0, -6, iconKey); icon.setDisplaySize(60, 60); cont.add(icon);
+    if (this.isH) {
+      // Horizontal lane: vertical space is tight, so go icon-left + text-right
+      // instead of stacked. Whole cluster sits inside a ~160×70 footprint that
+      // lives in the lane's center strip, between the CPU/YOU card fans.
+      const iconSize = 44;
+      const textX = -8;  // text block hangs slightly past lane center
+      const textW = 130;
+      if (this.textures.exists(iconKey)) {
+        const icon = this.add.image(-textW/2 - iconSize/2 + 6, 0, iconKey);
+        icon.setDisplaySize(iconSize, iconSize);
+        cont.add(icon);
+      }
+      cont.add(this.add.text(textX, -12, mod.name, {
+        fontFamily:'Bebas Neue', fontSize:'16px', color:mod.color, stroke:'#000', strokeThickness:3,
+        letterSpacing:2, align:'center', wordWrap:{ width: textW }
+      }).setOrigin(0.5));
+      cont.add(this.add.text(textX, 6, mod.desc, {
+        fontFamily:'Oswald', fontSize:'11px', color:'#fff', stroke:'#000', strokeThickness:2,
+        wordWrap:{ width: textW }, align:'center'
+      }).setOrigin(0.5, 0));
+      cont.setSize(textW + iconSize + 12, 70).setInteractive({ useHandCursor:true });
+    } else {
+      // Smaller icon so the name + desc have full lane width to breathe.
+      if (this.textures.exists(iconKey)) {
+        const icon = this.add.image(0, -6, iconKey); icon.setDisplaySize(60, 60); cont.add(icon);
+      }
+      const wrapW = this.LANE_W - 8;
+      cont.add(this.add.text(0, 32, mod.name, {
+        fontFamily:'Bebas Neue', fontSize:'18px', color:mod.color, stroke:'#000', strokeThickness:3,
+        letterSpacing:2, align:'center', wordWrap:{ width: wrapW }
+      }).setOrigin(0.5));
+      cont.add(this.add.text(0, 56, mod.desc, {
+        fontFamily:'Oswald', fontSize:'13px', color:'#fff', stroke:'#000', strokeThickness:2,
+        wordWrap:{ width: wrapW }, align:'center'
+      }).setOrigin(0.5, 0));
+      cont.setSize(this.LANE_W - 8, 130).setInteractive({ useHandCursor:true });
     }
-    const wrapW = this.LANE_W - 8;
-    cont.add(this.add.text(0, 32, mod.name, {
-      fontFamily:'Bebas Neue', fontSize:'18px', color:mod.color, stroke:'#000', strokeThickness:3,
-      letterSpacing:2, align:'center', wordWrap:{ width: wrapW }
-    }).setOrigin(0.5));
-    cont.add(this.add.text(0, 56, mod.desc, {
-      fontFamily:'Oswald', fontSize:'13px', color:'#fff', stroke:'#000', strokeThickness:2,
-      wordWrap:{ width: wrapW }, align:'center'
-    }).setOrigin(0.5, 0));
     parent.add(cont);
-    cont.setSize(this.LANE_W - 8, 130).setInteractive({ useHandCursor:true });
     cont.on('pointerup', () => showToast(this, mod.name + ' — ' + mod.desc, 2200, mod.color));
   }
 
@@ -1914,6 +2018,26 @@ class GameScene extends Phaser.Scene {
       layer.removeAll(true);
       this.renderLaneOverlay(idx);
 
+      if (this.isH) {
+        // Horizontal lane: cards fan along the drive axis (X). CPU on the
+        // left half, YOU on the right; front card of each side sits just
+        // past the central modifier+pill cluster. Cards are sized from
+        // LANE_THICK because vertical space (across the lane) is the binding
+        // constraint — 2 rows of cards must fit inside the inner Y band.
+        const slotW = this.LANE_THICK * 0.35;
+        const cardH = slotW * 1.38;
+        const stepX = slotW * 0.40;
+        const rowYOffset = cardH * 0.35;
+        // modClear keeps card 0 (front of each side) past the pill cluster's
+        // outer edge with a small visual gap.
+        const modClear = 174;
+        const cpuAnchorX = -(modClear + slotW/2);
+        const youAnchorX = +(modClear + slotW/2);
+        this._layoutStackH(layer, lane.aiCards,  'ai',  slotW, cardH, stepX, rowYOffset, cpuAnchorX);
+        this._layoutStackH(layer, lane.youCards, 'you', slotW, cardH, stepX, rowYOffset, youAnchorX);
+        return;
+      }
+
       // Cards are big (42% of lane width) because they overlap — each successive
       // card is offset 40% right of the previous, so 60% of every card stays
       // visible. Cost circle (top-left) is preserved because cards fan LEFT→RIGHT;
@@ -1934,6 +2058,57 @@ class GameScene extends Phaser.Scene {
       this._layoutStack(layer, lane.youCards, 'you', slotW, cardH, stepX, rowYOffset, rowXShift, youAnchorY);
       // Drop zones still cover the full lane via lane container.
     });
+  }
+
+  // Horizontal-orientation equivalent of _layoutStack. Cards fan along X away
+  // from the lane's vertical center line (CPU leftward, YOU rightward). 5–8
+  // cards spill into a second row offset along Y. Preserves the same
+  // ±3° rotation fan, pending-pulse border, attachInspect on revealed cards,
+  // and asymmetric draw-order rule from the vertical version.
+  _layoutStackH(layer, cards, side, slotW, cardH, stepX, rowYOffset, anchorX) {
+    const n = cards.length;
+    if (n === 0) return;
+    const dirX = side === 'you' ? 1 : -1;
+    const placeRow = (rowCards, rowY) => {
+      const rn = rowCards.length;
+      rowCards.forEach((c, i) => {
+        const x = anchorX + dirX * i * stepX;
+        const rot = (i - (rn - 1) / 2) * 0.05;
+        const card = buildCard(this, c, slotW, { hidden: !c.revealed });
+        card.x = x; card.y = rowY;
+        card.setRotation(rot);
+        if (c.pending) {
+          card.setAlpha(0.85);
+          const pulse = this.add.graphics();
+          pulse.lineStyle(3, 0xffb800, 1);
+          pulse.strokeRoundedRect(-card.cardWidth/2 - 3, -card.cardHeight/2 - 3, card.cardWidth + 6, card.cardHeight + 6, 8);
+          card.add(pulse);
+          if (!this.reduced) this.tweens.add({ targets: pulse, alpha: 0.3, duration: 600, yoyo: true, repeat: -1, ease:'Sine.inOut' });
+        }
+        if (c.revealed) this.attachInspect(card, c);
+        layer.add(card);
+      });
+    };
+    if (n <= 4) {
+      placeRow(cards, 0);
+      return;
+    }
+    const front = cards.slice(0, 4);
+    const back  = cards.slice(4, 8);
+    const frontY = -rowYOffset/2;
+    const backY  =  rowYOffset/2;
+    // Asymmetric draw order mirrors the vertical version: for YOU we draw the
+    // back row first so the front row (closer to the line of scrimmage) sits
+    // on top and keeps its stat number visible; for CPU we draw the front row
+    // first so the back row covers the front cost circle (CPU costs aren't
+    // shown anyway) while keeping the back row's stat visible.
+    if (side === 'you') {
+      placeRow(back,  backY);
+      placeRow(front, frontY);
+    } else {
+      placeRow(front, frontY);
+      placeRow(back,  backY);
+    }
   }
 
   // Lay out a side's cards as a fanned overlap stack:
