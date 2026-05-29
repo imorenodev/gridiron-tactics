@@ -154,6 +154,14 @@ const LANE_DEFS = [
   { name: 'RIGHT',  flavor: 'Weak Side' }
 ];
 
+// Owner-label colors for the small "YOU"/"CPU" text shown on yardage bars
+// and the power-pill owner tab. These encode WHICH SIDE owns the element —
+// purely an ownership cue. They are DISTINCT from the power-pill RING color,
+// which uses the good/bad-for-the-human-player rule (green = good for player,
+// red = bad for player). Keep these two color concepts strictly separate so
+// the green/red channel never doubles as an ownership signal.
+const SIDE_LABEL_COLORS = { you: '#4aff8a', cpu: '#ff7a7a' };
+
 const LANE_MODIFIERS = [
   { id:'homeTurf',     name:'HOME TURF',     desc:'Your OFF +5, enemy OFF -5',      color:'#4aff8a' },
   { id:'muddyField',   name:'MUDDY FIELD',   desc:'All OFF -25%, all DEF +25%',     color:'#b08a5a' },
@@ -902,37 +910,39 @@ function buildCard(scene, card, targetW, opts = {}) {
     fontFamily:'Bebas Neue', fontSize: Math.round(H*0.045)+'px', color:'#fff', stroke:'#000', strokeThickness:2
   }).setOrigin(0.5));
 
-  // Name bar — hand cards get a black backing strip behind the text for contrast
-  // (the frame's printed name area is washed out at small sizes).
+  // Name bar — the frame has a transparent window here, so without a backing
+  // the field/portrait bleeds through and the text is unreadable. Draw the
+  // backing on EVERY card (heavier on field where the background is noisier);
+  // text stays light because the backing is dark in both contexts.
   const nX = (CARD_LAYOUT.name.x + CARD_LAYOUT.name.w/2 - 0.5) * W;
   const nY = (CARD_LAYOUT.name.y + CARD_LAYOUT.name.h/2 - 0.5) * H;
   const nameW = CARD_LAYOUT.name.w * W;
   const nameH = CARD_LAYOUT.name.h * H;
-  if (contextHand) {
-    const nameBg = scene.add.graphics();
-    nameBg.fillStyle(0x000000, 0.65);
-    nameBg.fillRect(nX - nameW/2, nY - nameH/2, nameW, nameH);
-    cont.add(nameBg);
-  }
+  const nameBg = scene.add.graphics();
+  nameBg.fillStyle(0x000000, contextHand ? 0.7 : 0.85);
+  nameBg.fillRect(nX - nameW/2, nY - nameH/2, nameW, nameH);
+  cont.add(nameBg);
   const lastName = card.name.split(' ').slice(-1)[0].toUpperCase();
   const nameTxt = scene.add.text(nX, nY, lastName + ' · ' + card.team, {
     fontFamily:'Bebas Neue', fontSize: Math.round(H*0.05)+'px',
-    color: contextHand ? '#ffe8a8' : '#222', letterSpacing:1
+    color: '#ffe8a8', letterSpacing:1
   }).setOrigin(0.5);
   if (nameTxt.width > nameW - 8) nameTxt.setScale((nameW - 8) / nameTxt.width);
   cont.add(nameTxt);
 
-  // Stat block — bigger font + black backing strip for hand cards so the
-  // number reads clearly at thumbnail scale.
+  // Stat block — same story as the name bar: the frame has a transparent
+  // window, so the backing must be drawn on EVERY card or the orange/blue
+  // stat number gets lost over a noisy field background. Hand context uses
+  // a lighter backing because the hand tray is already dark behind the card.
   const sX = (CARD_LAYOUT.stat.x + CARD_LAYOUT.stat.w/2 - 0.5) * W;
   const sY = (CARD_LAYOUT.stat.y + CARD_LAYOUT.stat.h/2 - 0.5) * H;
   const statVal = card.side==='off' ? (card.curOff ?? card.off) : (card.curDef ?? card.def);
   const statColor = card.side==='off' ? '#ff7a1a' : '#2a8aff';
-  if (contextHand) {
+  {
     const sW = CARD_LAYOUT.stat.w * W;
     const sH = CARD_LAYOUT.stat.h * H;
     const statBg = scene.add.graphics();
-    statBg.fillStyle(0x000000, 0.7);
+    statBg.fillStyle(0x000000, contextHand ? 0.75 : 0.9);
     statBg.fillRoundedRect(sX - sW/2, sY - sH/2, sW, sH, 4);
     cont.add(statBg);
   }
@@ -1356,8 +1366,13 @@ class GameScene extends Phaser.Scene {
     const stats = computeLaneStats(lane);
     const youNet = Math.floor(stats.youOff/2.5) - Math.floor(stats.aiDef/2.5);
     const aiNet  = Math.floor(stats.aiOff/2.5) - Math.floor(stats.youDef/2.5);
-    this.drawPowerPill(overlay, -this.LANE_W/2 + 32, -60, aiNet, 'ai');
-    this.drawPowerPill(overlay,  this.LANE_W/2 - 32, -60, youNet, 'you');
+    // Pills are positioned so ownership reads from POSITION (never color):
+    // CPU pill sits in the top-left of the center band (closer to the CPU
+    // yardage bar at the top); YOU pill sits in the bottom-right (closer
+    // to the YOU yardage bar at the bottom). The modifier medallion stays
+    // dead-center between them.
+    this.drawPowerPill(overlay, -this.LANE_W/2 + 42, -85, aiNet, 'ai');
+    this.drawPowerPill(overlay,  this.LANE_W/2 - 42,  85, youNet, 'you');
 
     // Synergy badges (Phase 2): show active synergies per side, near each row
     const youSyn = detectSynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
@@ -1383,18 +1398,60 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  // Green = good for the human player, red = bad. The CPU pill's color is
+  // INVERTED relative to its own net: CPU gaining yards is bad news (red),
+  // CPU losing yards is good news (green). The YOU pill maps net directly.
+  pillColorKey(net, side) {
+    if (net === 0) return 'power_green'; // muted via alpha; neutral
+    const goodForPlayer = side === 'you' ? (net > 0) : (net < 0);
+    return goodForPlayer ? 'power_green' : 'power_red';
+  }
+
   drawPowerPill(parent, x, y, net, side) {
-    const isPositive = net > 0;
-    const key = isPositive ? 'power_green' : (net < 0 ? 'power_red' : 'power_green');
-    const circ = this.add.image(x, y, key); circ.setDisplaySize(52, 52); circ.setAlpha(net===0 ? 0.45 : 1);
+    // The pill RING uses green/red as a semantic channel meaning
+    // good-or-bad-for-the-human-player. Ownership (which side this pill
+    // represents) is communicated by POSITION and the label tab — never
+    // by the green/red channel. See SIDE_LABEL_COLORS for the ownership
+    // color, which is intentionally kept separate from the ring's signal.
+    const key = this.pillColorKey(net, side);
+    const ownerKey = side === 'you' ? 'you' : 'cpu';
+    const ownerLabel = side === 'you' ? 'YOU' : 'CPU';
+
+    // Pill (72px) — the visual anchor of the lane.
+    const circ = this.add.image(x, y, key);
+    circ.setDisplaySize(72, 72);
+    circ.setAlpha(net === 0 ? 0.45 : 1);
     parent.add(circ);
-    circ.setInteractive({ useHandCursor:true });
+    circ.setInteractive({ useHandCursor: true });
     circ.on('pointerup', () => this.showTooltip('powerPill'));
-    parent.add(this.add.text(x, y, (net>=0?'+':'') + net, {
-      fontFamily:'Bebas Neue', fontSize:'22px', color:'#fff', stroke:'#000', strokeThickness:3
+
+    // Net number with sign — the +/− reinforces gain vs loss independent
+    // of color, so colorblind players still get the direction cue.
+    parent.add(this.add.text(x, y, (net >= 0 ? '+' : '') + net, {
+      fontFamily: 'Bebas Neue', fontSize: '34px', color: '#fff',
+      stroke: '#000', strokeThickness: 4
     }).setOrigin(0.5));
-    parent.add(this.add.text(x, y + 28, side==='you'?'YOU':'CPU', {
-      fontFamily:'Oswald', fontSize:'11px', color: side==='you'?'#4aff8a':'#ff6a6a', stroke:'#000', strokeThickness:2, letterSpacing:2
+
+    // Owner label tab ABOVE the pill. Tab background is neutral dark gray
+    // (NOT red/green) so it doesn't pollute the good/bad color signal.
+    // Tab text uses SIDE_LABEL_COLORS — purely an ownership cue.
+    const tabY = y - 36 - 14;
+    const tabW = 40, tabH = 20;
+    const tab = this.add.graphics();
+    tab.fillStyle(0x222222, 0.95);
+    tab.fillRoundedRect(x - tabW / 2, tabY - tabH / 2, tabW, tabH, 5);
+    tab.lineStyle(1, 0x000000, 0.6);
+    tab.strokeRoundedRect(x - tabW / 2, tabY - tabH / 2, tabW, tabH, 5);
+    parent.add(tab);
+    parent.add(this.add.text(x, tabY, ownerLabel, {
+      fontFamily: 'Oswald', fontSize: '14px',
+      color: SIDE_LABEL_COLORS[ownerKey], letterSpacing: 2
+    }).setOrigin(0.5));
+
+    // "YDS" suffix BELOW the pill so the unit is unambiguous.
+    parent.add(this.add.text(x, y + 36 + 8, 'YDS', {
+      fontFamily: 'Oswald', fontSize: '10px', color: '#888',
+      stroke: '#000', strokeThickness: 2, letterSpacing: 2
     }).setOrigin(0.5));
   }
 
@@ -1412,8 +1469,10 @@ class GameScene extends Phaser.Scene {
     parent.add(this.add.rectangle(-barW/2 + endW + 2 + fillW/2, y, fillW, barH-10, color, 0.6));
     const ballX = -barW/2 + endW + 2 + fillW;
     const ball = this.add.image(ballX, y, 'football'); ball.setDisplaySize(26, 22); parent.add(ball);
+    // Yardage-bar owner label: uses SIDE_LABEL_COLORS (the ownership cue),
+    // distinct from the power-pill ring color (good/bad-for-player).
     parent.add(this.add.text(-barW/2 + 4, y - barH/2 - 12, side==='you'?'YOU':'CPU', {
-      fontFamily:'Oswald', fontSize:'12px', color: side==='you'?'#4aff8a':'#ff7a7a', stroke:'#000', strokeThickness:2, letterSpacing:1
+      fontFamily:'Oswald', fontSize:'12px', color: SIDE_LABEL_COLORS[side==='you'?'you':'cpu'], stroke:'#000', strokeThickness:2, letterSpacing:1
     }).setOrigin(0, 0));
     parent.add(this.add.text(barW/2 - 4, y - barH/2 - 12, this.formatYardLine(pos), {
       fontFamily:'JetBrains Mono', fontSize:'12px', color:'#fff', stroke:'#000', strokeThickness:2
@@ -1791,7 +1850,12 @@ class GameScene extends Phaser.Scene {
     const energy = G.youEnergy - pendingCost();
     if (cost > energy) { this.showFloat('NOT ENOUGH ENERGY', '#ff5a5a'); this.returnCardToHand(go); return; }
     if (!G.youHand.find(c => c.id === card.id)) { this.returnCardToHand(go); return; }
-    const placed = { ...card, curOff: card.off, curDef: card.def, revealed:false, pending:true };
+    // Player cards land face-up — they were face-up in hand a second ago and
+    // hiding them on drop is a visual regression. CPU cards stay face-down
+    // (revealed:false) until SNAP; see aiMakePlays. The `pending` flag still
+    // drives the gold pulse border + SNAP-time ability dispatch in
+    // revealAllPending(), so commitment + reveal-order semantics are intact.
+    const placed = { ...card, curOff: card.off, curDef: card.def, revealed:true, pending:true };
     lane.youCards.push(placed);
     G.pendingPlays.push({ card: placed, lane: dz.laneIdx, side:'you', effectiveCost: cost });
     G.youHand = G.youHand.filter(c => c.id !== card.id);
