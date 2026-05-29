@@ -1276,6 +1276,7 @@ class BootScene extends Phaser.Scene {
     this.load.image('pill_right',    ASSET_BASE + '05_pill_right.png');
     this.load.image('coin_heads',    ASSET_BASE + '30_coin_heads.png');
     this.load.image('coin_tails',    ASSET_BASE + '31_coin_tails.png');
+    this.load.image('windsock',      ASSET_BASE + 'windsock.png');
     for (const rarity of ['common','uncommon','rare','legendary']) {
       for (const side of ['off','def']) {
         const num = { common: side==='off'?'18':'19',
@@ -1962,33 +1963,52 @@ class GameScene extends Phaser.Scene {
     cont.on('pointerup', () => showToast(this, mod.name + ' — ' + mod.desc, 2200, mod.color));
   }
 
-  // Per-lane wind readout. Arrow points in screen direction (left/right) and
-  // never changes during a match — only its EFFECT flips at halftime via
-  // windYardsFor()'s use of youOnLeft(). Color stays neutral cyan: the
-  // green/red channel is reserved for the pill's good/bad-for-player signal.
+  // Per-lane wind readout. The windsock sprite streams in screen direction
+  // (left/right) and never changes during a match — only its EFFECT flips at
+  // halftime via windYardsFor()'s use of youOnLeft(). Calm lanes render
+  // nothing at all — no sock, no label — so wind-active lanes pop visually.
   drawWindIndicator(parent, lane) {
     const w = lane.wind;
-    if (!w) return;
-    const cont = this.add.container(0, -55);
-    if (w.speed === 0) {
-      cont.add(this.add.text(0, 0, 'CALM', {
-        fontFamily: 'Oswald', fontSize: '11px', color: '#888',
-        stroke: '#000', strokeThickness: 2, letterSpacing: 3
-      }).setOrigin(0.5));
-    } else {
-      const chev = (w.dir === 'right' ? '»' : '«').repeat(w.speed);
-      const txt = w.dir === 'right'
-        ? ('WIND ' + w.speed + '  ' + chev)
-        : (chev + '  WIND ' + w.speed);
-      cont.add(this.add.text(0, 0, txt, {
-        fontFamily: 'Oswald', fontSize: '13px', color: '#88ddff',
-        stroke: '#000', strokeThickness: 3, letterSpacing: 1
-      }).setOrigin(0.5));
+    if (!w || w.speed === 0) return;
+    // Sock asset is 835×412, drawn pointing RIGHT. Width is the visual span;
+    // taller speeds = bigger sock. Speed 1 → ~48px wide, speed 4 → ~72px.
+    const sockW = 40 + w.speed * 8;
+    const sockH = sockW * (412 / 835);
+    // Sit above the modifier in both orientations. Horizontal has a top
+    // yardage bar at ~Y=-93, so the indicator slots into the narrow band
+    // between bar and modifier; vertical has no top-bar pressure so it can
+    // ride higher with room to breathe.
+    const indicatorY = this.isH ? -66 : -82;
+    const cont = this.add.container(0, indicatorY);
+    const sock = this.add.image(0, 0, 'windsock');
+    sock.setDisplaySize(sockW, sockH);
+    if (w.dir === 'left') sock.setFlipX(true);
+    cont.add(sock);
+    // Label sits just below the sock so it doesn't fight the sprite for space.
+    // Neutral cyan keeps green/red reserved for the pill's good/bad channel.
+    cont.add(this.add.text(0, sockH/2 + 4, 'WIND ' + w.speed, {
+      fontFamily: 'Oswald', fontSize: '11px', color: '#cfeaff',
+      stroke: '#000', strokeThickness: 3, letterSpacing: 2
+    }).setOrigin(0.5, 0));
+    // Idle wobble: small rotation oscillation scaled by speed. Skip when the
+    // user prefers reduced motion. The wobble eases the sock left/right so it
+    // reads as "streaming" without distracting from the lane state.
+    if (!this.reduced) {
+      const wobbleDeg = 1.0 + w.speed * 0.9;   // ~1.9° at spd 1, ~4.6° at spd 4
+      const dur = 1100 - w.speed * 120;        // faster wobble at higher speed
+      this.tweens.add({
+        targets: sock,
+        angle: { from: -wobbleDeg, to: wobbleDeg },
+        duration: dur,
+        yoyo: true, repeat: -1, ease: 'Sine.inOut'
+      });
     }
     parent.add(cont);
     // Tap → toast explaining the wind in plain language. Uses pointerdown+up
     // matching so a card drag released over the indicator doesn't fire it.
-    const hit = this.add.zone(0, -55, 140, 22).setInteractive({ useHandCursor: true });
+    const hitW = Math.max(sockW, 90);
+    const hitH = sockH + 18;
+    const hit = this.add.zone(0, indicatorY, hitW, hitH).setInteractive({ useHandCursor: true });
     parent.add(hit);
     let downAt = null;
     hit.on('pointerdown', p => { downAt = { x: p.x, y: p.y, t: performance.now() }; });
@@ -1998,10 +2018,11 @@ class GameScene extends Phaser.Scene {
       const dx = p.x - downAt.x, dy = p.y - downAt.y;
       downAt = null;
       if (elapsed < 300 && Math.sqrt(dx*dx + dy*dy) < 12) {
-        const msg = w.speed === 0
-          ? 'CALM — no wind in this lane'
-          : 'WIND ' + (w.dir === 'right' ? '→' : '←') + ' speed ' + w.speed +
-            ' — ±' + (w.speed * 2) + ' net yards depending on which way you attack';
+        const youSwing = windYardsFor(lane, 'you');
+        const tag = youSwing > 0
+          ? 'with you (+' + youSwing + ')'
+          : 'against you (' + youSwing + ')';
+        const msg = 'WIND ' + (w.dir === 'right' ? '→' : '←') + ' spd ' + w.speed + ' — ' + tag;
         showToast(this, msg, 2400, '#88ddff');
       }
     });
