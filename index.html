@@ -578,7 +578,15 @@ function newGame(playerDeck, aiDeck, mode, opponent) {
       youCards: [], aiCards: [],
       youPos: kickoffPos(), aiPos: kickoffPos(),
       driveSinceScore: 0,
-      lockedFor: null
+      lockedFor: null,
+      // Per-lane wind: fixed for the whole match. Direction is in SCREEN terms
+      // ('left'/'right' toward that end zone), speed 0..4 (0 ≈ 15% chance =
+      // calm). Effect on yardage flips at halftime via windYardsFor()'s use of
+      // youOnLeft(), but the wind values themselves never reroll.
+      wind: {
+        dir: Math.random() < 0.5 ? 'left' : 'right',
+        speed: Math.random() < 0.15 ? 0 : (1 + Math.floor(Math.random() * 4))
+      }
     })),
     busy: false, gameOver: false,
     _wasTrailingBy14: undefined
@@ -799,6 +807,41 @@ function netYardsBasic(myOff, theirDef) {
   return Math.floor(myOff / 2.5) - Math.floor(theirDef / 2.5);
 }
 
+// Wind yardage swing for one side in one lane. A team driving WITH the wind
+// gains +mag yards on net offense; against it loses −mag. Speed 1..4 maps to
+// ±2..8 yards; speed 0 = calm = 0. The "with/against" question hinges on the
+// team's CURRENT attacking end zone, which flips at halftime via youOnLeft()
+// — so the same wind that helped in the first half hurts in the second.
+function windYardsFor(lane, side) {
+  if (!lane.wind || lane.wind.speed === 0) return 0;
+  // A team attacks the end zone OPPOSITE the side it stands on.
+  // YOU on left → attacks right. CPU is the mirror of YOU.
+  const attacksRight = (side === 'you') ? youOnLeft() : !youOnLeft();
+  const windHelpsRightAttacker = (lane.wind.dir === 'right');
+  const withWind = (attacksRight === windHelpsRightAttacker);
+  const magnitude = lane.wind.speed * 2;
+  return withWind ? magnitude : -magnitude;
+}
+
+// Single source of truth for "net yards for this side in this lane, including
+// all field-condition adjustments." Used by the power pill, the breakdown
+// modal, and the real-yardage SNAP math so the three CAN'T disagree.
+// Pre-snap callers (pill, breakdown) pass {preSnap: true} to omit yard-block
+// (which only triggers at SNAP) — same convention netYardsBasic used.
+function netYardsFull(lane, side, opts = {}) {
+  const stats = computeLaneStats(lane);
+  const myOff    = side === 'you' ? stats.youOff : stats.aiOff;
+  const theirDef = side === 'you' ? stats.aiDef  : stats.youDef;
+  let net = netYardsBasic(myOff, theirDef);
+  net += windYardsFor(lane, side);
+  if (!opts.preSnap) {
+    const theirKey = side === 'you' ? 'aiCards' : 'youCards';
+    const blocks = lane[theirKey].filter(c => c.desc === 'fieldYardBlock' && c.revealed && !c.ejected).length;
+    net -= blocks * 5;
+  }
+  return net;
+}
+
 // Reconstructs the per-card reasons for each card's curStat − baseStat delta.
 // Pragmatic, not exact: when stacked effects + clamping + muddyField's ×0.75
 // rounding shift the total, the delta is authoritative and reasons are
@@ -942,6 +985,17 @@ function buildYardageBreakdown(lane, side) {
   const myContrib    = Math.floor(myOffSum / 2.5);
   const theirContrib = Math.floor(theirDefSum / 2.5);
 
+  // Wind contribution for this side in this lane. Surfaces as its own line in
+  // the modal so the player sees "WIND (with, spd 3): +6" or "(against)".
+  const windSwing = windYardsFor(lane, side);
+  const wind = lane.wind ? {
+    dir: lane.wind.dir,
+    speed: lane.wind.speed,
+    swing: windSwing,
+    withWind: windSwing > 0,
+    calm: lane.wind.speed === 0
+  } : null;
+
   return {
     laneName: lane.name,
     side,
@@ -950,12 +1004,13 @@ function buildYardageBreakdown(lane, side) {
     myOffSum, theirDefSum,
     myContrib, theirContrib,
     yardBlocks,
+    wind,
     modifier: lane.modifier ? {
       id: lane.modifier.id, name: lane.modifier.name,
       color: lane.modifier.color, desc: lane.modifier.desc
     } : null,
     coinFlip: !!(lane.modifier && lane.modifier.id === 'coinFlip'),
-    net: netYardsBasic(myOffSum, theirDefSum)
+    net: netYardsFull(lane, side, { preSnap: true })
   };
 }
 
@@ -1631,13 +1686,14 @@ class GameScene extends Phaser.Scene {
     const youBarY =  acrossHalf - 17;
     this.drawYardageBar(overlay, cpuBarY, 'ai', lane);
     this.drawModifier(overlay, 0, lane);
+    this.drawWindIndicator(overlay, lane);
     this.drawYardageBar(overlay, youBarY, 'you', lane);
 
-    // Pre-snap pill number — netYardsBasic is shared with buildYardageBreakdown
-    // so the breakdown modal's NET line and the pill cannot disagree.
-    const stats = computeLaneStats(lane);
-    const youNet = netYardsBasic(stats.youOff, stats.aiDef);
-    const aiNet  = netYardsBasic(stats.aiOff, stats.youDef);
+    // Pre-snap pill number — netYardsFull includes wind so the pill, the
+    // breakdown modal, and the real SNAP-time ball movement share one math
+    // (yard-block is omitted pre-snap; see netYardsFull's preSnap flag).
+    const youNet = netYardsFull(lane, 'you', { preSnap: true });
+    const aiNet  = netYardsFull(lane, 'ai',  { preSnap: true });
     if (this.isH) {
       // Horizontal: pills flank the modifier left/right along the drive axis,
       // each on its own team's side. Vertically centered so they live inside
@@ -1906,6 +1962,52 @@ class GameScene extends Phaser.Scene {
     cont.on('pointerup', () => showToast(this, mod.name + ' — ' + mod.desc, 2200, mod.color));
   }
 
+  // Per-lane wind readout. Arrow points in screen direction (left/right) and
+  // never changes during a match — only its EFFECT flips at halftime via
+  // windYardsFor()'s use of youOnLeft(). Color stays neutral cyan: the
+  // green/red channel is reserved for the pill's good/bad-for-player signal.
+  drawWindIndicator(parent, lane) {
+    const w = lane.wind;
+    if (!w) return;
+    const cont = this.add.container(0, -55);
+    if (w.speed === 0) {
+      cont.add(this.add.text(0, 0, 'CALM', {
+        fontFamily: 'Oswald', fontSize: '11px', color: '#888',
+        stroke: '#000', strokeThickness: 2, letterSpacing: 3
+      }).setOrigin(0.5));
+    } else {
+      const chev = (w.dir === 'right' ? '»' : '«').repeat(w.speed);
+      const txt = w.dir === 'right'
+        ? ('WIND ' + w.speed + '  ' + chev)
+        : (chev + '  WIND ' + w.speed);
+      cont.add(this.add.text(0, 0, txt, {
+        fontFamily: 'Oswald', fontSize: '13px', color: '#88ddff',
+        stroke: '#000', strokeThickness: 3, letterSpacing: 1
+      }).setOrigin(0.5));
+    }
+    parent.add(cont);
+    // Tap → toast explaining the wind in plain language. Uses pointerdown+up
+    // matching so a card drag released over the indicator doesn't fire it.
+    const hit = this.add.zone(0, -55, 140, 22).setInteractive({ useHandCursor: true });
+    parent.add(hit);
+    let downAt = null;
+    hit.on('pointerdown', p => { downAt = { x: p.x, y: p.y, t: performance.now() }; });
+    hit.on('pointerup', p => {
+      if (!downAt) return;
+      const elapsed = performance.now() - downAt.t;
+      const dx = p.x - downAt.x, dy = p.y - downAt.y;
+      downAt = null;
+      if (elapsed < 300 && Math.sqrt(dx*dx + dy*dy) < 12) {
+        const msg = w.speed === 0
+          ? 'CALM — no wind in this lane'
+          : 'WIND ' + (w.dir === 'right' ? '→' : '←') + ' speed ' + w.speed +
+            ' — ±' + (w.speed * 2) + ' net yards depending on which way you attack';
+        showToast(this, msg, 2400, '#88ddff');
+      }
+    });
+    hit.on('pointerout', () => { downAt = null; });
+  }
+
   buildHandArea() {
     // Hand cards container is positioned at the cards-row center; redrawHand lays
     // each card relative to (0,0) inside.
@@ -2069,7 +2171,13 @@ class GameScene extends Phaser.Scene {
       this._lastYouOnLeft = yL;
       this.repaintLaneBackgrounds();
       if (!firstRender && this.isH) {
-        showToast(this, 'HALFTIME — SWITCHING SIDES', 2200, '#ffb800');
+        // Any lane with a non-calm wind will now flip its with/against side,
+        // so nudge the player to recheck the pills before snapping.
+        const anyWind = G.lanes.some(l => l.wind && l.wind.speed > 0);
+        const msg = anyWind
+          ? 'HALFTIME — SIDES + WIND FLIPPED'
+          : 'HALFTIME — SWITCHING SIDES';
+        showToast(this, msg, 2200, '#ffb800');
       }
     }
     this.redrawLaneContents();
@@ -2326,9 +2434,18 @@ class GameScene extends Phaser.Scene {
     if (!b.offEntries.length && !b.defEntries.length) {
       const myKey = side === 'you' ? 'youCards' : 'aiCards';
       const pendingCount = lane[myKey].filter(c => c.revealed && c.pending && !c.ejected).length;
-      const empty = pendingCount > 0
+      let empty = pendingCount > 0
         ? 'No cards have snapped\nin this lane yet.\n\n(' + pendingCount + ' committed — counts at SNAP)'
         : 'No cards revealed\nin this lane yet.';
+      // Wind still contributes to the pill even with no revealed cards, so
+      // surface it here too — otherwise the pill and breakdown disagree
+      // (e.g. pill shows +6 with no cards, breakdown would say "nothing").
+      if (b.wind && !b.wind.calm) {
+        const arrow = b.wind.dir === 'right' ? '→' : '←';
+        const tag = b.wind.swing > 0 ? 'with' : 'against';
+        const swingStr = (b.wind.swing >= 0 ? '+' : '') + b.wind.swing;
+        empty += '\n\nWIND ' + arrow + ' (' + tag + ', spd ' + b.wind.speed + '): ' + swingStr + ' YDS';
+      }
       cont.add(this.add.text(0, 0, empty, {
         fontFamily: 'Oswald', fontSize: '22px', color: '#aaa', align: 'center', lineSpacing: 4
       }).setOrigin(0.5));
@@ -2461,6 +2578,23 @@ class GameScene extends Phaser.Scene {
         });
         y += 22;
       });
+      y += 4;
+    }
+
+    // ---------- WIND ----------
+    if (b.wind && !b.wind.calm) {
+      const arrow = b.wind.dir === 'right' ? '→' : '←';
+      const tag = b.wind.swing > 0 ? 'with' : 'against';
+      addLeft('WIND ' + arrow + ' (' + tag + ', spd ' + b.wind.speed + ')', {
+        fontFamily: 'Oswald', fontSize: '14px', color: '#88ddff'
+      });
+      const swingStr = (b.wind.swing >= 0 ? '+' : '') + b.wind.swing + ' YDS';
+      addRight(swingStr, {
+        fontFamily: 'Bebas Neue', fontSize: '18px',
+        color: b.wind.swing > 0 ? '#4aff8a' : '#ff5a5a',
+        stroke: '#000', strokeThickness: 2
+      });
+      y += 22;
       y += 4;
     }
 
@@ -2772,6 +2906,10 @@ class GameScene extends Phaser.Scene {
       let aiDelta   = Math.floor(stats.aiOff/SCALE)  - Math.floor(stats.youDef/SCALE);
       lane.youCards.forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) aiDelta -= 5; });
       lane.aiCards .forEach(c => { if (c.desc === 'fieldYardBlock' && c.revealed && !c.ejected) yourDelta -= 5; });
+      // Wind swing applies to net offensive yards per side. Same numbers the
+      // pill and breakdown showed pre-snap — keeps all three in sync.
+      yourDelta += windYardsFor(lane, 'you');
+      aiDelta   += windYardsFor(lane, 'ai');
       if (lane.modifier && lane.modifier.id === 'coinFlip') {
         const doubled = Math.random() < 0.5;
         if (doubled) { yourDelta *= 2; aiDelta *= 2; showToast(this, '🎲 COIN FLIP: DOUBLED!', 900, '#dd99ff'); }
