@@ -629,26 +629,30 @@ function applySynergies(cards) {
 }
 
 function applyLaneFieldEffects(lane) {
+  // "Live" = revealed AND not pending AND not ejected. YOUR cards now land
+  // face-up (revealed:true) but stay pending until snap, so pending must be
+  // filtered out both as a source (a pending card doesn't yet project field
+  // effects) and as a target (a pending card doesn't yet receive buffs).
   [...lane.youCards, ...lane.aiCards].forEach(c => {
-    if (!c.revealed || c.ejected) return;
+    if (!c.revealed || c.pending || c.ejected) return;
     const isYou = lane.youCards.includes(c);
     const friendlies = isYou ? lane.youCards : lane.aiCards;
     const enemies    = isYou ? lane.aiCards  : lane.youCards;
     switch (c.desc) {
       case 'fieldBuffOff':
-        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.pos === 'OL')
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.pending && !x.ejected && x.pos === 'OL')
           .forEach(x => { x._fieldOff = (x._fieldOff||0) + 5; });
         break;
       case 'fieldBuffOffAll':
-        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && x.side === 'off')
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.pending && !x.ejected && x.side === 'off')
           .forEach(x => { x._fieldOff = (x._fieldOff||0) + 4; });
         break;
       case 'fieldBuffDef':
-        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.ejected && (x.pos === 'CB' || x.pos === 'S'))
+        friendlies.filter(x => x.uid !== c.uid && x.revealed && !x.pending && !x.ejected && (x.pos === 'CB' || x.pos === 'S'))
           .forEach(x => { x._fieldDef = (x._fieldDef||0) + 3; });
         break;
       case 'fieldDebuffAll':
-        enemies.filter(x => x.revealed && !x.ejected && x.side === 'off')
+        enemies.filter(x => x.revealed && !x.pending && !x.ejected && x.side === 'off')
           .forEach(x => { x._fieldOff = (x._fieldOff||0) - 5; });
         break;
     }
@@ -656,7 +660,7 @@ function applyLaneFieldEffects(lane) {
 }
 
 function applyPerkStatBuffs(lane) {
-  const you = lane.youCards.filter(c => c.revealed && !c.ejected);
+  const you = lane.youCards.filter(c => c.revealed && !c.pending && !c.ejected);
   if (hasPerk('airItOut'))     you.filter(c => c.pos==='WR' || c.pos==='TE').forEach(c => c.curOff += 3);
   if (hasPerk('groundGame'))   you.filter(c => c.pos==='RB').forEach(c => c.curOff += 3);
   if (hasPerk('runStuffer'))   you.filter(c => c.pos==='DE' || c.pos==='DT').forEach(c => c.curDef += 3);
@@ -665,9 +669,9 @@ function applyPerkStatBuffs(lane) {
 
 function applyLaneModifier(lane) {
   if (!lane.modifier) return;
-  const all = [...lane.youCards, ...lane.aiCards].filter(c => c.revealed && !c.ejected);
-  const you = lane.youCards.filter(c => c.revealed && !c.ejected);
-  const ai  = lane.aiCards .filter(c => c.revealed && !c.ejected);
+  const all = [...lane.youCards, ...lane.aiCards].filter(c => c.revealed && !c.pending && !c.ejected);
+  const you = lane.youCards.filter(c => c.revealed && !c.pending && !c.ejected);
+  const ai  = lane.aiCards .filter(c => c.revealed && !c.pending && !c.ejected);
   switch (lane.modifier.id) {
     case 'homeTurf':
       you.filter(c => c.side==='off').forEach(c => c.curOff += 5);
@@ -720,27 +724,31 @@ function applyLaneModifier(lane) {
 }
 
 function computeLaneStats(lane) {
+  // A card is "live" (stats apply, contributes to power pill) only when
+  // revealed && !pending && !ejected. YOUR cards land face-up (revealed:true)
+  // but pending=true until snap, so we exclude them from stat computation
+  // here — buildCard falls back to card.off / card.def for display.
   [...lane.youCards, ...lane.aiCards].forEach(c => {
-    if (c.revealed) { c._fieldOff = 0; c._fieldDef = 0; }
+    if (c.revealed && !c.pending) { c._fieldOff = 0; c._fieldDef = 0; }
   });
   applyLaneFieldEffects(lane);
   // cross-lane field effects
   G.lanes.forEach(other => {
     if (other === lane) return;
     [...other.youCards, ...other.aiCards].forEach(c => {
-      if (!c.revealed || c.ejected) return;
+      if (!c.revealed || c.pending || c.ejected) return;
       const isYou = other.youCards.includes(c);
       const friendlies = isYou ? lane.youCards : lane.aiCards;
       if (c.desc === 'fieldBuffAllOff') {
-        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'off').forEach(x => { x._fieldOff = (x._fieldOff||0) + 6; });
+        friendlies.filter(x => x.revealed && !x.pending && !x.ejected && x.side === 'off').forEach(x => { x._fieldOff = (x._fieldOff||0) + 6; });
       }
       if (c.desc === 'fieldBuffAllDef') {
-        friendlies.filter(x => x.revealed && !x.ejected && x.side === 'def').forEach(x => { x._fieldDef = (x._fieldDef||0) + 6; });
+        friendlies.filter(x => x.revealed && !x.pending && !x.ejected && x.side === 'def').forEach(x => { x._fieldDef = (x._fieldDef||0) + 6; });
       }
     });
   });
   [...lane.youCards, ...lane.aiCards].forEach(c => {
-    if (c.revealed) {
+    if (c.revealed && !c.pending) {
       c.curOff = Math.max(0, (c._baseOff ?? c.off) + (c._fieldOff||0));
       c.curDef = Math.max(0, (c._baseDef ?? c.def) + (c._fieldDef||0));
       if (c.ejected) { c.curOff = 0; c.curDef = 0; }
@@ -748,13 +756,187 @@ function computeLaneStats(lane) {
   });
   applyLaneModifier(lane);
   applyPerkStatBuffs(lane);
-  applySynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
-  applySynergies(lane.aiCards .filter(c => c.revealed && !c.ejected));
-  const youOff = lane.youCards.filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
-  const youDef = lane.youCards.filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
-  const aiOff  = lane.aiCards .filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
-  const aiDef  = lane.aiCards .filter(c=>c.revealed&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
+  applySynergies(lane.youCards.filter(c => c.revealed && !c.pending && !c.ejected));
+  applySynergies(lane.aiCards .filter(c => c.revealed && !c.pending && !c.ejected));
+  const youOff = lane.youCards.filter(c=>c.revealed&&!c.pending&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
+  const youDef = lane.youCards.filter(c=>c.revealed&&!c.pending&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
+  const aiOff  = lane.aiCards .filter(c=>c.revealed&&!c.pending&&!c.ejected).reduce((s,c)=>s+c.curOff,0);
+  const aiDef  = lane.aiCards .filter(c=>c.revealed&&!c.pending&&!c.ejected).reduce((s,c)=>s+c.curDef,0);
   return { youOff, youDef, aiOff, aiDef };
+}
+
+// ============================================================
+// YARDAGE-NET HELPERS
+// Single source of truth for the pre-snap pill number AND the breakdown
+// modal's NET line — they must always agree.
+// ============================================================
+
+// The pill formula. Yard-block −5s and COIN FLIP doubling/halving happen
+// at SNAP in processYardageAndScoring(); the pill is a pre-snap preview, so
+// it intentionally omits them. The breakdown surfaces them as separate
+// "at-snap" rows.
+function netYardsBasic(myOff, theirDef) {
+  return Math.floor(myOff / 2.5) - Math.floor(theirDef / 2.5);
+}
+
+// Reconstructs the per-card reasons for each card's curStat − baseStat delta.
+// Pragmatic, not exact: when stacked effects + clamping + muddyField's ×0.75
+// rounding shift the total, the delta is authoritative and reasons are
+// annotations. A trailing "rounding/clamping may shift totals" disclaimer
+// covers the gap honestly.
+function attributeStatReasons(card, lane, cardSide, statKind) {
+  const reasons = [];
+  const mod = lane.modifier;
+  if (mod) {
+    const mid = mod.id;
+    if (statKind === 'off') {
+      if (mid === 'homeTurf' && card.side === 'off') {
+        reasons.push(cardSide === 'you' ? 'HOME TURF +5' : 'HOME TURF (enemy) −5');
+      }
+      if (mid === 'muddyField') reasons.push('MUDDY FIELD ×0.75');
+      if (mid === 'windTunnel' && (card.pos === 'QB' || card.pos === 'WR')) reasons.push('WIND TUNNEL −5');
+      if (mid === 'blindingSun' && (card.pos === 'WR' || card.pos === 'TE')) reasons.push('BLINDING SUN −8');
+      if (mid === 'redZone' && card.side === 'off') reasons.push('RED ZONE +8');
+      if (mid === 'scramble' && card.pos === 'QB') reasons.push('SCRAMBLE +12');
+      if (mid === 'groundPound' && card.pos === 'RB') reasons.push('GROUND POUND +10');
+      if (mid === 'groundPound' && card.pos === 'OL') reasons.push('GROUND POUND +5');
+      if (mid === 'airRaid' && (card.pos === 'WR' || card.pos === 'TE')) reasons.push('AIR RAID +8');
+      if (mid === 'trenches' && card.pos === 'OL') reasons.push('TRENCHES +6');
+      if (mid === 'specialUnit' && card.pos === 'K') reasons.push('ST UNIT +15');
+    } else {
+      if (mid === 'muddyField') reasons.push('MUDDY FIELD ×1.25');
+      if (mid === 'trenches' && card.pos === 'DT') reasons.push('TRENCHES +6');
+      if (mid === 'secondary' && (card.pos === 'CB' || card.pos === 'S')) reasons.push('SECONDARY +6');
+      if (mid === 'specialUnit' && card.pos === 'ST') reasons.push('ST UNIT +15');
+    }
+    // playOfGame: +20 to the single highest-stat card in the lane. Worth
+    // annotating only if THIS card is that highest — re-derive it from the
+    // current revealed pool.
+    if (mid === 'playOfGame') {
+      const all = [...lane.youCards, ...lane.aiCards].filter(c => c.revealed && !c.pending && !c.ejected);
+      if (all.length) {
+        let h = all[0], hs = h.side === 'off' ? h.curOff : h.curDef;
+        all.forEach(c => { const s = c.side === 'off' ? c.curOff : c.curDef; if (s > hs) { h = c; hs = s; } });
+        if (h === card) reasons.push('PLAY OF GAME +20');
+      }
+    }
+  }
+
+  // Synergies (this side's cards only). A synergy of side 'off'/'st' boosts
+  // curOff; side 'def' boosts curDef. Only label this card if it's in the
+  // synergy's match list (some synergies require multiple cards but only
+  // boost a subset — see protectedPocket, fieldGeneral).
+  const friendlies = lane[(cardSide === 'you') ? 'youCards' : 'aiCards']
+    .filter(c => c.revealed && !c.pending && !c.ejected);
+  for (const syn of SYNERGIES) {
+    const synStat = syn.side === 'def' ? 'def' : 'off';
+    if (synStat !== statKind) continue;
+    const m = syn.match(friendlies);
+    if (m && m.includes(card)) reasons.push(syn.icon + ' ' + syn.name + ' synergy');
+  }
+
+  // Perks (player side only).
+  if (cardSide === 'you') {
+    if (statKind === 'off' && hasPerk('airItOut')     && (card.pos === 'WR' || card.pos === 'TE')) reasons.push('AIR IT OUT perk +3');
+    if (statKind === 'off' && hasPerk('groundGame')   && card.pos === 'RB')                         reasons.push('GROUND GAME perk +3');
+    if (statKind === 'def' && hasPerk('runStuffer')   && (card.pos === 'DE' || card.pos === 'DT')) reasons.push('RUN STUFFER perk +3');
+    if (statKind === 'def' && hasPerk('coverageCoach')&& (card.pos === 'CB' || card.pos === 'S'))  reasons.push('COVERAGE COACH perk +3');
+  }
+
+  // Same-lane field effects from other friendly cards.
+  friendlies.forEach(other => {
+    if (other === card) return;
+    if (statKind === 'off') {
+      if (other.desc === 'fieldBuffOff'    && card.pos === 'OL')    reasons.push('OL field buff +5');
+      if (other.desc === 'fieldBuffOffAll' && card.side === 'off') reasons.push('OFF field buff +4');
+    } else {
+      if (other.desc === 'fieldBuffDef'    && (card.pos === 'CB' || card.pos === 'S')) reasons.push('DB field buff +3');
+    }
+  });
+
+  // Same-lane enemy debuff.
+  if (statKind === 'off' && card.side === 'off') {
+    const enemies = lane[(cardSide === 'you') ? 'aiCards' : 'youCards']
+      .filter(c => c.revealed && !c.pending && !c.ejected);
+    if (enemies.some(o => o.desc === 'fieldDebuffAll')) reasons.push('enemy DEBUFF −5');
+  }
+
+  // Cross-lane field buffs.
+  G.lanes.forEach(other => {
+    if (other === lane) return;
+    const otherFriendlies = other[(cardSide === 'you') ? 'youCards' : 'aiCards']
+      .filter(c => c.revealed && !c.pending && !c.ejected);
+    if (statKind === 'off' && card.side === 'off' &&
+        otherFriendlies.some(o => o.desc === 'fieldBuffAllOff')) reasons.push('cross-lane OFF buff +6');
+    if (statKind === 'def' && card.side === 'def' &&
+        otherFriendlies.some(o => o.desc === 'fieldBuffAllDef')) reasons.push('cross-lane DEF buff +6');
+  });
+
+  return reasons;
+}
+
+// Pure / read-only. Runs computeLaneStats(lane) first so curOff/curDef are
+// fresh, then reconstructs the breakdown from card._baseOff/_baseDef vs
+// curOff/curDef. Do not mutate G or any card from here.
+function buildYardageBreakdown(lane, side) {
+  const stats = computeLaneStats(lane);
+  const myKey    = side === 'you' ? 'youCards' : 'aiCards';
+  const theirKey = side === 'you' ? 'aiCards'  : 'youCards';
+  const myOffSum    = side === 'you' ? stats.youOff : stats.aiOff;
+  const theirDefSum = side === 'you' ? stats.aiDef  : stats.youDef;
+
+  const live = arr => arr.filter(c => c.revealed && !c.pending && !c.ejected);
+  const myLive    = live(lane[myKey]);
+  const theirLive = live(lane[theirKey]);
+  const myOffCards   = myLive.filter(c => c.side === 'off');
+  const theirDefCards = theirLive.filter(c => c.side === 'def');
+
+  const entryFor = (c, kind) => {
+    const base = kind === 'off' ? (c._baseOff ?? c.off) : (c._baseDef ?? c.def);
+    const cur  = kind === 'off' ? c.curOff : c.curDef;
+    // OFF cards belong to the side whose net we're explaining; DEF cards
+    // belong to their opponent (we subtract THEIR DEF from MY contribution).
+    const owningSide = kind === 'off' ? side : (side === 'you' ? 'ai' : 'you');
+    return {
+      pos: c.pos,
+      name: c.name.split(' ').slice(-1)[0].toUpperCase(),
+      base, cur,
+      delta: cur - base,
+      reasons: attributeStatReasons(c, lane, owningSide, kind)
+    };
+  };
+
+  const offEntries = myOffCards.map(c => entryFor(c, 'off'));
+  const defEntries = theirDefCards.map(c => entryFor(c, 'def'));
+
+  // Yard blocks: enemy revealed cards with fieldYardBlock reduce MY net by 5
+  // each at snap. Pre-snap they're informational.
+  const yardBlocks = theirLive
+    .filter(c => c.desc === 'fieldYardBlock')
+    .map(c => ({
+      pos: c.pos,
+      name: c.name.split(' ').slice(-1)[0].toUpperCase(),
+      penalty: -5
+    }));
+
+  const myContrib    = Math.floor(myOffSum / 2.5);
+  const theirContrib = Math.floor(theirDefSum / 2.5);
+
+  return {
+    laneName: lane.name,
+    side,
+    hasRevealed: myLive.length > 0 || theirLive.length > 0,
+    offEntries, defEntries,
+    myOffSum, theirDefSum,
+    myContrib, theirContrib,
+    yardBlocks,
+    modifier: lane.modifier ? {
+      id: lane.modifier.id, name: lane.modifier.name,
+      color: lane.modifier.color, desc: lane.modifier.desc
+    } : null,
+    coinFlip: !!(lane.modifier && lane.modifier.id === 'coinFlip'),
+    net: netYardsBasic(myOffSum, theirDefSum)
+  };
 }
 
 // ============================================================
@@ -1363,16 +1545,18 @@ class GameScene extends Phaser.Scene {
     const youBarY = this.FIELD_H/2 - 30;
     this.drawYardageBar(overlay, youBarY, 'you', lane);
 
+    // Pre-snap pill number — netYardsBasic is shared with buildYardageBreakdown
+    // so the breakdown modal's NET line and the pill cannot disagree.
     const stats = computeLaneStats(lane);
-    const youNet = Math.floor(stats.youOff/2.5) - Math.floor(stats.aiDef/2.5);
-    const aiNet  = Math.floor(stats.aiOff/2.5) - Math.floor(stats.youDef/2.5);
+    const youNet = netYardsBasic(stats.youOff, stats.aiDef);
+    const aiNet  = netYardsBasic(stats.aiOff, stats.youDef);
     // Pills are positioned so ownership reads from POSITION (never color):
     // CPU pill sits in the top-left of the center band (closer to the CPU
     // yardage bar at the top); YOU pill sits in the bottom-right (closer
     // to the YOU yardage bar at the bottom). The modifier medallion stays
     // dead-center between them.
-    this.drawPowerPill(overlay, -this.LANE_W/2 + 42, -85, aiNet, 'ai');
-    this.drawPowerPill(overlay,  this.LANE_W/2 - 42,  85, youNet, 'you');
+    this.drawPowerPill(overlay, -this.LANE_W/2 + 42, -85, aiNet, 'ai',  lane);
+    this.drawPowerPill(overlay,  this.LANE_W/2 - 42,  85, youNet, 'you', lane);
 
     // Synergy badges (Phase 2): show active synergies per side, near each row
     const youSyn = detectSynergies(lane.youCards.filter(c => c.revealed && !c.ejected));
@@ -1407,7 +1591,7 @@ class GameScene extends Phaser.Scene {
     return goodForPlayer ? 'power_green' : 'power_red';
   }
 
-  drawPowerPill(parent, x, y, net, side) {
+  drawPowerPill(parent, x, y, net, side, lane) {
     // The pill RING uses green/red as a semantic channel meaning
     // good-or-bad-for-the-human-player. Ownership (which side this pill
     // represents) is communicated by POSITION and the label tab — never
@@ -1422,8 +1606,6 @@ class GameScene extends Phaser.Scene {
     circ.setDisplaySize(72, 72);
     circ.setAlpha(net === 0 ? 0.45 : 1);
     parent.add(circ);
-    circ.setInteractive({ useHandCursor: true });
-    circ.on('pointerup', () => this.showTooltip('powerPill'));
 
     // Net number with sign — the +/− reinforces gain vs loss independent
     // of color, so colorblind players still get the direction cue.
@@ -1453,6 +1635,29 @@ class GameScene extends Phaser.Scene {
       fontFamily: 'Oswald', fontSize: '10px', color: '#888',
       stroke: '#000', strokeThickness: 2, letterSpacing: 2
     }).setOrigin(0.5));
+
+    // Tap target — covers the entire pill cluster (tab + pill + YDS) so it's
+    // an easy mobile-finger target, not just the 72px circle. Added LAST so
+    // it sits on top of the visuals in render order, ensuring it wins
+    // pointer hit-testing over the lane's drop zone underneath. Opens the
+    // net-yards breakdown for this pill's side.
+    if (lane) {
+      const clusterH = 120; // tab(20) + gap + pill(72) + gap + YDS(10) + slack
+      const hit = this.add.zone(x, y, 96, clusterH).setInteractive({ useHandCursor: true });
+      parent.add(hit);
+      let downAt = null;
+      hit.on('pointerdown', p => { downAt = { x: p.x, y: p.y, t: performance.now() }; });
+      hit.on('pointerup', p => {
+        if (!downAt) return;
+        const dx = p.x - downAt.x, dy = p.y - downAt.y;
+        const elapsed = performance.now() - downAt.t;
+        downAt = null;
+        if (elapsed < 400 && Math.sqrt(dx * dx + dy * dy) < 18) {
+          this.showYardageBreakdown(lane, side === 'you' ? 'you' : 'ai');
+        }
+      });
+      hit.on('pointerout', () => { downAt = null; });
+    }
   }
 
   drawYardageBar(parent, y, side, lane) {
@@ -1477,6 +1682,26 @@ class GameScene extends Phaser.Scene {
     parent.add(this.add.text(barW/2 - 4, y - barH/2 - 12, this.formatYardLine(pos), {
       fontFamily:'JetBrains Mono', fontSize:'12px', color:'#fff', stroke:'#000', strokeThickness:2
     }).setOrigin(1, 0));
+
+    // Tap target — opens the net-yards breakdown for this side. Uses
+    // pointerdown+up matching so it only fires on a real tap, not when a
+    // hand-card drag is released over the bar (in that case the bar's
+    // pointerdown never fired, so `downAt` stays null). The lane's drop
+    // zone sits below this and still receives drag drops normally.
+    const hit = this.add.zone(0, y, barW, barH).setInteractive({ useHandCursor: true });
+    parent.add(hit);
+    let downAt = null;
+    hit.on('pointerdown', p => { downAt = { x: p.x, y: p.y, t: performance.now() }; });
+    hit.on('pointerup', p => {
+      if (!downAt) return;
+      const elapsed = performance.now() - downAt.t;
+      const dx = p.x - downAt.x, dy = p.y - downAt.y;
+      downAt = null;
+      if (elapsed < 300 && Math.sqrt(dx*dx + dy*dy) < 12) {
+        this.showYardageBreakdown(lane, side === 'you' ? 'you' : 'ai');
+      }
+    });
+    hit.on('pointerout', () => { downAt = null; });
   }
 
   formatYardLine(pos) {
@@ -1489,7 +1714,11 @@ class GameScene extends Phaser.Scene {
 
   drawModifier(parent, y, lane) {
     const mod = lane.modifier; if (!mod) return;
-    const iconKey = 'mod_' + mod.id;
+    // Most modifier icons live in icons/mod_<id>.png. COIN FLIP is an exception:
+    // its mod_coinFlip.png asset is a corrupted sprite sheet (two icons + text
+    // crammed together), so we fall back to the clean 30_coin_heads.png coin
+    // medallion preloaded under the 'coin_heads' key.
+    const iconKey = mod.id === 'coinFlip' ? 'coin_heads' : ('mod_' + mod.id);
     const cont = this.add.container(0, y);
     // Smaller icon so the name + desc have full lane width to breathe.
     if (this.textures.exists(iconKey)) {
@@ -1744,8 +1973,21 @@ class GameScene extends Phaser.Scene {
     const back  = cards.slice(4, 8);
     const dirMul = (side === 'you') ? 1 : -1;
     const backY = anchorY + dirMul * rowYOffset;
-    placeRow(front, anchorY, 0, 0);
-    placeRow(back,  backY,   rowXShift, 4);
+    // Asymmetric draw order: always draw the row farther from the line of
+    // scrimmage FIRST so the row closer to the line sits on top. This keeps
+    // the front row's stat number (the snap-time read) visible:
+    //   CPU side: back row is above (toward top edge) → front drawn first,
+    //             back on top covers front's COST (we don't show CPU costs).
+    //   YOU side: back row is below (toward player) → back drawn first,
+    //             front on top covers back row's COST circle, but back row's
+    //             stat stays visible and the front row's stat is intact.
+    if (side === 'you') {
+      placeRow(back,  backY,   rowXShift, 0);
+      placeRow(front, anchorY, 0,         4);
+    } else {
+      placeRow(front, anchorY, 0,         0);
+      placeRow(back,  backY,   rowXShift, 4);
+    }
   }
 
   attachInspect(cardCont, cardData) {
@@ -1773,6 +2015,284 @@ class GameScene extends Phaser.Scene {
       fontFamily:'Oswald', fontSize:'20px', color:'#aaa', letterSpacing:2
     }).setOrigin(0.5));
     cont.add(this.add.text(0, 320, 'tap anywhere to close', { fontFamily:'Oswald', fontSize:'16px', color:'#666' }).setOrigin(0.5));
+  }
+
+  // "Show your work" for the power pill: lists every revealed card's
+  // contribution, modifier/synergy/perk attributions, the enemy DEF
+  // subtraction, any at-snap yard-block adjustments, and the COIN FLIP
+  // caveat. Read-only: builds from buildYardageBreakdown(), never mutates
+  // game state. The NET line at the bottom is pulled from the same helper
+  // the power pill uses (netYardsBasic), so they can never disagree.
+  showYardageBreakdown(lane, side) {
+    const b = buildYardageBreakdown(lane, side);
+    const W = this.W, H = this.H;
+    const cont = this.add.container(W/2, H/2).setDepth(9500);
+
+    const dim = this.add.graphics();
+    dim.fillStyle(0x000000, 0.85);
+    dim.fillRect(-W/2, -H/2, W, H);
+    cont.add(dim);
+    dim.setInteractive(new Phaser.Geom.Rectangle(-W/2, -H/2, W, H), Phaser.Geom.Rectangle.Contains);
+
+    const panelW = Math.min(W - 40, 760);
+    const panelH = Math.min(H - 80, 1200);
+    const panel = this.add.graphics();
+    panel.fillStyle(0x0d1320, 0.98);
+    panel.fillRoundedRect(-panelW/2, -panelH/2, panelW, panelH, 16);
+    panel.lineStyle(3, 0xffb800, 1);
+    panel.strokeRoundedRect(-panelW/2, -panelH/2, panelW, panelH, 16);
+    cont.add(panel);
+
+    // Panel-area pointer-eater: swallows taps so they don't bubble through to
+    // the dim's tap-to-close handler. Also doubles as the drag-scroll surface
+    // when content overflows the visible region.
+    const panelHit = this.add.zone(0, 0, panelW, panelH).setInteractive();
+    cont.add(panelHit);
+
+    // Close on dim tap, but only if both pointerdown AND pointerup happened
+    // on the dim — otherwise a drag-scroll that ends over the dim would
+    // accidentally dismiss the modal.
+    let dimDownOk = false;
+    dim.on('pointerdown', () => { dimDownOk = true; });
+    dim.on('pointerup',   () => { if (dimDownOk) { dimDownOk = false; cont.destroy(); } });
+    panelHit.on('pointerdown', () => { dimDownOk = false; });
+
+    const sideName = side === 'you' ? 'YOUR' : 'CPU';
+    const enemyName = side === 'you' ? 'CPU' : 'YOUR';
+    cont.add(this.add.text(0, -panelH/2 + 32, b.laneName + ' LANE — ' + sideName + ' NET YARDS', {
+      fontFamily: 'Bebas Neue', fontSize: '28px', color: '#ffb800',
+      stroke: '#000', strokeThickness: 4, letterSpacing: 3,
+      align: 'center', wordWrap: { width: panelW - 40 }
+    }).setOrigin(0.5));
+
+    // Empty state — no cards to break down. computeLaneStats excludes pending
+    // cards, so pre-snap player commitments don't appear in entries; surface
+    // them here so the player isn't surprised that "no cards revealed" shows
+    // up when their just-dropped cards are visible in the lane.
+    if (!b.offEntries.length && !b.defEntries.length) {
+      const myKey = side === 'you' ? 'youCards' : 'aiCards';
+      const pendingCount = lane[myKey].filter(c => c.revealed && c.pending && !c.ejected).length;
+      const empty = pendingCount > 0
+        ? 'No cards have snapped\nin this lane yet.\n\n(' + pendingCount + ' committed — counts at SNAP)'
+        : 'No cards revealed\nin this lane yet.';
+      cont.add(this.add.text(0, 0, empty, {
+        fontFamily: 'Oswald', fontSize: '22px', color: '#aaa', align: 'center', lineSpacing: 4
+      }).setOrigin(0.5));
+      cont.add(makeAssetButton(this, 0, panelH/2 - 50, 'GOT IT', 'btn_snap', '#fff',
+        () => cont.destroy(), { w: 240, fontSize: 26 }));
+      return;
+    }
+
+    const headerH = 70;
+    const footerH = 90;
+    const visibleTop = -panelH/2 + headerH;
+    const visibleH   = panelH - headerH - footerH;
+
+    const scrollCont = this.add.container(0, visibleTop);
+    cont.add(scrollCont);
+
+    let y = 0;
+    const leftX  = -panelW/2 + 20;
+    const rightX =  panelW/2 - 20;
+    const indentX = -panelW/2 + 36;
+    const innerW = panelW - 40;
+
+    const addLeft = (txt, opts) => {
+      const t = this.add.text(leftX, y, txt, opts);
+      scrollCont.add(t);
+      return t;
+    };
+    const addRight = (txt, opts) => {
+      const t = this.add.text(rightX, y, txt, opts).setOrigin(1, 0);
+      scrollCont.add(t);
+      return t;
+    };
+    const addDivider = (opacity) => {
+      const g = this.add.graphics();
+      g.lineStyle(1, 0xffb800, opacity);
+      g.beginPath(); g.moveTo(leftX, y); g.lineTo(rightX, y); g.strokePath();
+      scrollCont.add(g);
+    };
+
+    // ---------- MY OFFENSE ----------
+    addLeft(sideName + ' OFFENSE', {
+      fontFamily: 'Bebas Neue', fontSize: '20px', color: '#88ddff', letterSpacing: 3
+    });
+    y += 30;
+
+    if (b.offEntries.length === 0) {
+      addLeft('(no revealed OFF cards)', {
+        fontFamily: 'Oswald', fontSize: '14px', color: '#777'
+      });
+      y += 22;
+    } else {
+      b.offEntries.forEach(e => {
+        addLeft(e.pos + ' ' + e.name, {
+          fontFamily: 'Oswald', fontSize: '16px', color: '#fff'
+        });
+        const deltaStr = e.delta === 0 ? '' : (e.delta > 0 ? '  (+' + e.delta + ')' : '  (' + e.delta + ')');
+        const deltaColor = e.delta > 0 ? '#4aff8a' : e.delta < 0 ? '#ff5a5a' : '#fff';
+        addRight(e.base + ' → ' + e.cur + deltaStr, {
+          fontFamily: 'JetBrains Mono', fontSize: '14px', color: deltaColor
+        });
+        y += 22;
+        if (e.reasons.length) {
+          const r = this.add.text(indentX, y, e.reasons.join('  ·  '), {
+            fontFamily: 'Oswald', fontSize: '12px', color: '#aaa',
+            wordWrap: { width: innerW - 24 }
+          });
+          scrollCont.add(r);
+          y += r.height + 4;
+        } else {
+          y += 4;
+        }
+      });
+    }
+
+    y += 8;
+    addDivider(0.5);
+    y += 12;
+    addLeft('OFF subtotal: ' + b.myOffSum, {
+      fontFamily: 'Oswald', fontSize: '18px', color: '#fff', stroke: '#000', strokeThickness: 2
+    });
+    addRight('+' + b.myContrib + ' YDS', {
+      fontFamily: 'Bebas Neue', fontSize: '22px', color: '#4aff8a', stroke: '#000', strokeThickness: 3
+    });
+    y += 36;
+
+    // ---------- ENEMY DEFENSE ----------
+    addLeft(enemyName + ' DEFENSE', {
+      fontFamily: 'Bebas Neue', fontSize: '20px', color: '#ff8a8a', letterSpacing: 3
+    });
+    y += 30;
+
+    if (b.defEntries.length === 0) {
+      addLeft('(no revealed DEF cards)', {
+        fontFamily: 'Oswald', fontSize: '14px', color: '#777'
+      });
+      y += 22;
+    } else {
+      b.defEntries.forEach(e => {
+        addLeft(e.pos + ' ' + e.name, {
+          fontFamily: 'Oswald', fontSize: '14px', color: '#ccc'
+        });
+        addRight(e.base + ' → ' + e.cur, {
+          fontFamily: 'JetBrains Mono', fontSize: '12px', color: '#aaa'
+        });
+        y += 18;
+      });
+      y += 4;
+    }
+
+    addLeft('DEF subtotal: ' + b.theirDefSum, {
+      fontFamily: 'Oswald', fontSize: '18px', color: '#fff', stroke: '#000', strokeThickness: 2
+    });
+    addRight('−' + b.theirContrib + ' YDS', {
+      fontFamily: 'Bebas Neue', fontSize: '22px', color: '#ff5a5a', stroke: '#000', strokeThickness: 3
+    });
+    y += 36;
+
+    // ---------- AT-SNAP YARD BLOCKS ----------
+    if (b.yardBlocks.length) {
+      addLeft('AT-SNAP ADJUSTMENTS', {
+        fontFamily: 'Bebas Neue', fontSize: '16px', color: '#ffaa44', letterSpacing: 2
+      });
+      y += 26;
+      b.yardBlocks.forEach(yb => {
+        addLeft(yb.pos + ' ' + yb.name + ' yard block', {
+          fontFamily: 'Oswald', fontSize: '14px', color: '#ccc'
+        });
+        addRight('−5 YDS', {
+          fontFamily: 'Bebas Neue', fontSize: '18px', color: '#ff5a5a', stroke: '#000', strokeThickness: 2
+        });
+        y += 22;
+      });
+      y += 4;
+    }
+
+    // ---------- MODIFIER NOTE ----------
+    if (b.modifier) {
+      addLeft('MODIFIER: ' + b.modifier.name, {
+        fontFamily: 'Bebas Neue', fontSize: '16px', color: b.modifier.color, letterSpacing: 2
+      });
+      y += 22;
+      const dt = this.add.text(indentX, y, b.modifier.desc, {
+        fontFamily: 'Oswald', fontSize: '13px', color: '#ccc',
+        wordWrap: { width: innerW - 24 }
+      });
+      scrollCont.add(dt);
+      y += dt.height + 10;
+    }
+
+    // ---------- COIN FLIP ----------
+    if (b.coinFlip) {
+      const cf = this.add.text(0, y, '⚠ COIN FLIP may double or halve this at SNAP', {
+        fontFamily: 'Oswald', fontSize: '14px', color: '#dd99ff',
+        align: 'center', wordWrap: { width: innerW }
+      }).setOrigin(0.5, 0);
+      scrollCont.add(cf);
+      y += cf.height + 8;
+    }
+
+    // ---------- FINAL NET ----------
+    y += 6;
+    addDivider(0.85);
+    y += 14;
+    addLeft('NET', {
+      fontFamily: 'Bebas Neue', fontSize: '32px', color: '#fff',
+      stroke: '#000', strokeThickness: 4, letterSpacing: 4
+    });
+    // NET color matches pill semantic: green = good for player, red = bad.
+    const goodForPlayer = side === 'you' ? (b.net > 0) : (b.net < 0);
+    const netColor = b.net === 0 ? '#aaa' : (goodForPlayer ? '#4aff8a' : '#ff5a5a');
+    addRight((b.net >= 0 ? '+' : '') + b.net + ' YDS', {
+      fontFamily: 'Bebas Neue', fontSize: '40px', color: netColor,
+      stroke: '#000', strokeThickness: 5
+    });
+    y += 56;
+
+    if (b.offEntries.some(e => e.delta !== 0) || b.defEntries.some(e => e.delta !== 0)) {
+      const fn = this.add.text(0, y, 'rounding/clamping may shift individual deltas', {
+        fontFamily: 'Oswald', fontSize: '11px', color: '#666',
+        align: 'center', wordWrap: { width: innerW }
+      }).setOrigin(0.5, 0);
+      scrollCont.add(fn);
+      y += fn.height + 6;
+    }
+
+    // ---------- SCROLL ----------
+    // If total content exceeds the visible region, mask off everything outside
+    // it and let the user drag to scroll. Mask coords are world-space because
+    // GeometryMask reads the graphics object's drawn shape in world coords.
+    const contentH = y;
+    if (contentH > visibleH) {
+      const mask = this.make.graphics({ x: 0, y: 0, add: false });
+      mask.fillStyle(0xffffff);
+      mask.fillRect(W/2 - panelW/2, H/2 + visibleTop, panelW, visibleH);
+      scrollCont.setMask(mask.createGeometryMask());
+
+      cont.add(this.add.text(panelW/2 - 8, panelH/2 - 60, '⇕ drag to scroll', {
+        fontFamily: 'Oswald', fontSize: '11px', color: '#666'
+      }).setOrigin(1, 1));
+
+      let dragState = null;
+      const minY = visibleTop - (contentH - visibleH);
+      const maxY = visibleTop;
+      panelHit.on('pointerdown', p => {
+        dragState = { startY: p.y, startContY: scrollCont.y };
+      });
+      panelHit.on('pointermove', p => {
+        if (!dragState) return;
+        const dy = p.y - dragState.startY;
+        scrollCont.y = Math.min(maxY, Math.max(minY, dragState.startContY + dy));
+      });
+      const endDrag = () => { dragState = null; };
+      panelHit.on('pointerup',  endDrag);
+      panelHit.on('pointerout', endDrag);
+    }
+
+    cont.add(makeAssetButton(this, 0, panelH/2 - 50, 'GOT IT', 'btn_snap', '#fff',
+      () => cont.destroy(), { w: 240, fontSize: 26 }));
   }
 
   redrawHand() {
@@ -1905,6 +2425,10 @@ class GameScene extends Phaser.Scene {
   }
 
   // ---- Phase 1: SNAP reveal in winner-first order + ability dispatch ----
+  // YOUR cards are already face-up (revealed:true since placement) — no flip
+  // animation needed, just clear pending so the pulse stops and modifiers
+  // apply. The reveal SFX + per-card delay only fire for CPU cards, where
+  // the face-down → face-up flip is actual hidden-info disclosure.
   async revealAllPending() {
     const youFirst = G.youScore >= G.aiScore;
     const order = youFirst ? ['you','ai'] : ['ai','you'];
@@ -1917,10 +2441,13 @@ class GameScene extends Phaser.Scene {
         play.card._baseDef = play.card.def;
         await this.applyCardSnapAbility(play);
         computeLaneStats(G.lanes[play.lane]);
-        sfx('reveal');
-        this.render();
-        await this.delay(this.reduced ? 80 : 220);
+        if (side === 'ai') {
+          sfx('reveal');
+          this.render();
+          await this.delay(this.reduced ? 80 : 220);
+        }
       }
+      if (side === 'you') this.render();
     }
     G.pendingPlays = [];
     G.lanes.forEach(l => computeLaneStats(l));
