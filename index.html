@@ -1686,8 +1686,27 @@ class GameScene extends Phaser.Scene {
     const cpuBarY = -acrossHalf + 17;
     const youBarY =  acrossHalf - 17;
     this.drawYardageBar(overlay, cpuBarY, 'ai', lane);
-    this.drawModifier(overlay, 0, lane);
-    this.drawWindIndicator(overlay, lane);
+    if (this.isH) {
+      // Horizontal lane: the modifier and wind share one vertically-stacked
+      // "conditions" column in the lane's clear center band, flanked by the two
+      // side pills. Each block is built SYMMETRIC about its own origin, then the
+      // pair is centered as a unit — so a calm lane (no wind row) centers the
+      // modifier on its own. Vertical stacking is deliberate: horizontal room is
+      // scarce (the pills bracket the center) while vertical room between the two
+      // yardage bars is not.
+      const modCont  = this.drawModifier(overlay, 0, lane);
+      const windCont = this.drawWindIndicator(overlay, lane, 0);
+      const modH  = modCont  ? modCont.blockH  : 0;
+      const windH = windCont ? windCont.blockH : 0;
+      const STACK_GAP = 12;                 // clear vertical separation between the two
+      const stackH = modH + (windH ? STACK_GAP + windH : 0);
+      const top = -stackH / 2;
+      if (modCont)  modCont.y  = top + modH / 2;
+      if (windCont) windCont.y = top + modH + (modH ? STACK_GAP : 0) + windH / 2;
+    } else {
+      this.drawModifier(overlay, 0, lane);
+      this.drawWindIndicator(overlay, lane);
+    }
     this.drawYardageBar(overlay, youBarY, 'you', lane);
 
     // Pre-snap pill number — netYardsFull includes wind so the pill, the
@@ -1696,12 +1715,16 @@ class GameScene extends Phaser.Scene {
     const youNet = netYardsFull(lane, 'you', { preSnap: true });
     const aiNet  = netYardsFull(lane, 'ai',  { preSnap: true });
     if (this.isH) {
-      // Horizontal: pills flank the modifier left/right along the drive axis,
-      // each on its own team's side. Vertically centered so they live inside
-      // the cards' band — the overlay draws above cardLayer so they read
-      // clearly on top of stacked cards. Side flips at halftime.
-      this.drawPowerPill(overlay, teamSign('ai')  * 130, 0, aiNet, 'ai',  lane);
-      this.drawPowerPill(overlay, teamSign('you') * 130, 0, youNet, 'you', lane);
+      // Horizontal: pills hug the inner edge of each team's card fan, bracketing
+      // the centered conditions stack. The clear center band runs to ±174 (cards
+      // fan outward from there); with a 36px pill radius, ±138 sits the pill
+      // flush against its side WITHOUT covering any played card, and pushed well
+      // clear of the conditions column so the three zones never collide.
+      // Vertically centered inside the cards' band — the overlay draws above
+      // cardLayer so they read clearly on top of stacked cards. Side flips at
+      // halftime.
+      this.drawPowerPill(overlay, teamSign('ai')  * 138, 0, aiNet, 'ai',  lane);
+      this.drawPowerPill(overlay, teamSign('you') * 138, 0, youNet, 'you', lane);
     } else {
       // Vertical: pills are at the top-left and bottom-right corners of the
       // center band — position alone communicates ownership.
@@ -1915,7 +1938,7 @@ class GameScene extends Phaser.Scene {
   }
 
   drawModifier(parent, y, lane) {
-    const mod = lane.modifier; if (!mod) return;
+    const mod = lane.modifier; if (!mod) return null;
     // Most modifier icons live in icons/mod_<id>.png. COIN FLIP is an exception:
     // its mod_coinFlip.png asset is a corrupted sprite sheet (two icons + text
     // crammed together), so we fall back to the clean 30_coin_heads.png coin
@@ -1923,26 +1946,50 @@ class GameScene extends Phaser.Scene {
     const iconKey = mod.id === 'coinFlip' ? 'coin_heads' : ('mod_' + mod.id);
     const cont = this.add.container(0, y);
     if (this.isH) {
-      // Horizontal lane: vertical space is tight, so go icon-left + text-right
-      // instead of stacked. Whole cluster sits inside a ~160×70 footprint that
-      // lives in the lane's center strip, between the CPU/YOU card fans.
-      const iconSize = 44;
-      const textX = -8;  // text block hangs slightly past lane center
-      const textW = 130;
-      if (this.textures.exists(iconKey)) {
-        const icon = this.add.image(-textW/2 - iconSize/2 + 6, 0, iconKey);
+      // Horizontal lane: the modifier is the upper block of the lane's centered
+      // conditions stack. Two tidy rows — [icon] NAME on top, the smaller
+      // description beneath — laid out SYMMETRIC about the container origin so
+      // renderLaneOverlay can vertically center the whole stack. Kept inside a
+      // narrow width budget (it lives between the two side pills); the desc wraps
+      // and anything still too wide is scaled down to fit rather than bleeding
+      // into the pills. cont.blockH reports the measured (scaled) height so the
+      // caller can stack the wind block beneath it with a clean gap.
+      const iconSize = 36;
+      const iconGap  = 6;
+      const rowGap   = 3;
+      const budget   = 152;                 // max visual width of the stack
+      const hasIcon  = this.textures.exists(iconKey);
+      // Name carries the hierarchy: medium weight, the modifier's own color.
+      const nameTxt = this.add.text(0, 0, mod.name, {
+        fontFamily:'Bebas Neue', fontSize:'17px', color:mod.color, stroke:'#000',
+        strokeThickness:3, letterSpacing:1
+      }).setOrigin(0, 0.5);
+      // Description is supporting detail: small, muted white, wraps if long.
+      const descTxt = this.add.text(0, 0, mod.desc, {
+        fontFamily:'Oswald', fontSize:'11px', color:'#fff', stroke:'#000',
+        strokeThickness:2, align:'center', wordWrap:{ width: budget }
+      }).setOrigin(0.5, 0);
+      const nameRowH = Math.max(iconSize, nameTxt.height);
+      const blockH   = nameRowH + rowGap + descTxt.height;
+      const nameRowY = -blockH / 2 + nameRowH / 2;
+      // Center the [icon] NAME pair as a unit by measuring the name's width.
+      const rowW    = (hasIcon ? iconSize + iconGap : 0) + nameTxt.width;
+      const rowLeft = -rowW / 2;
+      if (hasIcon) {
+        const icon = this.add.image(rowLeft + iconSize / 2, nameRowY, iconKey);
         icon.setDisplaySize(iconSize, iconSize);
         cont.add(icon);
       }
-      cont.add(this.add.text(textX, -12, mod.name, {
-        fontFamily:'Bebas Neue', fontSize:'16px', color:mod.color, stroke:'#000', strokeThickness:3,
-        letterSpacing:2, align:'center', wordWrap:{ width: textW }
-      }).setOrigin(0.5));
-      cont.add(this.add.text(textX, 6, mod.desc, {
-        fontFamily:'Oswald', fontSize:'11px', color:'#fff', stroke:'#000', strokeThickness:2,
-        wordWrap:{ width: textW }, align:'center'
-      }).setOrigin(0.5, 0));
-      cont.setSize(textW + iconSize + 12, 70).setInteractive({ useHandCursor:true });
+      nameTxt.setPosition(rowLeft + (hasIcon ? iconSize + iconGap : 0), nameRowY);
+      cont.add(nameTxt);
+      descTxt.setPosition(0, nameRowY + nameRowH / 2 + rowGap);
+      cont.add(descTxt);
+      // Last-resort shrink so a very long name/rule never reaches the pills.
+      const natW  = Math.max(rowW, descTxt.width);
+      const scale = natW > budget ? budget / natW : 1;
+      if (scale < 1) cont.setScale(scale);
+      cont.blockH = blockH * scale;
+      cont.setSize(natW + 8, blockH + 8).setInteractive({ useHandCursor:true });
     } else {
       // Smaller icon so the name + desc have full lane width to breathe.
       if (this.textures.exists(iconKey)) {
@@ -1961,55 +2008,92 @@ class GameScene extends Phaser.Scene {
     }
     parent.add(cont);
     cont.on('pointerup', () => showToast(this, mod.name + ' — ' + mod.desc, 2200, mod.color));
+    return cont;
   }
 
   // Per-lane wind readout. The windsock sprite streams in screen direction
   // (left/right) and never changes during a match — only its EFFECT flips at
   // halftime via windYardsFor()'s use of youOnLeft(). Calm lanes render
   // nothing at all — no sock, no label — so wind-active lanes pop visually.
-  drawWindIndicator(parent, lane) {
+  //
+  // Horizontal mode: the sock is modest and the block is built SYMMETRIC about
+  // its origin (sock above, WIND label below) so it can slot beneath the
+  // modifier as the lower half of the centered conditions stack — the caller
+  // positions it via cont.y and reads cont.blockH. Vertical mode keeps its
+  // original placement (rides high above the modifier).
+  drawWindIndicator(parent, lane, yCenter) {
     const w = lane.wind;
-    if (!w || w.speed === 0) return;
+    if (!w || w.speed === 0) return null;
+    if (this.isH) {
+      // Modest sock (~39–48px) — the WIND label carries the magnitude, so the
+      // sock needn't dominate the tight center band. A clear gap above (set by
+      // the caller) reads it as a SEPARATE condition, not part of the modifier.
+      const sockW = 36 + w.speed * 3;
+      const sockH = sockW * (412 / 835);
+      const labelH = 13, labelGap = 3;
+      const blockH = sockH + labelGap + labelH;
+      const cont = this.add.container(0, yCenter || 0);
+      const sock = this.add.image(0, -blockH / 2 + sockH / 2, 'windsock');
+      sock.setDisplaySize(sockW, sockH);
+      if (w.dir === 'left') sock.setFlipX(true);
+      cont.add(sock);
+      // Neutral cyan keeps green/red reserved for the pill's good/bad channel.
+      cont.add(this.add.text(0, blockH / 2 - labelH / 2, 'WIND ' + w.speed, {
+        fontFamily: 'Oswald', fontSize: '11px', color: '#cfeaff',
+        stroke: '#000', strokeThickness: 3, letterSpacing: 2
+      }).setOrigin(0.5));
+      this._windWobble(sock, w.speed);
+      // Tap target is a CHILD of cont so it tracks the stack's final position.
+      const hit = this.add.zone(0, 0, Math.max(sockW, 90), blockH + 12)
+        .setInteractive({ useHandCursor: true });
+      cont.add(hit);
+      this._attachWindTap(hit, lane);
+      cont.blockH = blockH;
+      parent.add(cont);
+      return cont;
+    }
+    // Vertical mode — original placement, unchanged.
     // Sock asset is 835×412, drawn pointing RIGHT. Width is the visual span;
     // taller speeds = bigger sock. Speed 1 → ~48px wide, speed 4 → ~72px.
     const sockW = 40 + w.speed * 8;
     const sockH = sockW * (412 / 835);
-    // Sit above the modifier in both orientations. Horizontal has a top
-    // yardage bar at ~Y=-93, so the indicator slots into the narrow band
-    // between bar and modifier; vertical has no top-bar pressure so it can
-    // ride higher with room to breathe.
-    const indicatorY = this.isH ? -66 : -82;
+    const indicatorY = -82;
     const cont = this.add.container(0, indicatorY);
     const sock = this.add.image(0, 0, 'windsock');
     sock.setDisplaySize(sockW, sockH);
     if (w.dir === 'left') sock.setFlipX(true);
     cont.add(sock);
     // Label sits just below the sock so it doesn't fight the sprite for space.
-    // Neutral cyan keeps green/red reserved for the pill's good/bad channel.
-    cont.add(this.add.text(0, sockH/2 + 4, 'WIND ' + w.speed, {
+    cont.add(this.add.text(0, sockH / 2 + 4, 'WIND ' + w.speed, {
       fontFamily: 'Oswald', fontSize: '11px', color: '#cfeaff',
       stroke: '#000', strokeThickness: 3, letterSpacing: 2
     }).setOrigin(0.5, 0));
-    // Idle wobble: small rotation oscillation scaled by speed. Skip when the
-    // user prefers reduced motion. The wobble eases the sock left/right so it
-    // reads as "streaming" without distracting from the lane state.
-    if (!this.reduced) {
-      const wobbleDeg = 1.0 + w.speed * 0.9;   // ~1.9° at spd 1, ~4.6° at spd 4
-      const dur = 1100 - w.speed * 120;        // faster wobble at higher speed
-      this.tweens.add({
-        targets: sock,
-        angle: { from: -wobbleDeg, to: wobbleDeg },
-        duration: dur,
-        yoyo: true, repeat: -1, ease: 'Sine.inOut'
-      });
-    }
+    this._windWobble(sock, w.speed);
     parent.add(cont);
-    // Tap → toast explaining the wind in plain language. Uses pointerdown+up
-    // matching so a card drag released over the indicator doesn't fire it.
-    const hitW = Math.max(sockW, 90);
-    const hitH = sockH + 18;
-    const hit = this.add.zone(0, indicatorY, hitW, hitH).setInteractive({ useHandCursor: true });
+    const hit = this.add.zone(0, indicatorY, Math.max(sockW, 90), sockH + 18)
+      .setInteractive({ useHandCursor: true });
     parent.add(hit);
+    this._attachWindTap(hit, lane);
+    return cont;
+  }
+
+  // Idle wobble: small rotation oscillation scaled by speed. Skipped under
+  // prefers-reduced-motion. Eases the sock left/right so it reads as "streaming"
+  // without distracting from the lane state.
+  _windWobble(sock, speed) {
+    if (this.reduced) return;
+    const wobbleDeg = 1.0 + speed * 0.9;   // ~1.9° at spd 1, ~4.6° at spd 4
+    const dur = 1100 - speed * 120;        // faster wobble at higher speed
+    this.tweens.add({
+      targets: sock,
+      angle: { from: -wobbleDeg, to: wobbleDeg },
+      duration: dur, yoyo: true, repeat: -1, ease: 'Sine.inOut'
+    });
+  }
+
+  // Tap → toast explaining the wind in plain language. Uses pointerdown+up
+  // matching so a card drag released over the indicator doesn't fire it.
+  _attachWindTap(hit, lane) {
     let downAt = null;
     hit.on('pointerdown', p => { downAt = { x: p.x, y: p.y, t: performance.now() }; });
     hit.on('pointerup', p => {
@@ -2017,7 +2101,8 @@ class GameScene extends Phaser.Scene {
       const elapsed = performance.now() - downAt.t;
       const dx = p.x - downAt.x, dy = p.y - downAt.y;
       downAt = null;
-      if (elapsed < 300 && Math.sqrt(dx*dx + dy*dy) < 12) {
+      if (elapsed < 300 && Math.sqrt(dx * dx + dy * dy) < 12) {
+        const w = lane.wind;
         const youSwing = windYardsFor(lane, 'you');
         const tag = youSwing > 0
           ? 'with you (+' + youSwing + ')'
